@@ -44,4 +44,4 @@ jobs:
           source ./tool.sh
           setup_docker_syncer
           echo "Syncing image to mirror registry..."
-          python docker_docker_kit/work/run_jobs.py
+          python docker_docker_kit/work/image-syncer/run_jobs.py
