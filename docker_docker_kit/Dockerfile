@@ -10,4 +10,8 @@ COPY work /opt/utils/
 
 RUN source /opt/utils/script-setup.sh \
  && setup_docker_compose && setup_docker_syncer \
+ && pip install -U PyYaml \
  && ln -sf /usr/bin/image-syncer /opt/utils/image-syncer/
+
+# Clean up and display components version information...
+RUN source /opt/utils/script-utils.sh && install__clean && list_installed_packages
