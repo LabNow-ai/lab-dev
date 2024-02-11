@@ -33,10 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh
-          build_image docker-kit latest docker_docker_kit/Dockerfile
-          alias_image python-3.11 latest base latest
-          push_image
+          source ./tool.sh && build_image docker-kit latest docker_docker_kit/Dockerfile && push_image
 
   sync_images:
     needs: ['docker_kit']
