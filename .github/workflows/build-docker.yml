@@ -27,15 +27,6 @@ env:
   DOCKER_MIRROR_REGISTRY_PASSWORD: ${{ secrets.DOCKER_MIRROR_REGISTRY_PASSWORD }}
 
 jobs:
-  ## DockerKit
-  docker_kit:
-    name: 'docker-kit'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          source ./tool.sh && build_image docker-kit latest docker_docker_kit/Dockerfile && push_image
-
   ## Clash
   docker_clash:
     name: 'app-clash'
@@ -87,7 +78,7 @@ jobs:
 
 
   sync_images:
-    needs: ['docker_kit', "qpod_cuda-dev"]
+    needs: ["qpod_cuda-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
