@@ -60,17 +60,17 @@ jobs:
             alias_image base-dev latest developer latest && push_image dev
   ## DevBox - core
   qpod_core-dev:
-    name: 'full,core-dev'
+    name: 'full-stack-dev'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image core-dev latest docker_devbox/Dockerfile \
+          build_image full-stack-dev latest docker_devbox/Dockerfile \
             --build-arg "BASE_IMG=core" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
-          alias_image core-dev latest full latest && push_image
+          push_image
   ## DevBox - cuda
   qpod_cuda-dev:
     name: 'full-cuda,cuda-dev'
