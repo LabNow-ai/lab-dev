@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image base-dev latest docker_dev/Dockerfile \
+          build_image base-dev latest docker_devbox/Dockerfile \
             --build-arg "BASE_IMG=node" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image core-dev latest docker_dev/Dockerfile \
+          build_image core-dev latest docker_devbox/Dockerfile \
             --build-arg "BASE_IMG=core" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image cuda-dev latest docker_dev/Dockerfile \
+          build_image cuda-dev latest docker_devboxbox/Dockerfile \
             --build-arg "BASE_IMG=core-cuda" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
@@ -77,14 +77,14 @@ jobs:
 
 
   sync_images:
-    needs: ['docker_kit']
+    needs: ['docker_kit'] # , "qpod_cuda-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh
           printenv > /tmp/docker.env
-          docker run --rm -it \
+          docker run --rm \
             --env-file /tmp/docker.env \
             -v $(pwd):/tmp \
             -w /tmp \
