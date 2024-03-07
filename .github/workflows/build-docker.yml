@@ -27,21 +27,66 @@ env:
   DOCKER_MIRROR_REGISTRY_PASSWORD: ${{ secrets.DOCKER_MIRROR_REGISTRY_PASSWORD }}
 
 jobs:
-  docker_kit:
-    name: 'docker-kit'
+  ## Clash
+  docker_clash:
+    name: 'app-clash'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image docker-kit latest docker_docker_kit/Dockerfile && push_image
+          source ./tool.sh && build_image app-clash latest docker_app_clash/Dockerfile && push_image
 
+  ## DevBox - base
+  qpod_base-dev:
+    name: 'developer,base-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh && free_diskspace
+          build_image base-dev latest docker_devbox/Dockerfile \
+            --build-arg "BASE_IMG=node" \
+            --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
+            --build-arg "ARG_PROFILE_VSCODE=base"
+            alias_image base-dev latest developer latest && push_image dev
+  ## DevBox - full stack
+  qpod_full-stack-dev:
+    name: 'full-stack-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh && free_diskspace
+          build_image full-stack-dev latest docker_devbox/Dockerfile \
+            --build-arg "BASE_IMG=full-stack" \
+            --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
+            --build-arg "ARG_PROFILE_VSCODE=base"
+          push_image
+  ## DevBox - cuda
+  qpod_cuda-dev:
+    name: 'full-cuda,cuda-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh && free_diskspace
+          build_image cuda-dev latest docker_devbox/Dockerfile \
+            --build-arg "BASE_IMG=core-cuda" \
+            --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
+            --build-arg "ARG_PROFILE_VSCODE=base"
+          alias_image cuda-dev latest full-cuda latest && push_image
+
+  ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    needs: ['docker_kit']
+    needs: ["qpod_cuda-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh
-          setup_docker_syncer
-          echo "Syncing image to mirror registry..."
-          python docker_docker_kit/work/image-syncer/run_jobs.py
+          printenv > /tmp/docker.env
+          docker run --rm \
+            --env-file /tmp/docker.env \
+            -v $(pwd):/tmp \
+            -w /tmp \
+            ${DOCKER_IMG_PREFIX:-qpod}/docker-kit python /opt/utils/image-syncer/run_jobs.py
