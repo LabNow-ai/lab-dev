@@ -76,7 +76,7 @@ jobs:
             --build-arg "ARG_PROFILE_VSCODE=base"
           alias_image cuda-dev latest full-cuda latest && push_image
 
-
+  ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
     needs: ["qpod_cuda-dev"]
     runs-on: ubuntu-latest
@@ -89,4 +89,4 @@ jobs:
             --env-file /tmp/docker.env \
             -v $(pwd):/tmp \
             -w /tmp \
-            qpod/docker-kit python docker_docker_kit/work/image-syncer/run_jobs.py
+            ${DOCKER_IMG_PREFIX:-qpod}/docker-kit python docker_docker_kit/work/image-syncer/run_jobs.py
