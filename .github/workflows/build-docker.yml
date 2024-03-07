@@ -89,4 +89,4 @@ jobs:
             --env-file /tmp/docker.env \
             -v $(pwd):/tmp \
             -w /tmp \
-            ${DOCKER_IMG_PREFIX:-qpod}/docker-kit python docker_docker_kit/work/image-syncer/run_jobs.py
+            ${DOCKER_IMG_PREFIX:-qpod}/docker-kit python /opt/utils/image-syncer/run_jobs.py
