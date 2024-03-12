@@ -11,9 +11,9 @@ ARG ARG_PROFILE_JUPYTER=hub
 
 ARG ARG_KEEP_NODEJS=true
 
-# COPY work /opt/utils/
+COPY work /opt/utils/
 
-# Setup Jupyter: Basic Configurations and Extensions...
+# Setup JupyterHub
 RUN source /opt/utils/script-devbox-jupyter.sh \
  && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done
 

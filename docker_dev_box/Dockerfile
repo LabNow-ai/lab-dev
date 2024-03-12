@@ -6,7 +6,7 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 LABEL maintainer="haobibo@gmail.com"
 
-# base,kernels,extensions
+# base,kernels,extensions,hub
 ARG ARG_PROFILE_JUPYTER=base
 
 # base
@@ -16,7 +16,7 @@ ARG ARG_KEEP_NODEJS=true
 
 COPY work /opt/utils/
 
-# Setup Jupyter: Basic Configurations and Extensions...
+# Setup Jupyter: Basic Configurations and Extensions
 RUN mkdir -pv /opt/conda/etc/jupyter/ \
  && mv /opt/utils/etc_jupyter/* /opt/conda/etc/jupyter/ && rm -rf /opt/utils/etc_jupyter \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
