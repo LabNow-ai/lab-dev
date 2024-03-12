@@ -46,7 +46,7 @@ jobs:
           source ./tool.sh
           build_image dev-hub latest docker_dev_hub/Dockerfile \
             --build-arg "BASE_IMG=node" \
-            --build-arg "ARG_PROFILE_JUPYTER=hub" \
+            --build-arg "ARG_PROFILE_JUPYTER=hub"
           push_image
 
   ## DevBox - base
