@@ -33,11 +33,7 @@ RUN source /opt/utils/script-devbox-vscode.sh \
 # Clean up and display components version information...
 RUN source /opt/utils/script-utils.sh && install__clean && list_installed_packages
 
-WORKDIR $HOME_DIR
-EXPOSE 8888
-
 ENTRYPOINT ["tini", "-g", "--"]
-CMD ["start-notebook.sh"]
 
 # '-c' option make bash commands are read from string.
 #   If there are arguments after the string, they are assigned to the positional parameters, starting with $0.
@@ -46,3 +42,6 @@ CMD ["start-notebook.sh"]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
+CMD ["start-notebook.sh"]
+WORKDIR $HOME_DIR
+EXPOSE 8888

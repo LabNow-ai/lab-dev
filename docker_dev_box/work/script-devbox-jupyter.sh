@@ -84,9 +84,11 @@ setup_jupyter_extensions() {
 setup_jupyter_hub() {
    # ref1: https://github.com/jupyterhub/jupyterhub
    # ref2: https://github.com/jupyterhub/jupyterhub/blob/main/Dockerfile
-      npm install -g npm configurable-http-proxy \
-   && pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
+      which npm && npm install -g npm configurable-http-proxy
+
+      pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
    && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
    && pip install -Uq psutil pycurl jupyter_client jupyterhub \
+   && pip install -Uq jupyterhub-traefik-proxy \
    && echo "@ JupyterHub version: $(jupyterhub --version)"
 }
