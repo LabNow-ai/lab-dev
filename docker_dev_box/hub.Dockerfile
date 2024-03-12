@@ -26,7 +26,6 @@ RUN ${ARG_KEEP_NODEJS:-true}  || ( \
 # Clean up and display components version information...
 RUN source /opt/utils/script-utils.sh && install__clean && list_installed_packages
 
-WORKDIR $HOME_DIR
 EXPOSE 8888
 
 ENTRYPOINT ["tini", "-g", "--"]
@@ -39,3 +38,4 @@ CMD ["jupyterhub"]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
+WORKDIR "/opt/jupyterhub"

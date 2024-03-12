@@ -87,6 +87,6 @@ setup_jupyter_hub() {
       npm install -g npm configurable-http-proxy \
    && pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
    && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
-   && pip install -Uq psutil jupyter_client jupyterhub \
+   && pip install -Uq psutil pycurl jupyter_client jupyterhub \
    && echo "@ JupyterHub version: $(jupyterhub --version)"
 }
