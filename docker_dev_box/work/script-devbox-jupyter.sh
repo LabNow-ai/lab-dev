@@ -79,3 +79,14 @@ setup_jupyter_extensions() {
   && echo "@ Jupyter Lab Extension list: " && jupyter labextension list \
   && echo "@ Jupyter Notebook Extension list: " && jupyter notebook extension list
 }
+
+
+setup_jupyter_hub() {
+   # ref1: https://github.com/jupyterhub/jupyterhub
+   # ref2: https://github.com/jupyterhub/jupyterhub/blob/main/Dockerfile
+      npm install -g npm configurable-http-proxy \
+   && pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
+   && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
+   && pip install -Uq psutil pycurl jupyter_client jupyterhub \
+   && echo "@ JupyterHub version: $(jupyterhub --version)"
+}
