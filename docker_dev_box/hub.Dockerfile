@@ -15,6 +15,7 @@ COPY work /opt/utils/
 
 # Setup JupyterHub
 RUN source /opt/utils/script-devbox-jupyter.sh \
+ && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
  && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done \
  # If not keeping NodeJS, remove NoedJS to reduce image size, and install Traefik instead
  && ${ARG_KEEP_NODEJS:-true} || ( \

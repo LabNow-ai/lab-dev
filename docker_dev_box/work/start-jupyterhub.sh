@@ -1,4 +1,9 @@
 #!/bin/bash
+[ $BASH ] && [ -f /etc/profile  ] && [ -z $ENTER_PROFILE ] && . /etc/profile
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-jupyterhub $*
+# echo "DIR=${DIR}"
+# ls -alh
+
+python -m jupyterhub $*
