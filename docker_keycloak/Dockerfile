@@ -14,15 +14,15 @@ RUN source /opt/utils/script-setup-keycloak.sh \
  && echo "keycloak:x:1000:0:keycloak user:/opt/keycloak:/sbin/nologin" >> /etc/passwd \
  && chown -R 1000:0 /opt/keycloak
 
-# Flag for determining app is running in container
+ENV KEYCLOAK_HOME /opt/keycloak
 ENV KC_RUN_IN_CONTAINER true
 ENV KC_HEALTH_ENABLED true
 ENV KC_METRICS_ENABLED true
+
 USER 1000
 EXPOSE 8080
-EXPOSE 8443
 
-WORKDIR /opt/keycloak
+WORKDIR ${KEYCLOAK_HOME}
 ENTRYPOINT ["tini", "-g", "--"]
 
 # '-c' option make bash commands are read from string.
@@ -34,6 +34,8 @@ ENTRYPOINT ["tini", "-g", "--"]
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 CMD ["/bin/bash", "--login", "bin/kc.sh", "start-dev"]
 
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD [ "curl", "--head", "-fsSk", "https://localhost:8080/health/ready" ]
+
 # docker build -t qpod/keycloak --build-arg "BASE_NAMESPACE=qpod" .
-# (docker rm svc-keycloak || true) && docker run -d  -p 8080:8080 -p 8443:8443 --name=svc-keycloak --hostname=svc-keycloak qpod/keycloak
-# (docker rm svc-keycloak || true) && docker run -it -p 8080:8080 -p 8443:8443 --name=svc-keycloak --hostname=svc-keycloak qpod/keycloak bin/kc.sh start-dev --verbose
+# (docker rm svc-keycloak || true) && docker run -d  -p 8080:8080 --name=svc-keycloak --hostname=svc-keycloak qpod/keycloak
+# (docker rm svc-keycloak || true) && docker run -it -p 8080:8080 --name=svc-keycloak --hostname=svc-keycloak qpod/keycloak bin/kc.sh start-dev --verbose
