@@ -1,0 +1,41 @@
+version: '3.7'
+
+services:
+  db-postgres:
+  # su psql && psql -d keycloak -U pg-keycloak-user
+      image: postgres:15
+      container_name: db-postgres
+      environment:
+        POSTGRES_DB: keycloak
+        POSTGRES_USER: pg-keycloak-user
+        POSTGRES_PASSWORD: pg-keycloak-password
+
+  svc-keycloak:
+      # image: qpod/keycloak
+      build:
+        context: ../
+        dockerfile: Dockerfile
+        args:
+          BASE_NAMESPACE: qpod
+      container_name: svc-keycloak
+      # command: ["/bin/bash", "--login", "bin/kc.sh", "start-dev", "--verbose"]
+      command: |
+        /bin/bash -l -c '
+          keytool -genkeypair -storepass password -storetype PKCS12 -keyalg RSA -keysize 2048 -dname "CN=server" -alias server -ext "SAN:c=DNS:localhost,IP:127.0.0.1" -keystore conf/server.keystore
+          bin/kc.sh start --verbose --db postgres \
+          --db-url jdbc:postgresql://db-postgres:5432/keycloak \
+          --db-username pg-keycloak-user \
+          --db-password pg-keycloak-password
+        '
+      environment:
+        KC_HOSTNAME: localhost
+        KC_DB: postgres
+        KC_DB_URL: "jdbc:postgresql://db-postgres:5432/keycloak"
+        KEYCLOAK_ADMIN: keycloak-admin
+        KEYCLOAK_ADMIN_PASSWORD: keycloak-password
+        PROXY_ADDRESS_FORWARDING: "true"
+      ports:
+        - 8080:8080
+        - 8443:8443
+      depends_on:
+        - db-postgres
