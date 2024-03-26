@@ -58,6 +58,17 @@ jobs:
             --build-arg "ARG_PROFILE_JUPYTER=hub"
           push_image
 
+  ## OpenResty as gateway
+  qpod_openresty:
+    name: 'openresty'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh
+          build_image openresty latest docker_openresty/Dockerfile
+          push_image
+
   ## DevBox - base
   qpod_base-dev:
     name: 'developer,base-dev'
