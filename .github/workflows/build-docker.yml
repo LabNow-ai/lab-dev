@@ -36,6 +36,15 @@ jobs:
       - run: |
           source ./tool.sh && build_image app-clash latest docker_app_clash/Dockerfile && push_image
 
+  ## Casdoor
+  docker_casdoor:
+    name: 'casdoor'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh && build_image casdoor latest docker_casdoor/Dockerfile && push_image
+
   ## Keycloak
   docker_keycloak:
     name: 'keycloak'
