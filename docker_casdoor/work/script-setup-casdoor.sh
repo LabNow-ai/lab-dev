@@ -14,7 +14,7 @@ setup_casdoor() {
   && yarn install --frozen-lockfile && yarn run build \
   && mv ./build /opt/casdoor/web/ \
   && echo "Building Backend..." \
-  && ./build.sh \
+  && cd /tmp/casdoor && ./build.sh \
   && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > version_info.txt \
   && mv ./server ./swagger ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \

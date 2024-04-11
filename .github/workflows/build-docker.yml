@@ -92,15 +92,15 @@ jobs:
             --build-arg "ARG_PROFILE_VSCODE=base"
             alias_image base-dev latest developer latest && push_image dev
   ## DevBox - full stack
-  qpod_full-stack-dev:
-    name: 'full-stack-dev'
+  qpod_data-science-dev:
+    name: 'data-science-dev'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image full-stack-dev latest docker_dev_box/Dockerfile \
-            --build-arg "BASE_IMG=full-stack" \
+          build_image data-science-dev latest docker_dev_box/Dockerfile \
+            --build-arg "BASE_IMG=data-science-stack" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
           push_image
