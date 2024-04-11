@@ -1,0 +1,40 @@
+version: '3.7'
+
+services:
+  db-postgres:
+  # su postgres && psql -d casdoor -U pg-casdoor-username
+      image: postgres:15
+      container_name: db-postgres
+      environment:
+        POSTGRES_DB: casdoor
+        POSTGRES_USER: pg-casdoor-username
+        POSTGRES_PASSWORD: pg-casdoor-password
+
+  svc-casdoor:
+      # image: qpod/casdoor
+      build:
+        context: ../
+        dockerfile: Dockerfile
+        args:
+          BASE_NAMESPACE: qpod0dev
+      container_name: svc-casdoor
+      # command: ["/bin/bash", "--login", "/opt/casdoor/server", "--createDatabase=true"]
+      command: |
+        /bin/bash -l -c '
+        ls -alh /opt/casdoor
+        echo "driverName=postgres" >> /opt/casdoor/conf/app.conf \
+        echo "dataSourceName=pg-casdoor-username:pg-casdoor-password@tcp(db-postgres:5432)/" >> /opt/casdoor/conf/app.conf
+        /opt/casdoor/server --createDatabase=true
+        '
+      environment:
+        RUNNING_IN_DOCKER: "true"
+      ports:
+        - 8080:8080
+      depends_on:
+        - db-postgres
+      healthcheck:
+        test:  ["CMD-SHELL", "curl", "--head", "-fsSk", "https://localhost:8000/health/ready" ]
+        interval: 30s
+        timeout: 30s
+        start_period: 5s
+        retries: 3
