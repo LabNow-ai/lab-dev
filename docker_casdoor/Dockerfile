@@ -14,4 +14,6 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 COPY --from=builder /opt/casdoor /opt/casdoor
 COPY work/app.conf /opt/casdoor/conf/app.conf
 LABEL maintainer="haobibo@gmail.com"
+ENV RUNNING_IN_DOCKER true
+WORKDIR /opt/casdoor
 EXPOSE 8000

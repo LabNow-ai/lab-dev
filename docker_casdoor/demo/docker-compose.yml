@@ -7,8 +7,8 @@ services:
       container_name: db-postgres
       environment:
         POSTGRES_DB: casdoor
-        POSTGRES_USER: pg-casdoor-username
-        POSTGRES_PASSWORD: pg-casdoor-password
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
 
   svc-casdoor:
       # image: qpod0dev/casdoor
@@ -23,9 +23,9 @@ services:
         /bin/bash -l -c '
         ls -alh /opt/casdoor
         echo "driverName = postgres" >> /opt/casdoor/conf/app.conf
-        echo "dataSourceName = \"user=pg-casdoor-username password=pg-casdoor-password host=db-postgres port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
-        
-        /opt/casdoor/server --createDatabase=true
+        echo "dataSourceName = \"user=postgres  password=postgres  host=db-postgres port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
+        sleep 8s
+        # /opt/casdoor/server --createDatabase=true
         '
       environment:
         RUNNING_IN_DOCKER: "true"
