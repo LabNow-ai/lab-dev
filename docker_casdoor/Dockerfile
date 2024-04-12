@@ -2,7 +2,7 @@
 
 ARG BASE_NAMESPACE
 ARG BASE_IMG_BUILD="go-stack"
-ARG BASE_IMG="atom"
+ARG BASE_IMG="base"
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
 COPY work /opt/utils/
