@@ -23,14 +23,14 @@ services:
         /bin/bash -l -c '
         ls -alh /opt/casdoor
         echo "driverName = postgres" >> /opt/casdoor/conf/app.conf
-        echo "dataSourceName = \"user=postgres  password=postgres  host=db-postgres port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
+        echo "dataSourceName = \"user=postgres password=postgres host=db-postgres port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
         sleep 8s
-        # /opt/casdoor/server --createDatabase=true
-        '
+        cat /opt/casdoor/conf/app.conf
+        /opt/casdoor/server -createDatabase=true'
       environment:
         RUNNING_IN_DOCKER: "true"
       ports:
-        - 8080:8080
+        - 8000:8000
       depends_on:
         - db-postgres
       healthcheck:
