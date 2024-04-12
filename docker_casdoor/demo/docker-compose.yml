@@ -11,7 +11,7 @@ services:
         POSTGRES_PASSWORD: pg-casdoor-password
 
   svc-casdoor:
-      # image: qpod/casdoor
+      # image: qpod0dev/casdoor
       build:
         context: ../
         dockerfile: Dockerfile
@@ -22,8 +22,9 @@ services:
       command: |
         /bin/bash -l -c '
         ls -alh /opt/casdoor
-        echo "driverName=postgres" >> /opt/casdoor/conf/app.conf \
-        echo "dataSourceName=pg-casdoor-username:pg-casdoor-password@tcp(db-postgres:5432)/" >> /opt/casdoor/conf/app.conf
+        echo "driverName = postgres" >> /opt/casdoor/conf/app.conf
+        echo "dataSourceName = \"user=pg-casdoor-username password=pg-casdoor-password host=db-postgres port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
+        
         /opt/casdoor/server --createDatabase=true
         '
       environment:

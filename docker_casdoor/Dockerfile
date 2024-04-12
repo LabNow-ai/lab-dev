@@ -1,21 +1,17 @@
 # Distributed under the terms of the Modified BSD License.
 
 ARG BASE_NAMESPACE
-ARG BASE_IMG="go-stack"
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG} as builder
+ARG BASE_IMG_BUILD="go-stack"
+ARG BASE_IMG="atom"
 
-LABEL maintainer="haobibo@gmail.com"
-
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
 COPY work /opt/utils/
-
 RUN source /opt/utils/script-setup-casdoor.sh \
  && setup_casdoor
 
-ARG BASE_NAMESPACE
-ARG BASE_IMG="atom"
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 COPY --from=builder /opt/casdoor /opt/casdoor
 COPY work/app.conf /opt/casdoor/conf/app.conf
-
+LABEL maintainer="haobibo@gmail.com"
 EXPOSE 8000
