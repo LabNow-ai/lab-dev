@@ -11,12 +11,12 @@ services:
         POSTGRES_PASSWORD: postgres
 
   svc-casdoor:
-      # image: qpod0dev/casdoor
-      build:
-        context: ../
-        dockerfile: Dockerfile
-        args:
-          BASE_NAMESPACE: qpod0dev
+      image: qpod/casdoor
+      # build:
+      #   context: ../
+      #   dockerfile: Dockerfile
+      #   args:
+      #     BASE_NAMESPACE: qpod0dev
       container_name: svc-casdoor
       # command: ["/bin/bash", "--login", "/opt/casdoor/server", "--createDatabase=true"]
       command: |
