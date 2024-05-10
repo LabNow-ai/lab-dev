@@ -1,6 +1,6 @@
 # https://github.com/Dreamacro/clash/wiki/configuration#all-configuration-options
-mixed-port: 7890
-external-controller: :9090
+mixed-port: 57890
+external-controller: :59090
 allow-lan: true
 bind-address: '*'
 log-level: debug

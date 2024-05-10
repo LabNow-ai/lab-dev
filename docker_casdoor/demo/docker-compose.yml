@@ -1,9 +1,7 @@
-version: '3.7'
-
 services:
   db-postgres:
-  # su postgres && psql -d casdoor -U pg-casdoor-username
-      image: postgres:15
+      # su postgres && psql -d casdoor -U pg-casdoor-username
+      image: qpod/postgres:16
       container_name: db-postgres
       environment:
         POSTGRES_DB: casdoor

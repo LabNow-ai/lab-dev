@@ -9,4 +9,4 @@ RUN wget https://github.com/haishanh/yacd/archive/gh-pages.zip \
 # https://github.com/Dreamacro/clash
 FROM dreamacro/clash-premium
 COPY --from=builder /tmp/* /root/.config/clash/ui
-COPY config.yaml           /root/.config/clash/
+COPY demo/config.yaml      /root/.config/clash/
