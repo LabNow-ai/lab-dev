@@ -1,5 +1,7 @@
 # Casdoor
 
+Identity and Access Management (IAM) / Single-Sign-On (SSO) platform: https://github.com/casdoor/casdoor
+
 ## debug
 
 ```shell
