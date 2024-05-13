@@ -1,3 +1,5 @@
 libpcre3-dev
 libssl-dev
 zlib1g-dev
+envsubst
+cron

@@ -1,7 +1,7 @@
 source /opt/utils/script-utils.sh
 
 setup_openresty() {
-    install_apt /opt/utils/install_list_nginx.apt \
+    install_apt /opt/utils/install_list_openresty.apt \
  && VERSION_OR=$(curl -sL https://github.com/openresty/openresty/releases.atom | grep "releases/tag" | head -1 | grep -Po '(\d[\d|.]+)') \
  && URL_OR="https://openresty.org/download/openresty-${VERSION_OR}.tar.gz" \
  && echo "Downloading OpenResty ${VERSION_OR} from ${URL_OR}" \
