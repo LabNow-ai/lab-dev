@@ -1,5 +1,11 @@
 libpcre3-dev
 libssl-dev
 zlib1g-dev
-gettext
+libgd-dev
+libgeoip-dev
+libncurses5-dev
+libperl-dev
+libreadline-dev
+libxslt1-dev
+gettext-base
 cron

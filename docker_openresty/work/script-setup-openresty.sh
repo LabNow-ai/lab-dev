@@ -57,6 +57,9 @@ setup_openresty() {
     --with-ipv6 \
     --with-md5-asm \
     --with-sha1-asm \
+	--with-luajit-xcflags='-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT' \
+	--with-pcre \
+	--with-pcre-jit \
  && make -j8 && make install \
  && ln -sf ${NGINX_HOME}/bin/nginx /usr/bin/ \
  && echo "@ Version info of Nginx: $(nginx -version)"
