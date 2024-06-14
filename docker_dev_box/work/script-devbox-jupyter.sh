@@ -26,6 +26,7 @@ setup_jupyter_kernels() {
   # && /opt/node/bin/ijsinstall --install=global --spec-path=full \
   # && mv /usr/local/share/jupyter/kernels/javascript /opt/conda/share/jupyter/kernels/
 
+  ## alternative: https://github.com/jupyter-xeus/xeus-r
   ## checked @ 2024-0307  # TODO: help func requries proxy
      which R \
   && echo "@ Install Jupyter Kernel for R: https://github.com/melff/RKernel" \
