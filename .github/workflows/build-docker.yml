@@ -85,7 +85,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image base-dev latest docker_dev_box/Dockerfile \
+          build_image base-dev latest docker_dev_box/dev.Dockerfile \
             --build-arg "BASE_IMG=node" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image data-science-dev latest docker_dev_box/Dockerfile \
+          build_image data-science-dev latest docker_dev_box/dev.Dockerfile \
             --build-arg "BASE_IMG=data-science-stack" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh && free_diskspace
-          build_image cuda-dev latest docker_dev_box/Dockerfile \
+          build_image cuda-dev latest docker_dev_box/dev.Dockerfile \
             --build-arg "BASE_IMG=core-cuda" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"

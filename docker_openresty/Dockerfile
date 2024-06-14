@@ -8,7 +8,7 @@ LABEL maintainer="haobibo@gmail.com"
 
 COPY work /opt/utils/
 
-RUN set -eux \
+RUN set -ex \
  && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_openresty.apt \
  && source /opt/utils/script-setup.sh           && setup_lua_base && setup_lua_rocks \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
