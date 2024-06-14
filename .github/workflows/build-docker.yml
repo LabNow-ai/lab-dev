@@ -73,9 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh
-          build_image openresty latest docker_openresty/Dockerfile
-          push_image
+          source ./tool.sh && build_image openresty latest docker_openresty/Dockerfile && push_image
 
   ## DevBox - base
   qpod_base-dev:
@@ -90,7 +88,8 @@ jobs:
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
             alias_image base-dev latest developer latest && push_image dev
-  ## DevBox - full stack
+
+  ## DevBox - data science stack
   qpod_data-science-dev:
     name: 'data-science-dev'
     runs-on: ubuntu-latest
@@ -103,6 +102,21 @@ jobs:
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
           push_image
+
+  ## DevBox - full stack
+  qpod_full-stack-dev:
+    name: 'full-stack-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh && free_diskspace
+          build_image full-stack-dev latest docker_dev_box/dev.Dockerfile \
+            --build-arg "BASE_IMG=full-stack" \
+            --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
+            --build-arg "ARG_PROFILE_VSCODE=base"
+          push_image
+
   ## DevBox - cuda
   qpod_cuda-dev:
     name: 'full-cuda,cuda-dev'
@@ -117,9 +131,10 @@ jobs:
             --build-arg "ARG_PROFILE_VSCODE=base"
           alias_image cuda-dev latest full-cuda latest && push_image
 
+
   ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    needs: ["qpod_cuda-dev"]
+    needs: ["qpod_cuda-dev", "qpod_full-stack-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
