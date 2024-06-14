@@ -84,7 +84,7 @@ setup_jupyter_extensions() {
 setup_jupyter_hub() {
    # ref1: https://github.com/jupyterhub/jupyterhub
    # ref2: https://github.com/jupyterhub/jupyterhub/blob/main/Dockerfile
-      which npm && npm install -g npm configurable-http-proxy
+      which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 )
 
       pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
    && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
