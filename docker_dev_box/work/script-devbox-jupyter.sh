@@ -65,7 +65,7 @@ setup_jupyter_kernels() {
 
   ## Checked @ 2024-0614
      which java \
-  && export JBANG_DIR=/opt/jbang \
+  && export JBANG_DIR=/opt/jbang && export PATH=${PATH}:${JBANG_DIR}/bin \
   && echo "export JBANG_DIR=${JBANG_DIR}"         > /etc/profile.d/path-jbang.sh \
   && echo 'export PATH=${PATH}:${JBANG_DIR}/bin' >> /etc/profile.d/path-jbang.sh \
   && curl -Ls https://sh.jbang.dev | bash -s - app setup \
@@ -86,8 +86,8 @@ setup_jupyter_extensions() {
      install_apt /opt/utils/install_list_JPY_extend.apt \
   && install_pip /opt/utils/install_list_JPY_extend.pip
 
-     echo "@ Jupyter Server Extension list: " && jupyter server extension list \
-  && echo "@ Jupyter Lab Extension list: " && jupyter labextension list \
+     echo "@ Jupyter Server Extension list: "   && jupyter server extension list \
+  && echo "@ Jupyter Lab Extension list: "      && jupyter labextension list \
   && echo "@ Jupyter Notebook Extension list: " && jupyter notebook extension list
 }
 
