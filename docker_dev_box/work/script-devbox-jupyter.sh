@@ -6,6 +6,8 @@ setup_jupyter_base() {
   && echo "@ Version of Jupyter Server: $(jupyter server --version)" \
   && echo "@ Version of Jupyter Lab: $(jupyter lab --version)" \
   && echo "@ Version of Jupyter Notebook: $(jupyter notebook --version)"
+
+  jupyter labextension disable "@jupyterlab/apputils-extension:announcements"
 }
 
 
@@ -64,10 +66,11 @@ setup_jupyter_kernels() {
   ## Checked @ 2024-0614
      which java \
   && export JBANG_DIR=/opt/jbang \
-  && echo "export JBANG_DIR=${JBANG_DIR}" > /etc/profile.d/path-jbang.sh \
+  && echo "export JBANG_DIR=${JBANG_DIR}"         > /etc/profile.d/path-jbang.sh \
+  && echo 'export PATH=${PATH}:${JBANG_DIR}/bin' >> /etc/profile.d/path-jbang.sh \
   && curl -Ls https://sh.jbang.dev | bash -s - app setup \
-  && jbang trust add https://github.com/jupyter-java \
-  && jbang install-kernel@jupyter-java \
+  && ${JBANG_DIR}/bin/jbang trust add https://github.com/jupyter-java \
+  && ${JBANG_DIR}/bin/jbang install-kernel@jupyter-java \
   && mv ~/.local/share/jupyter/kernels/jbang-* /opt/conda/share/jupyter/kernels/
 
   ## https://github.com/jupyter-xeus/xeus-octave  # TODO: to check
