@@ -2,7 +2,8 @@ FROM alpine AS builder
 
 # https://github.com/haishanh/yacd
 WORKDIR /tmp
-RUN wget https://github.com/haishanh/yacd/archive/gh-pages.zip \
+RUN set -eux \
+ && wget https://github.com/haishanh/yacd/archive/gh-pages.zip \
  && unzip ./*.zip && rm -rf *.zip \
  && mv ./* ./ui
 

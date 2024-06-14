@@ -16,22 +16,24 @@ ARG ARG_KEEP_NODEJS=true
 
 COPY work /opt/utils/
 
-# Setup Jupyter: Basic Configurations and Extensions
-RUN mkdir -pv /opt/conda/etc/jupyter/ \
+RUN set -ex && source /opt/utils/script-utils.sh \
+ # Setup Jupyter: Basic Configurations and Extensions
+ && mkdir -pv /opt/conda/etc/jupyter/ \
  && mv /opt/utils/etc_jupyter/* /opt/conda/etc/jupyter/ && rm -rf /opt/utils/etc_jupyter \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
  && source /opt/utils/script-devbox-jupyter.sh \
- && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done
-
-# If not keeping NodeJS, remove NoedJS to reduce image size
-RUN ${ARG_KEEP_NODEJS:-true}  || ( echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node )
-
-# If installing coder-server  # https://github.com/cdr/code-server/releases
-RUN source /opt/utils/script-devbox-vscode.sh \
- && for profile in $(echo $ARG_PROFILE_VSCODE | tr "," "\n") ; do ( setup_vscode_${profile} || true ) ; done
-
-# Clean up and display components version information...
-RUN source /opt/utils/script-utils.sh && install__clean && list_installed_packages
+ && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done \
+ # If installing coder-server  # https://github.com/cdr/code-server/releases
+ && source /opt/utils/script-devbox-vscode.sh \
+ && for profile in $(echo $ARG_PROFILE_VSCODE | tr "," "\n") ; do ( setup_vscode_${profile} || true ) ; done \
+ # If not keeping NodeJS, remove NoedJS to reduce image size
+ && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
+      echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
+    else \
+      echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
+ fi \
+ # Clean up and display components version information...
+ && install__clean && list_installed_packages
 
 ENTRYPOINT ["tini", "-g", "--"]
 

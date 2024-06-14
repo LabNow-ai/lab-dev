@@ -8,8 +8,8 @@ LABEL maintainer="haobibo@gmail.com"
 
 COPY work /opt/utils/
 
-RUN source /opt/utils/script-setup-keycloak.sh \
- && setup_keycloak \
+RUN set -ex \
+ && source /opt/utils/script-setup-keycloak.sh && setup_keycloak \
  && echo "keycloak:x:0:root" >> /etc/group \
  && echo "keycloak:x:1000:0:keycloak user:/opt/keycloak:/sbin/nologin" >> /etc/passwd \
  && chown -R 1000:0 /opt/keycloak
