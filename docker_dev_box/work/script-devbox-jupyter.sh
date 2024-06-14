@@ -45,10 +45,10 @@ setup_jupyter_kernels() {
   && mv ~/.local/share/jupyter/kernels/gonb /opt/conda/share/jupyter/kernels/
 
   ## checked @ 2024-0614
-     which rustc \
-  && echo "@ Install Jupyter Kernel for Rust: https://github.com/evcxr/evcxr/blob/main/evcxr_jupyter/README.md" \
   # alternative approaches to install evxcr_jupyter:
   # && cargo install --locked evcxr_jupyter \
+     which rustc \
+  && echo "@ Install Jupyter Kernel for Rust: https://github.com/evcxr/evcxr/blob/main/evcxr_jupyter/README.md" \
   && VER_EVCXR=$(curl -sL https://github.com/evcxr/evcxr/releases.atom | grep 'releases/tag' | head -1 | grep -Po '\d[\d.]+' ) \
   && URL_EVCXR="https://github.com/evcxr/evcxr/releases/download/v${VER_EVCXR}/evcxr_jupyter-v${VER_EVCXR}-x86_64-unknown-linux-gnu.tar.gz" \
   && echo "Downloading evcxr version ${VER_EVCXR} from: ${URL_EVCXR}" \

@@ -134,7 +134,7 @@ jobs:
 
   ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    needs: ["qpod_cuda-dev", "qpod_full-stack-dev"]
+    needs: ["qpod_cuda-dev", "qpod_data-science-dev", "qpod_full-stack-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

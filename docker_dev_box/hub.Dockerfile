@@ -19,10 +19,12 @@ RUN set -eux \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
  && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done \
  # If not keeping NodeJS, remove NoedJS to reduce image size, and install Traefik instead
- && ${ARG_KEEP_NODEJS:-true} || ( \
-       echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node \
-    && echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup.sh && setup_traefik \
- ) \
+ && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
+      echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
+      echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup.sh && setup_traefik ; \
+    else \
+      echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
+ fi \
  # Clean up and display components version information...
  && source /opt/utils/script-utils.sh && install__clean && list_installed_packages
 
