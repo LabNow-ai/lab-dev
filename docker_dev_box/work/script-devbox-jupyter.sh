@@ -2,11 +2,10 @@ source /opt/utils/script-utils.sh
 
 
 setup_jupyter_base() {
-     pip install -Uq --pre jupyterhub jupyterlab notebook ipywidgets jupyter-server-proxy \
+     pip install -Uq --pre jupyterlab notebook ipywidgets jupyter-server-proxy \
   && echo "@ Version of Jupyter Server: $(jupyter server --version)" \
   && echo "@ Version of Jupyter Lab: $(jupyter lab --version)" \
-  && echo "@ Version of Jupyter Notebook: $(jupyter notebook --version)" \
-  && echo "@ Version of JupyterHub: $(jupyterhub --version)"
+  && echo "@ Version of Jupyter Notebook: $(jupyter notebook --version)"
 }
 
 
@@ -90,12 +89,13 @@ setup_jupyter_extensions() {
 }
 
 
-setup_jupyter_hub() {
+setup_jupyter_hub() {  
    # ref1: https://github.com/jupyterhub/jupyterhub
    # ref2: https://github.com/jupyterhub/jupyterhub/blob/main/Dockerfile
       which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 )
 
-      pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
+      pip install -Uq --pre jupyterhub \
+   && pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
    && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
    && pip install -Uq psutil pycurl jupyter_client jupyterhub \
    && pip install -Uq jupyterhub-traefik-proxy \

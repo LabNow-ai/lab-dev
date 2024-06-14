@@ -16,7 +16,7 @@ ARG ARG_KEEP_NODEJS=true
 
 COPY work /opt/utils/
 
-RUN set -eux && source /opt/utils/script-utils.sh \
+RUN set -ex && source /opt/utils/script-utils.sh \
  # Setup Jupyter: Basic Configurations and Extensions
  && mkdir -pv /opt/conda/etc/jupyter/ \
  && mv /opt/utils/etc_jupyter/* /opt/conda/etc/jupyter/ && rm -rf /opt/utils/etc_jupyter \
