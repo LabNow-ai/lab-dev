@@ -14,6 +14,8 @@ RUN set -ex \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
  && source /opt/utils/script-setup-acme.sh      && setup_acme \
  && pip install certbot \
+ && useradd nginx -G www-data \
+ && mkdir -pv /var/cache/nginx /var/log/nginx \
  && install__clean
 
 CMD ["/opt/nginx/bin/nginx", "-g", "daemon off;"]
