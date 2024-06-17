@@ -1,6 +1,8 @@
 source /opt/utils/script-utils.sh
 
 setup_casdoor() {
+     export ARCH=$(dpkg --print-architecture)
+
   # ref: https://github.com/casdoor/casdoor/blob/master/Dockerfile
   # Install the latest release of casdoor
      VER_CASDOOR=$(curl -sL https://github.com/casdoor/casdoor/releases.atom | grep 'releases/tag' | head -1 | grep -Po '\d[\d.]+' ) \
@@ -12,7 +14,8 @@ setup_casdoor() {
      echo "--> Building Backend..." \
   && cd /tmp/casdoor && ./build.sh \
   && echo "${VER_CASDOOR}" > version_info.txt \
-  && mv ./server ./swagger ./version_info.txt /opt/casdoor/ \
+  && mv "./server_linux_${ARCH}" ./swagger ./version_info.txt /opt/casdoor/ \
+  && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf
   # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > version_info.txt \
 
