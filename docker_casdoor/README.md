@@ -14,4 +14,11 @@ docker run -it \
     -p 8000:8000 \
     qpod0dev/casdoor \
     bash
+
+
+docker run --rm -it \
+    -p 8000:8000 \
+    -v $(pwd):/root/docker_casdoor \
+    qpod/go-stack \
+    bash
 ```
