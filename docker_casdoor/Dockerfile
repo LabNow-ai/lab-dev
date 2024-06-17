@@ -6,7 +6,7 @@ ARG BASE_IMG="node"
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
 COPY work /opt/utils/
-RUN set -ex \
+RUN set -eux \
  && source /opt/utils/script-setup-casdoor.sh \
  && setup_casdoor
 
@@ -14,7 +14,7 @@ RUN set -ex \
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 COPY --from=builder /opt/casdoor /opt/casdoor
 COPY work/app.conf /opt/casdoor/conf/app.conf
-RUN set -ex \
+RUN set -eux \
  && mkdir -pv /root/web && ln -sf /opt/casdoor/web/build /root/web/
 
 LABEL maintainer="haobibo@gmail.com"
