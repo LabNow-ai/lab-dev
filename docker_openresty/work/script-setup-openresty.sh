@@ -61,6 +61,9 @@ setup_openresty() {
     --with-pcre \
     --with-pcre-jit \
  && make -j8 && make install \
+ && mkdir -pv /usr/local/openresty/ /var/log/nginx /var/cache/nginx /tmp/nginx \
  && ln -sf ${NGINX_HOME}/bin/nginx /usr/bin/ \
+ && ln -sf /opt/nginx   /usr/local/openresty/ \
+ && ln -sf /opt/nginx   /etc/
  && echo "@ Version info of Nginx: $(nginx -version)"
 }
