@@ -10,6 +10,8 @@ COPY work /opt/utils/
 
 RUN set -ex \
  && useradd nginx -G www-data \
+ && mkdir -pv /var/cache/nginx /var/log/nginx \
+ && chmod -R nginx:www-data /var/cache/nginx /var/log/nginx \
  && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_openresty.apt \
  && source /opt/utils/script-setup.sh           && setup_lua_base && setup_lua_rocks \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
@@ -17,9 +19,7 @@ RUN set -ex \
  && pip install certbot \
  && install__clean
 
-USER nginx
-RUN mkdir -pv /var/cache/nginx /var/log/nginx \
- && chmod -R nginx:www-data /var/cache/nginx /var/log/nginx
+VOLUME [ "/var/log/nginx", "/var/cache/nginx" ]
 
 CMD ["/opt/nginx/bin/nginx", "-g", "daemon off;"]
 
