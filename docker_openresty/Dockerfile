@@ -15,8 +15,11 @@ RUN set -ex \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
  && source /opt/utils/script-setup-acme.sh      && setup_acme \
  && pip install certbot \
- && mkdir -pv /var/cache/nginx /var/log/nginx \
  && install__clean
+
+USER nginx
+RUN mkdir -pv /var/cache/nginx /var/log/nginx \
+ && chmod -R nginx:www-data /var/cache/nginx /var/log/nginx
 
 CMD ["/opt/nginx/bin/nginx", "-g", "daemon off;"]
 
