@@ -13,7 +13,7 @@ ARG ARG_KEEP_NODEJS=true
 
 COPY work /opt/utils/
 
-RUN set -ex \
+RUN set -eux \
  # Setup JupyterHub
  && source /opt/utils/script-devbox-jupyter.sh \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \

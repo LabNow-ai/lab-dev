@@ -1,14 +1,14 @@
 # Distributed under the terms of the Modified BSD License.
 
 ARG BASE_NAMESPACE
-ARG BASE_IMG="jdk17"
+ARG BASE_IMG="jdk-17"
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 LABEL maintainer="haobibo@gmail.com"
 
 COPY work /opt/utils/
 
-RUN set -ex \
+RUN set -eux \
  && source /opt/utils/script-setup-keycloak.sh && setup_keycloak \
  && echo "keycloak:x:0:root" >> /etc/group \
  && echo "keycloak:x:1000:0:keycloak user:/opt/keycloak:/sbin/nologin" >> /etc/passwd \
