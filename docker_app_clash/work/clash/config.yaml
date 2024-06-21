@@ -4,7 +4,7 @@ allow-lan: true
 bind-address: '*'
 log-level: debug
 mode: Rule
-external-ui: /opt/config/ui
+external-ui: /opt/clash/ui
 
 rules:
  - DOMAIN-SUFFIX,local,DIRECT
