@@ -1,10 +1,15 @@
+# ref: https://github.com/MetaCubeX/mihomo/blob/Alpha/docs/config.yaml
+
 mixed-port: 57890
 external-controller: :59090
 allow-lan: true
 bind-address: '*'
 log-level: debug
 mode: Rule
+
 external-ui: /opt/clash/ui
+external-ui-name: xd
+external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
 
 rules:
  - DOMAIN-SUFFIX,local,DIRECT

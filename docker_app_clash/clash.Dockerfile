@@ -12,3 +12,5 @@ WORKDIR /opt/clash
 RUN set -eux \
  && echo 'export PATH=${PATH}:/opt/clash' >> /etc/profile.d/path-clash.sh \
  && ln -sf /opt/clash/clash /usr/local/bin/
+
+CMD ["/opt/clash/clash", "-d", "config"]
