@@ -28,6 +28,7 @@ setup_verge() {
   && echo "Downloading clash-verge version ${VER_VERGE} from: ${URL_VERGE}" \
   && install_tar_gz $URL_VERGE \
   && mv /opt/clash-verge-* /tmp/verge && cd /tmp/verge \
-  && npm i && npm run web:build && ls -alh \
+  && jq '.homepage = "./ui"' package.json > tmp.$$.json && mv tmp.$$.json package.json \
+  && npx pnpm i && npx pnpm run web:build && ls -alh \
   && mv /tmp/verge/dist /opt/clash/ui
 }
