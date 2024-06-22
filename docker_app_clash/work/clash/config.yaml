@@ -3,7 +3,7 @@
 mixed-port: 57890
 
 external-controller: 0.0.0.0:59090
-external-ui: /opt/clash/ui
+external-ui: /opt/clash/ui-xd
 external-ui-name: xd
 external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
 

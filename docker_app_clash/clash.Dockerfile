@@ -11,7 +11,7 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
 COPY work/clash /opt/utils/
 
 RUN set -eux && source /opt/utils/script-setup-clash.sh \
- && setup_clash && setup_verge \
+ && setup_clash && setup_clash_metacubexd && setup_clash_verge \
  && mv /opt/utils/config.yaml /opt/clash/config
 
  

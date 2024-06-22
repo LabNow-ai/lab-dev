@@ -21,7 +21,18 @@ setup_clash() {
   && wget -O /opt/clash/config/geoip.dat    https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat
 }
 
-setup_verge() {
+setup_clash_metacubexd() {
+   #  Install the latest release: https://github.com/MetaCubeX/metacubexd
+     VER_XD=$(curl -sL https://github.com/MetaCubeX/metacubexd/releases.atom | grep 'releases/tag/v' | head -1 | grep -Po '\d[\d.]+' ) \
+  && URL_XD="https://github.com/MetaCubeX/metacubexd/archive/refs/tags/v$VER_XD.tar.gz" \
+  && echo "Downloading XD version ${VER_XD} from: ${URL_XD}" \
+  && install_tar_gz $URL_XD \
+  && mv /opt/metacubexd-* /tmp/xd && cd /tmp/xd \
+  && npx pnpm i && npx pnpm run build && ls -alh \
+  && mv /tmp/xd/dist /opt/clash/ui-xd
+}
+
+setup_clash_verge() {
     #  Install the latest release: https://clash-verge-rev.github.io/index.html
      VER_VERGE=$(curl -sL https://github.com/clash-verge-rev/clash-verge-rev/releases.atom | grep 'releases/tag/v' | head -1 | grep -Po '\d[\d.]+' ) \
   && URL_VERGE="https://github.com/clash-verge-rev/clash-verge-rev/archive/refs/tags/v$VER_VERGE.tar.gz" \
@@ -30,5 +41,5 @@ setup_verge() {
   && mv /opt/clash-verge-* /tmp/verge && cd /tmp/verge \
   && jq '.homepage = "./ui"' package.json > tmp.$$.json && mv tmp.$$.json package.json \
   && npx pnpm i && npx pnpm run web:build && ls -alh \
-  && mv /tmp/verge/dist /opt/clash/ui
+  && mv /tmp/verge/dist /opt/clash/ui-verge
 }
