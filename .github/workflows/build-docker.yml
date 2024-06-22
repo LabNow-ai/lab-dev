@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image app-clash latest docker_app_clash/Dockerfile && push_image
+          source ./tool.sh && build_image app-clash latest docker_app_clash/clash.Dockerfile && push_image
 
   ## Casdoor
   docker_casdoor:
