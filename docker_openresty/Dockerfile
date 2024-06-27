@@ -12,6 +12,8 @@ RUN set -eux \
  && useradd nginx -G www-data \
  && mkdir -pv /var/cache/nginx /var/log/nginx \
  && chown -R nginx:www-data /var/cache/nginx /var/log/nginx \
+ && mv /opt/utils/entrypoint / \
+ && cp -rf /opt/utils/nginx/* /opt/nginx/ && rm -rf /opt/utils/nginx \
  && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_openresty.apt \
  && source /opt/utils/script-setup.sh           && setup_lua_base && setup_lua_rocks \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
@@ -19,9 +21,15 @@ RUN set -eux \
  && pip install certbot \
  && install__clean
 
-VOLUME [ "/var/log/nginx", "/var/cache/nginx" ]
+VOLUME [ "/var/log/nginx", "/var/cache/nginx", "/etc/nginx/templates/"]
 
-CMD ["/opt/nginx/bin/nginx", "-g", "daemon off;"]
+ENV NGINX_ENVSUBST_OUTPUT_DIR="/etc/nginx/conf.d"
+ENV NGINX_ENVSUBST_TEMPLATE_DIR="/etc/nginx/templates"
+ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=".conf"
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 80
 
 # Use SIGQUIT instead of default SIGTERM to cleanly drain requests
 # See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
