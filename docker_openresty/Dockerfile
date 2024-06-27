@@ -28,7 +28,7 @@ ENV NGINX_ENVSUBST_TEMPLATE_DIR="/etc/nginx/templates"
 ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=".conf"
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["nginx"]
 EXPOSE 80
 
 # Use SIGQUIT instead of default SIGTERM to cleanly drain requests
