@@ -12,6 +12,7 @@ setup_acme() {
       --accountconf  ${HOME_DIR}/acme/account.conf \
       --useragent    "client acme.sh in docker" \
  && ln -sf /opt/acme.sh/acme.sh /usr/bin/ \
- && rm -rf /tmp/acme.sh && cd ${ACME_HOME} \
- && echo "@ Version info of acme.sh: $(acme.sh -v)"
+ && rm -rf /tmp/acme.sh && cd ${ACME_HOME} ;
+
+ type acme.sh && echo "@ Version info of acme.sh: $(acme.sh -v)" || return -1 ;
 }

@@ -9,6 +9,7 @@ setup_keycloak() {
   && mv /opt/keycloak-* /opt/keycloak && mkdir -pv /opt/keycloak/data \
   && chmod -R g+rwX /opt/keycloak \
   && echo 'export PATH=${PATH}:/opt/keycloak/bin' >> /etc/profile.d/path-keycloak.sh \
-  && export PATH=${PATH}:/opt/keycloak/bin \
-  && echo "@ Version of Keycloadk $(kc.sh --version)"
+  && export PATH=${PATH}:/opt/keycloak/bin ;
+
+  type kc.sh && echo "@ Version of Keycloadk $(kc.sh --version)" || return -1 ;
 }

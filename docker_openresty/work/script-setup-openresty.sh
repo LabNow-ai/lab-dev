@@ -64,7 +64,8 @@ setup_openresty() {
  && mkdir -pv /usr/local/openresty/ /var/log/nginx /var/cache/nginx /tmp/nginx \
  && ln -sf ${NGINX_HOME}/bin/nginx /usr/bin/ \
  && ln -sf /opt/nginx /usr/local/openresty/ \
- && ln -sf /opt/nginx /etc/ \
- && nginx -t \
- && echo "@ Version info of Nginx: $(nginx -version)"
+ && ln -sf /opt/nginx /etc/ ;
+
+ type nginx && echo "@ Version info of Nginx: $(nginx -version)" || return -1 ;
+ nginx -t ;
 }

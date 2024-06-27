@@ -12,8 +12,10 @@ setup_clash() {
   && opt='-X \"github.com/metacubex/mihomo/constant.Version=${VER_CLASH}\" -X \"github.com/metacubex/mihomo/constant.BuildTime=${BUILDTIME}\" -w -s -buildid=1' \
   && opt=$(eval echo $opt) \
   && cmd="go build -tags with_gvisor -trimpath -o /opt/clash/clash -ldflags '${opt}'" \
-  && eval $cmd && /opt/clash/clash -v \
-  && echo "@ Version of Clash $(clash -v)"
+  && eval $cmd
+  
+  
+     type /opt/clash/clash && echo "@ Version of Clash $(clash -v)" || return -1;
 
      mkdir -pv /opt/clash/config \
   && wget -O /opt/clash/config/geoip.metadb https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb \
