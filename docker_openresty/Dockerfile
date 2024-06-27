@@ -18,6 +18,7 @@ RUN set -eux \
  && pip install certbot \
  && mv /opt/utils/entrypoint / \
  && cp -rf /opt/utils/nginx/* /etc/nginx/ && rm -rf /opt/utils/nginx \
+ && nginx -t \
  && install__clean
 
 VOLUME [ "/var/log/nginx", "/var/cache/nginx", "/etc/nginx/templates/"]

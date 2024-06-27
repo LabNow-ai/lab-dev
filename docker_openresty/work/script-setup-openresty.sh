@@ -67,5 +67,4 @@ setup_openresty() {
  && ln -sf /opt/nginx /etc/ ;
 
  type nginx && echo "@ Version info of Nginx: $(nginx -version)" || return -1 ;
- nginx -t ;
 }
