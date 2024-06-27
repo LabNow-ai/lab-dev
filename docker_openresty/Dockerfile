@@ -20,8 +20,9 @@ RUN set -eux \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
  && source /opt/utils/script-setup-acme.sh      && setup_acme \
  && pip install certbot \
- && mv /opt/utils/entrypoint/* / && rm -rf /opt/utils/entrypoint \
- && cp -rf /opt/utils/nginx/* /etc/nginx/ && rm -rf /opt/utils/nginx \
+ && mv     /opt/utils/entrypoint/* /           && rm -rf /opt/utils/entrypoint \
+ && cp -rf /opt/utils/nginx/*      /etc/nginx/ && rm -rf /opt/utils/nginx \
+ && chmod -R +x ./docker-entrypoint.* \
  && nginx -t \
  && install__clean
 
