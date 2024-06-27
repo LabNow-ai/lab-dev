@@ -22,7 +22,7 @@ RUN set -eux \
  && pip install certbot \
  && mv     /opt/utils/entrypoint/* /           && rm -rf /opt/utils/entrypoint \
  && cp -rf /opt/utils/nginx/*      /etc/nginx/ && rm -rf /opt/utils/nginx \
- && chmod -R +x /docker-entrypoint.* && ls -alh /docker-entrypoint.* \
+ && chmod -R +x /docker-entrypoint.* && ls -alh /docker-entrypoint.* /etc/nginx/* \
  && nginx -t \
  && install__clean
 
