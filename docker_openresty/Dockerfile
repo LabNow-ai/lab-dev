@@ -13,11 +13,11 @@ RUN set -eux \
  && mkdir -pv /var/cache/nginx /var/log/nginx \
  && chown -R nginx:www-data /var/cache/nginx /var/log/nginx \
  && source /opt/utils/script-setup.sh && setup_lua_base && setup_lua_rocks \
- && mv /opt/utils/entrypoint / \
- && cp -rf /opt/utils/nginx/* /opt/nginx/ && rm -rf /opt/utils/nginx \
- && source /opt/utils/script-setup-openresty.sh && install_apt /opt/utils/install_list_openresty.apt && setup_openresty \
+ && source /opt/utils/script-setup-openresty.sh && setup_openresty \
  && source /opt/utils/script-setup-acme.sh      && setup_acme \
  && pip install certbot \
+ && mv /opt/utils/entrypoint / \
+ && cp -rf /opt/utils/nginx/* /etc/nginx/ && rm -rf /opt/utils/nginx \
  && install__clean
 
 VOLUME [ "/var/log/nginx", "/var/cache/nginx", "/etc/nginx/templates/"]
