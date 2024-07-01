@@ -12,5 +12,5 @@ if [[ ! -z "${JUPYTERHUB_API_TOKEN}" ]]; then
   # launched by JupyterHub, use single-user entrypoint
   exec $DIR/start-singleuser.sh $*
 else
-  jupyter notebook ${NOTEBOOK_ARGS} $*
+  jupyter ${JUPYTER_CMD:-lab} ${NOTEBOOK_ARGS} $*
 fi
