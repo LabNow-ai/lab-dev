@@ -2,9 +2,12 @@ source /opt/utils/script-utils.sh
 
 
 setup_jupyter_base() {
-  pip install -Uq --pre jupyterlab notebook ipywidgets jupyter-server-proxy
+  pip install -Uq --pre jupyterlab notebook ipywidgets jupyter-server-proxy jupyterhub
   
   type jupyter || return -1 ;
+
+  # commnad `jupyterhub-singleuser` is provided by jupterhub and will be used by dockerspawner
+  type jupyterhub-singleuser || return -1;
 
   echo "@ Version of Jupyter Server: $(jupyter server --version)"
   echo "@ Version of Jupyter Lab: $(jupyter lab --version)"
