@@ -1,5 +1,5 @@
 #!/bin/bash
-set -exu
+set -e
 
 # Generate a SSH id for git if it does not exist.
 [ -e ~/.ssh/id_rsa.pub ] || ssh-keygen -t rsa -b 4096 -N "" -C `hostname -f` -f ~/.ssh/id_rsa

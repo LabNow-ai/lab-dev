@@ -87,7 +87,7 @@ jobs:
             --build-arg "BASE_IMG=node" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
-            alias_image base-dev latest developer latest && push_image dev
+          alias_image base-dev latest developer latest && push_image dev
 
   ## DevBox - data science stack
   qpod_data-science-dev:

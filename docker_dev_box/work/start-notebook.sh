@@ -5,7 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . $DIR/start--pre.sh
 
 NOTEBOOK_ARGS=""
-[ -n "${USE_SSL:+x}" ] && NOTEBOOK_ARGS="${NOTEBOOK_ARGS} --NotebookApp.certfile=${NOTEBOOK_PEM_FILE}"
+[ -n "${USE_SSL:+x}" ] && NOTEBOOK_ARGS="${NOTEBOOK_ARGS:-""} --NotebookApp.certfile=${NOTEBOOK_PEM_FILE}"
 
 
 if [[ ! -z "${JUPYTERHUB_API_TOKEN}" ]]; then
