@@ -141,5 +141,5 @@ jobs:
       - run: |
           source ./tool.sh
           printenv > /tmp/docker.env
-          docker run --rm --env-file /tmp/docker.env -v $(pwd):/tmp -w /tmp \
-            ${IMG_NAMESPACE:-qpod}/docker-kit /opt/conda/bin/python /opt/utils/image-syncer/run_jobs.py
+          docker run --rm --env-file /tmp/docker.env -v $(pwd):/tmp -w /tmp ${IMG_NAMESPACE:-qpod}/docker-kit \
+            /opt/conda/bin/python /opt/utils/image-syncer/run_jobs.py

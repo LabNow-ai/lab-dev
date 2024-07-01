@@ -21,13 +21,11 @@ NOTEBOOK_PEM_FILE="/opt/conda/etc/jupyter/notebook.pem"
 function run_hooks() {
   # The run-hooks.sh script looks for *.sh scripts to source and executable files to run within a passed directory
   if [ "$#" -ne 1 ]; then
-    echo "Should pass exactly one directory"
-    return 1
+    echo "Should pass exactly one directory" && return 1 ;
   fi
 
   if [[ ! -d "${1}" ]]; then
-      echo "Directory ${1} doesn't exist or is not a directory"
-      return 1
+      echo "Directory ${1} doesn't exist or is not a directory, thus no hooks script executed!" && return 0 ;
   fi
 
   echo "Running hooks in: ${1} as uid: $(id -u) gid: $(id -g)"
