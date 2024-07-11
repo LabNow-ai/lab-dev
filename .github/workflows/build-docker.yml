@@ -134,12 +134,12 @@ jobs:
 
   ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    # needs: ["qpod_cuda-dev", "qpod_data-science-dev", "qpod_full-stack-dev"]
+    needs: ["qpod_cuda-dev", "qpod_data-science-dev", "qpod_full-stack-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh
-          printenv > /tmp/docker.env
+          printenv | sort > /tmp/docker.env
           docker run --rm --env-file /tmp/docker.env -v $(pwd):/tmp -w /tmp ${IMG_NAMESPACE:-qpod}/docker-kit \
             bash -c 'printenv | sort && python /opt/utils/image-syncer/run_jobs.py'
