@@ -2,7 +2,7 @@
 % Use percent char as line comment separator.
 
 ipyparallel                             % https://github.com/ipython/ipyparallel
-jupyterlab_myst                         % https://github.com/executablebooks/jupyterlab-myst
+% jupyterlab_myst                       % https://github.com/executablebooks/jupyterlab-myst - BUG: https://github.com/jupyter-book/jupyterlab-myst/issues/243
 jupytext                                % https://github.com/mwouts/jupytext
 ipynb                                   % https://github.com/ipython/ipynb
 jupyterlab_server[openapi]              % https://github.com/jupyterlab/jupyterlab_server
