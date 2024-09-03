@@ -7,5 +7,5 @@
 ## Usage
 
 ```shell
-docker run -d --name=app-clash -p 57890:57890 -p 59090:59090 qpod/app-clash
+docker run -d --name=app-clash -p 7890:7890 -p 9090:9090 qpod/app-clash
 ```

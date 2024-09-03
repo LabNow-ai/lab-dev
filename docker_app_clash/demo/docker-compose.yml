@@ -1,6 +1,6 @@
 services:
   svc-clash:
-    image: registry.cn-hangzhou.aliyuncs.com/qpod/app-clash
+    image: qpod/app-clash
     container_name: app-clash
     restart: unless-stopped
     volumes:

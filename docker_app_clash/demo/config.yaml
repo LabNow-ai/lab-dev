@@ -35,7 +35,9 @@ dns:
   - dns.msftncsi.com
   - www.msftncsi.com
   - www.msftconnecttest.com
+
 tun:
+  enable: false
   stack: gvisor
   device: Meta
   auto-route: true
@@ -44,7 +46,7 @@ tun:
   dns-hijack:
   - any:53
   mtu: 1500
-  enable: true
+  
 proxies:
 
 proxy-groups:
