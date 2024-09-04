@@ -3,6 +3,8 @@ services:
     image: qpod/app-clash
     container_name: app-clash
     restart: unless-stopped
+    pid: host
+    ipc: host
     volumes:
       - ./config.yaml:/opt/clash/config/config.yaml:ro
     ports:
