@@ -6,7 +6,7 @@ services:
     pid: host
     ipc: host
     volumes:
-      - ./config.yaml:/opt/clash/config/config.yaml:ro
+      - ../work/clash/config.yaml:/opt/clash/config/config.yaml:ro
     ports:
       - "7890:7890"
       - "9090:9090"
