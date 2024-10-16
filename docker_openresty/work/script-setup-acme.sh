@@ -16,3 +16,15 @@ setup_acme() {
 
  type acme.sh && echo "@ Version info of acme.sh: $(acme.sh -v)" || return -1 ;
 }
+
+
+setup_lego() {
+ # Install the latest release of lego (go-acme): https://go-acme.github.io/lego/usage/cli/obtain-a-certificate/index.html
+    VER_LEGO=$(curl -sL https://github.com/go-acme/lego/releases.atom | grep 'releases/tag' | head -1 | grep -Po '\d[\d.]+' ) \
+ && URL_LEGO="https://github.com/go-acme/lego/releases/download/v${VER_LEGO}/lego_v${VER_LEGO}_linux_amd64.tar.gz" \
+ && echo "Downloading lego version ${VER_LEGO} from: ${URL_LEGO}" \
+ && install_tar_gz $URL_LEGO lego \
+ && mv /opt/lego /opt/bin/ && ln -sf /opt/bin/lego /usr/bin/ ;
+
+ type lego && echo "@ Version info of lego: $(lego -v)" || return -1 ;
+}
