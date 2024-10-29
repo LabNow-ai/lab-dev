@@ -32,6 +32,8 @@ RUN set -eux && source /opt/utils/script-utils.sh \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
  fi \
+ # Install supervisord
+ && source /opt/utils/script-supervisord.sh && setup_supervisord \
  # Clean up and display components version information...
  && install__clean && list_installed_packages
 
@@ -44,6 +46,6 @@ ENTRYPOINT ["tini", "-g", "--"]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
-CMD ["start-notebook.sh"]
+CMD ["start-jupyterlab.sh"]
 WORKDIR $HOME_DIR
 EXPOSE 8888

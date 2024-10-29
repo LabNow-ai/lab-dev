@@ -4,6 +4,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . $DIR/start--pre.sh
 
+# ref: https://github.com/jupyter/docker-stacks/blob/main/images/base-notebook/start-singleuser.py
+
 if [[ "$NOTEBOOK_ARGS $@" != *"--ip="* ]]; then
   NOTEBOOK_ARGS="--ip=0.0.0.0 $NOTEBOOK_ARGS"
 fi
