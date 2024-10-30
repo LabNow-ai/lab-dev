@@ -12,27 +12,33 @@ ARG ARG_PROFILE_JUPYTER=base
 # base
 ARG ARG_PROFILE_VSCODE=base
 
+# rstudio,rshiny
+ARG ARG_PROFILE_R
+
 ARG ARG_KEEP_NODEJS=true
 
 COPY work /opt/utils/
 
 RUN set -eux && source /opt/utils/script-utils.sh \
- # Setup Jupyter: Basic Configurations and Extensions
+ # ----------------------------- Setup Jupyter: Basic Configurations and Extensions
  && mkdir -pv /opt/conda/etc/jupyter/ \
  && mv /opt/utils/etc_jupyter/* /opt/conda/etc/jupyter/ && rm -rf /opt/utils/etc_jupyter \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
  && source /opt/utils/script-devbox-jupyter.sh \
  && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done \
- # If installing coder-server  # https://github.com/cdr/code-server/releases
+ # ----------------------------- If installing coder-server  # https://github.com/cdr/code-server/releases
  && source /opt/utils/script-devbox-vscode.sh \
  && for profile in $(echo $ARG_PROFILE_VSCODE | tr "," "\n") ; do ( setup_vscode_${profile} || true ) ; done \
- # If not keeping NodeJS, remove NoedJS to reduce image size
+ # ----------------------------- If not keeping NodeJS, remove NoedJS to reduce image size
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
       echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
  fi \
- # Install supervisord
+ # ----------------------------- If installing R IDEs: R_rstudio and R_rshiny
+ && source /opt/utils/script-devbox-rstudio.sh \
+ && for profile in $(echo $ARG_PROFILE_R | tr "," "\n") ; do ( setup_R_${profile} ) ; done \
+ # ----------------------------- Install supervisord
  && source /opt/utils/script-supervisord.sh && setup_supervisord \
  # Clean up and display components version information...
  && install__clean && list_installed_packages
