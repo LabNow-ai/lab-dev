@@ -18,7 +18,7 @@ RUN set -eux \
  && chown -R nginx:www-data /var/cache/nginx /var/log/nginx \
  && source /opt/utils/script-setup.sh && setup_lua_base && setup_lua_rocks \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
- && source /opt/utils/script-setup-acme.sh      && setup_acme \
+ && source /opt/utils/script-setup-acme.sh      && setup_acme && setup_lego \
  && pip install certbot \
  && mv     /opt/utils/entrypoint/* /           && rm -rf /opt/utils/entrypoint \
  && cp -rf /opt/utils/nginx/*      /etc/nginx/ && rm -rf /opt/utils/nginx \

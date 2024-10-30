@@ -3,14 +3,14 @@ source /opt/utils/script-utils.sh
 
 setup_vscode_base() {
   ## ref: https://github.com/coder/code-server
-     VERSION_CODER=$(curl -sL https://github.com/cdr/code-server/releases.atom | grep "releases/tag" | head -1 | grep -Po '(\d[\d|.]+)') \
-  && install_tar_gz "https://github.com/cdr/code-server/releases/download/v${VERSION_CODER}/code-server-${VERSION_CODER}-linux-amd64.tar.gz" \
+     VER_CODER=$(curl -sL https://github.com/cdr/code-server/releases.atom | grep "releases/tag" | grep -v 'rc.' | head -1 | grep -Po '(\d[\d|.]+)') \
+  && URL_CODER="https://github.com/cdr/code-server/releases/download/v${VER_CODER}/code-server-${VER_CODER}-linux-amd64.tar.gz" \
+  && echo "Downloading cdr/code-server version ${VER_CODER} from: ${URL_CODER}" \
+  && install_tar_gz $URL_CODER \
   && mv /opt/code-server* /opt/code-server \
-  && ln -s /opt/code-server/bin/code-server /usr/bin/ \
-  && printf "#! /usr/bin/env bash\n/opt/code-server/bin/code-server --port=8888 --auth=none --disable-telemetry ${HOME}\n" > /usr/local/bin/start-code-server.sh \
-  && chmod u+x /usr/local/bin/start-code-server.sh
+  && ln -s /opt/code-server/bin/code-server /usr/bin/ ;
 
-  type code-server && echo "@ Version of coder-server: $(code-server -v)" || return -1;
+  type code-server && echo "@ Version of coder-server: $(code-server -v)" || return -1 ;
 }
 
 
@@ -24,9 +24,7 @@ setup_vscode_base2() {
   && mv /opt/openvscode-server* /opt/code-server \
   && ( which node && ( echo "Replacing with system node" && ln -sf $(which node) /opt/code-server/ ) || echo "No system node found" ) \
   && ln -sf /opt/code-server/bin/openvscode-server /opt/code-server/bin/code-server \
-  && ln -sf /opt/code-server/bin/openvscode-server /usr/bin/code-server \
-  && printf "#! /usr/bin/env bash\n/opt/code-server/bin/code-server --host=0.0.0.0 --port=8888 --telemetry-level=off \"${HOME:-~}\"\n" > /usr/local/bin/start-code-server.sh \
-  && chmod u+x /usr/local/bin/start-code-server.sh
+  && ln -sf /opt/code-server/bin/openvscode-server /usr/bin/code-server ;
 
-  type code-server && echo "@ Version of openvscoder-server: $(code-server -v)" || return -1;  
+  type code-server && echo "@ Version of openvscoder-server: $(code-server -v)" || return -1 ;
 }
