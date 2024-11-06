@@ -4,13 +4,13 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 . $DIR/start--pre.sh
 
-NOTEBOOK_ARGS=""
-[ -n "${USE_SSL:+x}" ] && NOTEBOOK_ARGS="${NOTEBOOK_ARGS:-""} --NotebookApp.certfile=${NOTEBOOK_PEM_FILE}"
+JUPYTER_ARGS=""
+[ -n "${USE_SSL:+x}" ] && JUPYTER_ARGS="${JUPYTER_ARGS:-""} --NotebookApp.certfile=${JUPYTER_PEM_FILE}"
 
 
 if [[ ! -z "${JUPYTERHUB_API_TOKEN}" ]]; then
   # launched by JupyterHub, use single-user entrypoint
   exec $DIR/start-singleuser.sh $*
 else
-  jupyter ${JUPYTER_CMD:-lab} ${NOTEBOOK_ARGS} $*
+  jupyter ${JUPYTER_CMD:-lab} ${JUPYTER_ARGS} $*
 fi
