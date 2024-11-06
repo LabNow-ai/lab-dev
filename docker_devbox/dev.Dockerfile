@@ -24,6 +24,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  && mkdir -pv /opt/conda/etc/jupyter/ \
  && mv /opt/utils/etc_jupyter/* /opt/conda/etc/jupyter/ && rm -rf /opt/utils/etc_jupyter \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
+ && ln -sf /usr/local/bin/start-jupyterlab.sh /usr/local/bin/start-notebook.sh \
  && source /opt/utils/script-devbox-jupyter.sh \
  && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done \
  # ----------------------------- If installing coder-server  # https://github.com/cdr/code-server/releases
