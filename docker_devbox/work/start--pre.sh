@@ -4,17 +4,17 @@ set -e
 # Generate a SSH id for git if it does not exist.
 [ -e ~/.ssh/id_rsa.pub ] || ssh-keygen -t rsa -b 4096 -N "" -C `hostname -f` -f ~/.ssh/id_rsa
 
-# Generate a self-signed certificate for notebook if it does not exist (only when GEN_CERT or USE_SSL is set to yes).
-NOTEBOOK_PEM_FILE="/opt/conda/etc/jupyter/notebook.pem"
+# Generate a self-signed certificate for jupyter if it does not exist (only when GEN_CERT or USE_SSL is set to yes).
+JUPYTER_PEM_FILE="/opt/conda/etc/jupyter/certificate.pem"
 
  ( [ -n "${GEN_CERT:+x}" ] || [ -n "${USE_SSL:+x}" ] ) \
-&& [ ! -f ${NOTEBOOK_PEM_FILE} ] \
+&& [ ! -f ${JUPYTER_PEM_FILE} ] \
 && ( openssl req -new -newkey rsa:2048 \
   -days 356 -nodes -x509 \
   -subj "/C=XX/ST=XX/L=XX/O=generated/CN=generated" \
-  -keyout $NOTEBOOK_PEM_FILE \
-  -out $NOTEBOOK_PEM_FILE \
-&& chmod 600 $NOTEBOOK_PEM_FILE )
+  -keyout $JUPYTER_PEM_FILE \
+  -out $JUPYTER_PEM_FILE \
+&& chmod 600 $JUPYTER_PEM_FILE )
 
 
 # Run hooks, ref: https://github.com/jupyter/docker-stacks/blob/main/images/docker-stacks-foundation/run-hooks.sh
@@ -59,8 +59,8 @@ function run_hooks() {
   echo "Done running hooks in: ${1}"
 }
 
-run_hooks /usr/local/bin/start-notebook.d
-# run-hooks /usr/local/bin/before-notebook.d
+run_hooks /usr/local/bin/start-jupyter.d
+# run-hooks /usr/local/bin/before-jupyter.d
 
 # Print something so running this script returns a non-zero return code
 echo "Pre-start work done!"
