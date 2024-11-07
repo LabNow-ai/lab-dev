@@ -14,6 +14,7 @@ ARG ARG_KEEP_NODEJS=true
 COPY work /opt/utils/
 
 RUN set -eux \
+ && chmod +x /opt/utils/*.sh \
  # Setup JupyterHub
  && source /opt/utils/script-devbox-jupyter.sh \
  && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
@@ -21,7 +22,7 @@ RUN set -eux \
  # If not keeping NodeJS, remove NoedJS to reduce image size, and install Traefik instead
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
       echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
-      echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup.sh && setup_traefik ; \
+      echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup-net.sh && setup_traefik ; \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
  fi \

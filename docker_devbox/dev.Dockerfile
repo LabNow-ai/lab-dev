@@ -20,6 +20,7 @@ ARG ARG_KEEP_NODEJS=true
 COPY work /opt/utils/
 
 RUN set -eux && source /opt/utils/script-utils.sh \
+ && chmod +x /opt/utils/*.sh \
  # ----------------------------- Setup Jupyter: Basic Configurations and Extensions
  && mkdir -pv /opt/conda/etc/jupyter/ \
  && mv /opt/utils/etc_jupyter/* /opt/conda/etc/jupyter/ && rm -rf /opt/utils/etc_jupyter \
@@ -39,8 +40,10 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  # ----------------------------- If installing R IDEs: R_rstudio and R_rshiny
  && source /opt/utils/script-devbox-rstudio.sh \
  && for profile in $(echo $ARG_PROFILE_R | tr "," "\n") ; do ( setup_R_${profile} ) ; done \
- # ----------------------------- Install supervisord & caddy
- && source /opt/utils/script-setup-devbox.sh && setup_supervisord && setup_caddy \
+ # ----------------------------- Install supervisord
+ && source /opt/utils/script-setup-sys.sh && setup_supervisord \
+ # ----------------------------- Install caddy
+ && source /opt/utils/script-setup-net.sh && setup_caddy \
  # Clean up and display components version information...
  && install__clean && list_installed_packages
 
