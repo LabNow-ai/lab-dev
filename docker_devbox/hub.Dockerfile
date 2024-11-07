@@ -21,7 +21,7 @@ RUN set -eux \
  # If not keeping NodeJS, remove NoedJS to reduce image size, and install Traefik instead
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
       echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
-      echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup.sh && setup_traefik ; \
+      echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup-net.sh && setup_traefik ; \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
  fi \
