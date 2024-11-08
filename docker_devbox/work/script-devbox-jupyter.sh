@@ -67,8 +67,8 @@ setup_jupyter_kernels() {
   ## checked @ 2024-0307
      which julia \
   && echo "@ Install Jupyter Kernel for Julia: https://github.com/JuliaLang/IJulia.jl" \
-  && julia -e "using Pkg; Pkg.add(\"IJulia\"); Pkg.precompile();" \
-  && mv ~/.local/share/jupyter/kernels/julia* /opt/conda/share/jupyter/kernels/
+  && julia -e "using Pkg; Pkg.add(\"IJulia\"); Pkg.precompile();"
+  ( mv ~/.local/share/jupyter/kernels/julia* /opt/conda/share/jupyter/kernels/ || true );
 
   ## Checked @ 2024-0614
      which java \
