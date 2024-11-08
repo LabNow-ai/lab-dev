@@ -40,7 +40,7 @@ setup_jupyter_kernels() {
   && echo "@ Install Jupyter Kernel for R:" \
   && R -e "install.packages('IRkernel')" \
   && R -e "IRkernel::installspec(user=FALSE)" \
-  && mv /usr/local/share/jupyter/kernels/rkernel /opt/conda/share/jupyter/kernels/
+  && mv /usr/local/share/jupyter/kernels/*r* /opt/conda/share/jupyter/kernels/
 
   ## checked @ 2024-0307
      which go \
