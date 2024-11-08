@@ -34,12 +34,13 @@ setup_jupyter_kernels() {
   # && mv /usr/local/share/jupyter/kernels/javascript /opt/conda/share/jupyter/kernels/
 
   ## alternative: https://github.com/jupyter-xeus/xeus-r
+  ## alternative: https://github.com/melff/RKernel
   ## checked @ 2024-0307  # TODO: help func requries proxy
      which R \
-  && echo "@ Install Jupyter Kernel for R: https://github.com/melff/RKernel" \
-  && R -e "devtools::install_github('melff/RKernel/pkg')" \
-  && R -e "RKernel::installspec(user=FALSE)" \
-  && mv /usr/local/share/jupyter/kernels/rkernel /opt/conda/share/jupyter/kernels/
+  && echo "@ Install Jupyter Kernel for R:" \
+  && R -e "install.packages('IRkernel')" \
+  && R -e "IRkernel::installspec(user=FALSE)" \
+  && mv /usr/local/share/jupyter/kernels/*r* /opt/conda/share/jupyter/kernels/
 
   ## checked @ 2024-0307
      which go \
@@ -66,8 +67,8 @@ setup_jupyter_kernels() {
   ## checked @ 2024-0307
      which julia \
   && echo "@ Install Jupyter Kernel for Julia: https://github.com/JuliaLang/IJulia.jl" \
-  && julia -e "using Pkg; Pkg.add(\"IJulia\"); Pkg.precompile();" \
-  && mv ~/.local/share/jupyter/kernels/julia* /opt/conda/share/jupyter/kernels/
+  && julia -e "using Pkg; Pkg.add(\"IJulia\"); Pkg.precompile();"
+  ( mv ~/.local/share/jupyter/kernels/julia* /opt/conda/share/jupyter/kernels/ || true );
 
   ## Checked @ 2024-0614
      which java \
