@@ -39,7 +39,7 @@ setup_jupyter_kernels() {
      which R \
   && echo "@ Install Jupyter Kernel for R:" \
   && R -e "install.packages('IRkernel')" \
-  && R -e "IRKernel::installspec(user=FALSE)" \
+  && R -e "IRkernel::installspec(user=FALSE)" \
   && mv /usr/local/share/jupyter/kernels/rkernel /opt/conda/share/jupyter/kernels/
 
   ## checked @ 2024-0307

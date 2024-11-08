@@ -45,7 +45,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  # ----------------------------- Install caddy
  && source /opt/utils/script-setup-net.sh && setup_caddy \
  # Clean up and display components version information...
- && install__clean && list_installed_packages
+ && list_installed_packages && install__clean
 
 ENTRYPOINT ["tini", "-g", "--"]
 
