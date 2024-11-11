@@ -108,6 +108,7 @@ setup_jupyter_hub() {
    && pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
    && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
    && pip install -Uq psutil pycurl jupyter_client jupyterhub \
-   && pip install -Uq jupyterhub-traefik-proxy \
-   && echo "@ JupyterHub version: $(jupyterhub --version)"
+   && pip install -Uq jupyterhub-traefik-proxy
+
+   type jupyterhub && echo "@ JupyterHub version: $(jupyterhub --version)" || return -1 ;
 }

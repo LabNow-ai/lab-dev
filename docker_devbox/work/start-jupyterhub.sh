@@ -6,4 +6,4 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # echo "DIR=${DIR}"
 # ls -alh
 
-python -m jupyterhub $*
+exec python -m jupyterhub $*

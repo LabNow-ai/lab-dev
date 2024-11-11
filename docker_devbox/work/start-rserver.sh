@@ -11,10 +11,13 @@ fi
 if [[ "$RSTUDIO_ARGS $@" != *"--auth-none="* ]]; then
   RSTUDIO_ARGS="--auth-none 1 $RSTUDIO_ARGS"
 fi
+if [[ "$RSTUDIO_ARGS $@" != *"--log-dir="* ]]; then
+  RSTUDIO_ARGS="--log-dir /var/log $RSTUDIO_ARGS"
+fi
 if [[ "$RSTUDIO_ARGS $@" != *"--www-root-path="* ]]; then
   WWW_ROOT_PATH=$(echo "${JUPYTERHUB_SERVICE_PREFIX%/}/rserver/" || echo "/rserver/")
   RSTUDIO_ARGS="--www-root-path $WWW_ROOT_PATH $RSTUDIO_ARGS"
 fi
 
 
-USER=root /opt/rstudio-server/bin/rserver ${RSTUDIO_ARGS} $@
+USER=root exec /opt/rstudio-server/bin/rserver ${RSTUDIO_ARGS} $@
