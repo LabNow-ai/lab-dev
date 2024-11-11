@@ -12,5 +12,8 @@ if [[ ! -z "${JUPYTERHUB_API_TOKEN}" ]]; then
   # launched by JupyterHub, use single-user entrypoint
   exec $DIR/start-singleuser.sh $*
 else
-  jupyter ${JUPYTER_CMD:-lab} ${JUPYTER_ARGS} $*
+  if [ ! -z "$JUPYTERHUB_SERVICE_PREFIX" ]; then
+    JUPYTER_ARGS=" --NotebookApp.base_url=$JUPYTERHUB_SERVICE_PREFIX $JUPYTER_ARGS"
+  fi
+  exec jupyter ${JUPYTER_CMD:-lab} ${JUPYTER_ARGS} $*
 fi

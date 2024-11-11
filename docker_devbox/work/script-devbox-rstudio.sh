@@ -38,7 +38,7 @@ setup_R_rshiny() {
   && dpkg -i /tmp/rshiny.deb \
   && sed  -i "s/run_as shiny;/run_as root;/g"  /etc/shiny-server/shiny-server.conf \
   && sed  -i "s/3838/8888/g"                   /etc/shiny-server/shiny-server.conf \
-  && printf "USER=root shiny-server" > /usr/local/bin/start-shiny-server.sh \
+  && printf "USER=root exec shiny-server" > /usr/local/bin/start-shiny-server.sh \
   && chmod u+x /usr/local/bin/start-shiny-server.sh
 
   # Remove shiny's pandoc and pandoc-proc to reduce size if they are already installed in the jpy-latex step.
