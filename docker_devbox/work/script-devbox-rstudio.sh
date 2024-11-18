@@ -24,7 +24,9 @@ setup_R_rstudio() {
   && echo "www-verify-user-agent=0">> /etc/rstudio/rserver.conf \
   && echo "database-config-file=/etc/rstudio/db.conf"  >> /etc/rstudio/rserver.conf \
   && echo "provider=sqlite"                            >> /etc/rstudio/db.conf \
-  && echo "directory=/etc/rstudio/"                    >> /etc/rstudio/db.conf ;
+  && echo "directory=/var/run/rstudio-server/"         >> /etc/rstudio/db.conf \
+  && echo "[*]"                     > /etc/rstudio/logging.conf \
+  && echo "log-dir=/var/log"       >> /etc/rstudio/logging.conf ;
 
   type rstudio-server && echo "@ Version of rstudio-server: $(rstudio-server version)" || return -1 ;
 }
@@ -37,8 +39,9 @@ setup_R_rshiny() {
   && curl -sL -o /tmp/rshiny.deb ${RSHINY_URL} \
   && dpkg -i /tmp/rshiny.deb \
   && sed  -i "s/run_as shiny;/run_as root;/g"  /etc/shiny-server/shiny-server.conf \
-  && sed  -i "s/3838/8888/g"                   /etc/shiny-server/shiny-server.conf \
-  && printf "USER=root exec shiny-server" > /usr/local/bin/start-shiny-server.sh \
+  && sed  -i "s/srv/root/g"                    /etc/shiny-server/shiny-server.conf \
+  && printf '#!/bin/bash\n'                    > /usr/local/bin/start-shiny-server.sh \
+  && printf 'USER=root exec shiny-server\n'   >> /usr/local/bin/start-shiny-server.sh \
   && chmod u+x /usr/local/bin/start-shiny-server.sh
 
   # Remove shiny's pandoc and pandoc-proc to reduce size if they are already installed in the jpy-latex step.
