@@ -8,6 +8,9 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 COPY work /tmp/searxng
 
 RUN set -eux \
+ && SEARXNG_GID=977 && SEARXNG_UID=977 \
+ && addgroup -gid ${SEARXNG_GID} searxng \
+ && adduser  -uid ${SEARXNG_UID} --disabled-password --home /opt/searxng -shell /bin/bash --ingroup searxng searxng \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
       libxslt-dev zlib1g-dev libffi-dev libssl-dev \
  && pip install -U pyyaml uwsgi \
@@ -15,6 +18,7 @@ RUN set -eux \
  && cd /opt/searxng && pip install --use-pep517 --no-build-isolation -e . \
  && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
  && chmod +x /opt/searxng/*.sh \
+ && ln -sf /opt/searxng /usr/local/ \
  # ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  # ----------------------------- Install caddy
@@ -25,8 +29,9 @@ RUN set -eux \
 ENV SEARXNG_HOSTNAME="http://localhost:80"
 ENV SEARXNG_TLS=internal
 
-ENV SEARXNG_SETTINGS_PATH="/etc/searxng/settings.yml"
 ENV SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
+ENV SEARXNG_SETTINGS_PATH="/etc/searxng/settings.yml"
+ENV UWSGI_SETTINGS_PATH="/etc/searxng/dockerfiles/uwsgi.ini"
 ENV UWSGI_WORKERS=4
 ENV UWSGI_THREADS=4
 
@@ -41,4 +46,4 @@ ENTRYPOINT ["tini", "-g", "--"]
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 WORKDIR /opt/searxng
 CMD ["start-supervisord.sh"]
-EXPOSE 8888
+EXPOSE 8080 80
