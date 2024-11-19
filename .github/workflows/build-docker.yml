@@ -80,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image searxng latest docker_searxng/Dockerfile && push_image
+          source ./tool.sh && build_image searxng latest docker_searxng/searxng.Dockerfile && push_image
 
 
   ## DevBox - base

@@ -37,6 +37,6 @@ ENTRYPOINT ["tini", "-g", "--"]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
-CMD ["start-searxng.sh"]
 WORKDIR /opt/searxng
+CMD ["start-supervisord.sh"]
 EXPOSE 8888
