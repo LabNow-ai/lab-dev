@@ -15,6 +15,7 @@ RUN set -eux \
       libxslt-dev zlib1g-dev libffi-dev libssl-dev \
  && pip install -U pyyaml uwsgi \
  && cd /opt/searxng \
+ && git config --global --add safe.directory /opt/searxng \
  && git init && git remote add origin https://github.com/searxng/searxng \
  && git fetch && git checkout -t origin/main \
  && pip install --use-pep517 --no-build-isolation -e . \
