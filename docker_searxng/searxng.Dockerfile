@@ -14,8 +14,10 @@ RUN set -eux \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
       libxslt-dev zlib1g-dev libffi-dev libssl-dev \
  && pip install -U pyyaml uwsgi \
- && git clone https://github.com/searxng/searxng /opt/searxng/ \
- && cd /opt/searxng && pip install --use-pep517 --no-build-isolation -e . \
+ && cd /opt/searxng \
+ && git init && git remote add origin https://github.com/searxng/searxng \
+ && git fetch && git checkout -t origin/main \
+ && pip install --use-pep517 --no-build-isolation -e . \
  && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
  && chmod +x /opt/searxng/*.sh \
  && ln -sf /opt/searxng /usr/local/ \
