@@ -17,7 +17,7 @@ RUN set -eux \
  && cd /opt/searxng \
  && git config --global --add safe.directory /opt/searxng \
  && git init && git remote add origin https://github.com/searxng/searxng \
- && git fetch && git checkout -t origin/main \
+ && git fetch && git checkout -t origin/master \
  && pip install --use-pep517 --no-build-isolation -e . \
  && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
  && chmod +x /opt/searxng/*.sh \
