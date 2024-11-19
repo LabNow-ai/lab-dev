@@ -8,17 +8,19 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 COPY work /tmp/searxng
 
 RUN set -eux \
-&& pip install -U pyyaml uwsgi \
-&& git clone https://github.com/searxng/searxng /opt/searxng/ \
-&& cd /opt/searxng && pip install --use-pep517 --no-build-isolation -e . \
-&& mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
-&& chmod +x /opt/searxng/*.sh \
-# ----------------------------- Install supervisord
-&& source /opt/utils/script-setup-sys.sh && setup_supervisord \
-# ----------------------------- Install caddy
-&& source /opt/utils/script-setup-net.sh && setup_caddy \
-# Clean up and display components version information...
-&& list_installed_packages && install__clean
+ && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
+      libxslt-dev zlib1g-dev libffi-dev libssl-dev \
+ && pip install -U pyyaml uwsgi \
+ && git clone https://github.com/searxng/searxng /opt/searxng/ \
+ && cd /opt/searxng && pip install --use-pep517 --no-build-isolation -e . \
+ && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
+ && chmod +x /opt/searxng/*.sh \
+ # ----------------------------- Install supervisord
+ && source /opt/utils/script-setup-sys.sh && setup_supervisord \
+ # ----------------------------- Install caddy
+ && source /opt/utils/script-setup-net.sh && setup_caddy \
+ # Clean up and display components version information...
+ && list_installed_packages && install__clean
 
 ENV SEARXNG_HOSTNAME="http://localhost:80"
 ENV SEARXNG_TLS=internal
