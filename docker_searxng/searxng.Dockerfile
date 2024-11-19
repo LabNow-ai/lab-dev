@@ -34,7 +34,7 @@ ENV SEARXNG_TLS=internal
 
 ENV SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
 ENV SEARXNG_SETTINGS_PATH="/etc/searxng/settings.yml"
-ENV UWSGI_SETTINGS_PATH="/etc/searxng/dockerfiles/uwsgi.ini"
+ENV UWSGI_SETTINGS_PATH="/opt/searxng/dockerfiles/uwsgi.ini"
 ENV UWSGI_WORKERS=4
 ENV UWSGI_THREADS=4
 
@@ -48,5 +48,5 @@ ENTRYPOINT ["tini", "-g", "--"]
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 WORKDIR /opt/searxng
-CMD ["start-supervisord.sh"]
-EXPOSE 8080 80
+CMD ["/opt/searxng/start-supervisord.sh"]
+EXPOSE 8080 9001 80
