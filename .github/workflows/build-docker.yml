@@ -73,6 +73,16 @@ jobs:
       - run: |
           source ./tool.sh && build_image openresty latest docker_openresty/Dockerfile && push_image
 
+  ## OpenResty as gateway
+  qpod_searxng:
+    name: 'searxng'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh && build_image searxng latest docker_searxng/Dockerfile && push_image
+
+
   ## DevBox - base
   qpod_base-dev:
     name: 'developer,base-dev'
