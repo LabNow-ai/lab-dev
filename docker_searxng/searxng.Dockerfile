@@ -27,6 +27,7 @@ RUN set -eux \
  # ----------------------------- Install caddy
  && source /opt/utils/script-setup-net.sh && setup_caddy \
  # Clean up and display components version information...
+ && fix_permission searxng ./searxng/ \
  && list_installed_packages && install__clean
 
 ENV SEARXNG_HOSTNAME="http://localhost:80"

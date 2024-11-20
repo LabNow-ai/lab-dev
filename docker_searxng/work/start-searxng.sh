@@ -3,6 +3,10 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-sed -i -e "s/ultrasecretkey/$(openssl rand -hex 16)/g" ${SEARXNG_SETTINGS_PATH:-"/etc/searxng/settings.yml"}
+export SEARXNG_SECRET=$(openssl rand -hex 16)
+sed -i -e "s/ultrasecretkey/${SEARXNG_SECRET}/g" ${SEARXNG_SETTINGS_PATH:-"/etc/searxng/settings.yml"}
 
-exec python searx/webapp.py $@
+git config --global --add safe.directory /opt/searxng
+
+# exec python searx/webapp.py $@
+source /opt/searxng/dockerfiles/docker-entrypoint.sh
