@@ -28,9 +28,10 @@ RUN set -eux \
  # Clean up and display components version information...
  && fix_permission searxng /opt/searxng/ \
  && chmod +x /opt/searxng/*.sh \
+ && chmod -R ugo+rws /var/log \
  && list_installed_packages && install__clean
 
-ENV SEARXNG_HOSTNAME="http://localhost:80"
+ENV SEARXNG_HOSTNAME="http://localhost:8000"
 ENV SEARXNG_TLS=internal
 
 ENV SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
@@ -50,4 +51,5 @@ ENTRYPOINT ["tini", "-g", "--"]
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 WORKDIR /opt/searxng
 CMD ["/opt/searxng/start-supervisord.sh"]
-EXPOSE 8080 9001 80
+EXPOSE 8080 9001 8000
+USER searxng
