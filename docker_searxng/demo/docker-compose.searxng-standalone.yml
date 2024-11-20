@@ -4,7 +4,7 @@ networks:
 services:
   svc-searxng:
     container_name: svc-searxng
-    image: docker.io/qpod0dev/searxng:latest
+    image: docker.io/qpod/searxng:latest
     restart: unless-stopped
     networks:
       - net-searxng
