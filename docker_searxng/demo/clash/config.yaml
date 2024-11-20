@@ -1,0 +1,198 @@
+# notice: update proxy provider in the `proxy-providers` section and `use` section.
+# ref 1: https://wiki.metacubex.one/example/#meta
+# ref 2: https://github.com/MetaCubeX/mihomo/blob/Alpha/docs/config.yaml
+# ref 3: https://gist.github.com/liuran001/5ca84f7def53c70b554d3f765ff86a33
+
+# ------------------------- templates -------------------------
+pr:
+  &pr {
+    type: select,
+    proxies: [NODE-SELECT, R-HK, R-TW, R-JP, R-SG, R-US, R-OTHERS, ALL-NODES, AUTO-SELECT, DIRECT]
+  }
+
+p: &p
+  type: http
+  interval: 3600
+  health-check:
+    enable: true
+    url: https://www.gstatic.com/generate_204
+    expected-status: 204
+    interval: 300
+    timeout: 1000
+    tolerance: 100
+
+
+# ------------------------- proxy provider and config -------------------------
+use: &use
+  type: url-test  # or select
+  use:
+    - proxy-provider-1
+    # - proxy-provider-2
+
+proxy-providers:
+  proxy-provider-1:
+    <<: *p
+    url: https://your.subscription.com/should-be-filled-here
+
+
+# ------------------------- rule provider config -------------------------
+rule-providers:
+  # black list of ADs: https://github.com/privacy-protection-tools/anti-AD
+  anti-AD:
+    type: http
+    behavior: domain
+    format: yaml
+    url: "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-clash.yaml?"
+    interval: 600
+
+  # white list of ADs: https://github.com/privacy-protection-tools/dead-horse
+  anti-AD-white:
+    type: http
+    behavior: domain
+    format: yaml
+    url: "https://raw.githubusercontent.com/privacy-protection-tools/dead-horse/master/anti-ad-white-for-clash.yaml?"
+    interval: 600
+
+
+# ------------------------- system config -------------------------
+mode: rule
+mixed-port: 7890
+allow-lan: true
+secret: ''
+ipv6: false
+bind-address: '*'
+tcp-concurrent: true
+
+log-level: info
+unified-delay: true
+
+find-process-mode: off # always, strict, off
+keep-alive-interval: 1800
+global-client-fingerprint: random
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+external-controller: :9090
+external-ui: /opt/clash/
+external-ui-name: ui-xd
+
+
+# ------------------------- dns and network config -------------------------
+dns:
+  enable: true
+  ipv6: false
+  listen: ":1053"
+  use-hosts: true
+  use-system-hosts: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+  - '*'
+  - '+.lan'
+  - '+.local'
+  - dns.msftncsi.com
+  - www.msftncsi.com
+  - www.msftconnecttest.com
+  default-nameserver:
+  - 223.5.5.5
+  - 119.29.29.29
+  - 114.114.114.114
+  - 8.8.8.8
+  nameserver:
+  - https://doh.pub/dns-query
+  - https://dns.alidns.com/dns-query
+  fallback:
+  - https://doh.dns.sb/dns-query
+  - https://dns.cloudflare.com/dns-query
+  - https://dns.twnic.tw/dns-query
+  - tls://8.8.4.4:853
+  fallback-filter:
+    geoip: true
+    ipcidr:
+    - 240.0.0.0/4
+    - 0.0.0.0/32
+
+tun:
+  enable: false
+  stack: gvisor
+  device: Mihomo
+  auto-route: true
+  strict-route: false
+  auto-detect-interface: true
+  dns-hijack:
+  - any:53
+  - "tcp://any:53"
+  mtu: 1500
+
+
+# ------------------------- geo data config -------------------------
+# Source https://github.com/MetaCubeX/meta-rules-dat
+geodata-mode: true
+geox-url:
+  geoip: "https://hub.gitmirror.com/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
+  geosite: "https://hub.gitmirror.com/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+  mmdb: "https://hub.gitmirror.com/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country.mmdb"
+
+
+# ------------------------- proxy groups and rules -------------------------
+proxy-groups:
+  - { name: AUTO-SELECT, <<: *use, type: url-test , tolerance: 2}
+  - { name: NODE-SELECT, type: select, proxies: [ALL-NODES, AUTO-SELECT, R-HK, R-TW, R-JP, R-SG, R-US, R-OTHERS, DIRECT] }
+  - { name: ALL-NODES, <<: *use }
+  - { name: FALLBACK, <<: *use, type: fallback }
+  - { name: ANTI-AD, type: select, proxies: [REJECT, DIRECT, NODE-SELECT] }
+
+  # - { name: DNS, <<: *pr }  # 这里的 dns 指海外解析 dns 走的节点，一般跟随NODE-SELECT即可
+  # 如使用WARP需手动在下方的proxies字段内添加 WARP, 如 [WARP, ALL-NODES, AUTO-SELECT, R-HK, R-TW, R-JP, R-SG, R-US, R-OTHERS, DIRECT]
+  # - { name: CF-WARP, <<: *pr, exclude-type: "wireguard" }  # WARP 配置链式出站
+
+  - { name: OpenAI, <<: *pr }
+  - { name: Apple, <<: *pr }  # Apple 推荐走全局直连
+  - { name: Google, <<: *pr }
+  - { name: Telegram, <<: *pr }
+  - { name: Twitter, <<: *pr }
+  - { name: YouTube, <<: *pr }
+  - { name: NETFLIX, <<: *pr }
+  - { name: Spotify, <<: *pr }
+  - { name: Github, <<: *pr }
+  - { name: Steam, <<: *pr }
+  - { name: OneDrive, <<: *pr }
+  - { name: MSFT, <<: *pr }
+  - { name: 其他, <<: *pr }
+
+  # regions
+  - { name: R-CN, <<: *pr, proxies: [DIRECT, NODE-SELECT, R-HK, R-TW, R-JP, R-SG, R-US, R-OTHERS, ALL-NODES, AUTO-SELECT]}
+  - { name: R-HK, <<: *use, filter: "(?i)港|hk|hongkong|hong kong" }
+  - { name: R-TW, <<: *use, filter: "(?i)台|tw|taiwan" }
+  - { name: R-JP, <<: *use, filter: "(?i)R-JP|jp|japan" }
+  - { name: R-US, <<: *use, filter: "(?i)美|us|unitedstates|united states" }
+  - { name: R-SG, <<: *use, filter: "(?i)(新|sg|singapore)" }
+  - { name: R-OTHERS, <<: *use, filter: "(?i)^(?!.*(?:🇭🇰|🇯🇵|🇺🇸|🇸🇬|🇨🇳|港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates)).*" }
+
+rules:
+  # 若需禁用 QUIC 请取消注释 QUIC 两条规则, 防止 YouTube 等使用 QUIC 导致速度不佳, 禁用 443 端口 UDP 流量（不包括国内）
+  # - AND,(AND,(DST-PORT,443),(NETWORK,UDP)),(NOT,((GEOSITE,cn))),REJECT # quic
+  - AND,((RULE-SET,anti-AD),(NOT,((RULE-SET,anti-AD-white)))),ANTI-AD
+  - GEOSITE,openai,OpenAI
+  - GEOSITE,apple,Apple
+  - GEOSITE,apple-cn,Apple
+  - GEOSITE,github,Github
+  - GEOSITE,twitter,Twitter
+  - GEOSITE,youtube,YouTube
+  - GEOSITE,google,Google
+  - GEOSITE,google-cn,Google
+  - GEOSITE,telegram,Telegram
+  - GEOSITE,netflix,NETFLIX
+  - GEOSITE,spotify,Spotify
+  - GEOSITE,onedrive,OneDrive
+  - GEOSITE,microsoft,MSFT
+  - GEOSITE,geolocation-!cn,其他
+  # - AND,(AND,(DST-PORT,443),(NETWORK,UDP)),(NOT,((GEOIP,CN))),REJECT # quic
+  - GEOIP,google,Google
+  - GEOIP,netflix,NETFLIX
+  - GEOIP,telegram,Telegram
+  - GEOIP,twitter,Twitter
+  - GEOSITE,CN,R-CN
+  - GEOIP,CN,R-CN
+  - MATCH,AUTO-SELECT

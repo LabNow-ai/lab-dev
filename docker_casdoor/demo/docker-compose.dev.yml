@@ -1,7 +1,7 @@
 services:
   db-postgres-casdoor:
       # su postgres && psql -d casdoor -U pg-casdoor-username
-      image: qpod/postgres-16:latest
+      image: docker.io/qpod/postgres-16:latest
       container_name: db-postgres
       environment:
         POSTGRES_DB: casdoor

@@ -2,15 +2,18 @@
 
 ## Start standalone version with docker-compose
 
-**Notice**: remember to check the `SEARXNG_BASE_URL` and `SEARXNG_HOSTNAME` environment variable in the config file.
+**Notice**:
 
-Make sure the `SEARXNG_BASE_URL` variables points to a URL prefix that users use to open webpage in browser.
+- remember to check the `SEARXNG_BASE_URL` and `SEARXNG_HOSTNAME` environment variable in the config file.
+- make sure the `SEARXNG_BASE_URL` variables points to a URL prefix that users use to open webpage in browser.
+- update `proxy-providers` urls in `config.yaml` if you are using proxy.
 
 ```bash
 cd demo
 
-# export SEARXNG_HOSTNAME="http://localhost:81"
-docker-compose -f ./docker-compose.searxng-standalone.yml up -d
+# export SEARXNG_HOSTNAME="http://localhost:8000"
+# docker-compose -f ./docker-compose.searxng-standalone.yml up -d
+docker-compose -f ./docker-compose.searxng-with-proxy.yml up -d
 ```
 
 ## Debug with Docker
