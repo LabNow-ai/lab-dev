@@ -11,6 +11,7 @@ RUN set -eux \
  && SEARXNG_GID=977 && SEARXNG_UID=977 \
  && addgroup -gid ${SEARXNG_GID} searxng \
  && adduser  -uid ${SEARXNG_UID} --disabled-password --home /opt/searxng -shell /bin/bash --ingroup searxng searxng \
+ && usermod -aG root searxng \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
       libxslt-dev zlib1g-dev libffi-dev libssl-dev \
  && pip install -U pyyaml uwsgi \
@@ -28,7 +29,7 @@ RUN set -eux \
  # Clean up and display components version information...
  && fix_permission searxng /opt/searxng/ \
  && chmod +x /opt/searxng/*.sh \
- && chmod -R ugo+rws /var/log \
+ && chmod -R ugo+rws /var/log /var/run \
  && list_installed_packages && install__clean
 
 ENV SEARXNG_HOSTNAME="http://localhost:8000"
@@ -52,4 +53,3 @@ SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 WORKDIR /opt/searxng
 CMD ["/opt/searxng/start-supervisord.sh"]
 EXPOSE 8080 9001 8000
-USER searxng
