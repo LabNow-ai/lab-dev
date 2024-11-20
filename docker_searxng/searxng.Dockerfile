@@ -20,7 +20,6 @@ RUN set -eux \
  && git fetch && git checkout -t origin/master \
  && pip install --use-pep517 --no-build-isolation -e . \
  && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
- && chmod +x /opt/searxng/*.sh \
  && ln -sf /opt/searxng /usr/local/ \
  # ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
@@ -28,6 +27,7 @@ RUN set -eux \
  && source /opt/utils/script-setup-net.sh && setup_caddy \
  # Clean up and display components version information...
  && fix_permission searxng /opt/searxng/ \
+ && chmod +x /opt/searxng/*.sh \
  && list_installed_packages && install__clean
 
 ENV SEARXNG_HOSTNAME="http://localhost:80"

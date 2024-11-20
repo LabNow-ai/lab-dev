@@ -8,7 +8,7 @@
         output discard
   }
 
-  tls {$SEARXNG_TLS}
+  # tls {$SEARXNG_TLS}
 
   @api {
         path /config
