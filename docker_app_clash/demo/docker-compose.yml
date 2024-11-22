@@ -11,7 +11,7 @@ services:
     ports:
       - "7890:7890"
       - "9090:9090"
-    volumes:
-      - ../work/clash/config.yaml:/opt/clash/config/config.yaml:ro
+    # volumes:
+    #   - ../work/clash/config.yaml:/opt/clash/config/config.yaml
     environment:
       - PROXY_PROVIDER="https://subs.zeabur.app/clash"
