@@ -1,7 +1,7 @@
 services:
   db-postgres:
   # su postgres && psql -d keycloak -U pg-keycloak-username
-      image: postgres:15
+      image: docker.io/library/postgres:16
       container_name: db-postgres
       environment:
         POSTGRES_DB: keycloak
@@ -9,7 +9,7 @@ services:
         POSTGRES_PASSWORD: pg-keycloak-password
 
   svc-keycloak:
-      image: qpod/keycloak
+      image: docker.io/qpod/keycloak
       # build:
       #   context: ../
       #   dockerfile: Dockerfile

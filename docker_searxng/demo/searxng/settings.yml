@@ -1,0 +1,38 @@
+# see https://docs.searxng.org/admin/settings/settings.html#settings-use-default-settings
+use_default_settings: true
+server:
+  # base_url is defined in the SEARXNG_BASE_URL environment variable, see .env and docker-compose.yml
+  secret_key: "ultrasecretkey"  # change this!
+  limiter: false  # can be disabled for a private instance, requires redis when enabled
+  image_proxy: true
+ui:
+  static_use_hash: true
+# redis:
+#   url: redis://redis:6379/0
+search:
+  formats:
+    - html
+    - json
+engines:
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: false
+    number_of_results: 1
+  - name: google
+    engine: google
+    shortcut: go
+    number_of_results: 1
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    number_of_results: 1
+    # add "list" to the array to get results in the results list
+    display_type: ["infobox"]
+    base_url: 'https://{language}.wikipedia.org/'
+    categories: [general]
+outgoing:
+  proxies:
+    all://:
+      # need to make sure the containers of app-clash and searxng can communicate with each other
+      - http://app-clash:7890

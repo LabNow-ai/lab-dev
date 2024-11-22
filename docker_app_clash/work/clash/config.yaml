@@ -32,7 +32,7 @@ use: &use
 proxy-providers:
   proxy-provider-1:
     <<: *p
-    url: https://your.subscription.com/should-be-filled-here
+    url: "PROXY_PROVIDER"  # e.g.: https://your.subscription.com/should-be-filled-here
 
 
 # ------------------------- rule provider config -------------------------

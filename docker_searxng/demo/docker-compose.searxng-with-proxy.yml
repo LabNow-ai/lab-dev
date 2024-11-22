@@ -1,0 +1,51 @@
+networks:
+  net-searxng:
+
+services:
+  svc-searxng:
+    container_name: svc-searxng
+    hostname: svc-searxng
+    image: docker.io/qpod/searxng:latest
+    restart: unless-stopped
+    networks: ["net-searxng"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:rw
+      # - ./searxng/limiter.toml:/etc/searxng/limiter.toml:rw
+      # - ./searxng/Caddyfile:/etc/searxng/Caddyfile:rw
+      # - ./searxng/supervisord.conf:/etc/searxng/supervisord.conf:rw
+    environment:
+      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost:8000}/
+      - SEARXNG_HOSTNAME=${SEARXNG_HOSTNAME:-http://localhost:8000}
+      - SEARXNG_TLS=${LETSENCRYPT_EMAIL:-internal}
+      - UWSGI_WORKERS=${SEARXNG_UWSGI_WORKERS:-4}
+      - UWSGI_THREADS=${SEARXNG_UWSGI_THREADS:-4}
+    # user: root
+    # command: ["/opt/searxng/start-supervisord.sh"]
+    # command: ["tail", "-f", "/dev/null"]
+    # cap_drop: ["ALL"]
+    # cap_add: ["AUDIT_WRITE", "CHOWN", "SETGID", "SETUID", "NET_BIND_SERVICE"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+
+  svc-clash:
+    image: docker.io/qpod/app-clash
+    container_name: svc-clash
+    hostname: svc-clash
+    restart: unless-stopped
+    pid: host
+    ipc: host
+    # When your system is Linux, you can use `network_mode: "host"` directly.
+    # network_mode: "host"
+    networks: ["net-searxng"]
+    ports:
+      - "7890:7890"
+      - "9090:9090"
+    # volumes:
+    #   - ./clash/config.yaml:/opt/clash/config/config.yaml
+    environment:
+      - PROXY_PROVIDER="https://subs.zeabur.app/clash"

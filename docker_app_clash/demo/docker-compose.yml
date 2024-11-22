@@ -1,14 +1,17 @@
 services:
   svc-clash:
-    image: qpod/app-clash
-    container_name: app-clash
+    image: docker.io/qpod/app-clash
+    container_name: svc-clash
+    hostname: svc-clash
     restart: unless-stopped
     pid: host
     ipc: host
-    volumes:
-      - ../work/clash/config.yaml:/opt/clash/config/config.yaml:ro
+    # When your system is Linux, you can use `network_mode: "host"` directly.
+    # network_mode: "host"
     ports:
       - "7890:7890"
       - "9090:9090"
-    # When your system is Linux, you can use `network_mode: "host"` directly.
-    # network_mode: "host"
+    # volumes:
+    #   - ../work/clash/config.yaml:/opt/clash/config/config.yaml
+    environment:
+      - PROXY_PROVIDER="https://subs.zeabur.app/clash"
