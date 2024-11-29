@@ -2,18 +2,18 @@ source /opt/utils/script-utils.sh
 
 setup_openresty() {
   # ref: https://github.com/openresty/docker-openresty/blob/master/jammy/Dockerfile
-  # URL_OR="https://openresty.org/download/openresty-${VERSION_OR}.tar.gz"
+  # URL_OR="https://openresty.org/download/openresty-${VER_OR}.tar.gz"
 
-  VER_OR_MAJOR="1.25"
+  VER_OR_MAJOR="1.27"
 
     install_apt /opt/utils/install_list_openresty.apt \
- && VERSION_OR=$(curl -sL https://github.com/openresty/openresty/releases.atom | grep "releases/tag" | grep $VER_OR_MAJOR | head -1 | grep -Po '(\d[\d|.]+)') \
- && URL_OR="https://github.com/openresty/openresty/archive/refs/tags/v${VERSION_OR}.tar.gz" \
- && echo "Downloading OpenResty ${VERSION_OR} from ${URL_OR}" \
+ && VER_OR=$(curl -sL https://github.com/openresty/openresty/releases.atom | grep "releases/tag" | grep $VER_OR_MAJOR | head -1 | grep -Po '(\d[\d|.]+)') \
+ && URL_OR="https://github.com/openresty/openresty/archive/refs/tags/v${VER_OR}.tar.gz" \
+ && echo "Downloading OpenResty ${VER_OR} from ${URL_OR}" \
  && install_tar_gz $URL_OR \
  && mv /opt/openresty-* /tmp/openresty && cd /tmp/openresty \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends dos2unix mercurial \
- && make && tar -C /tmp -xzf /tmp/openresty/*.tar.gz && cd /tmp/openresty-${VERSION_OR} \
+ && make && tar -C /tmp -xzf /tmp/openresty/*.tar.gz && cd /tmp/openresty-${VER_OR} \
  && export NGINX_HOME=/opt/nginx \
  && ./configure \
     --prefix=${NGINX_HOME}/etc \
