@@ -2,7 +2,8 @@
 set -e
 
 # Generate a SSH id for git if it does not exist.
-[ -e ~/.ssh/id_rsa.pub ] || ssh-keygen -t rsa -b 4096 -N "" -C `hostname -f` -f ~/.ssh/id_rsa
+# [ -e ~/.ssh/id_rsa.pub ] || ssh-keygen -t rsa -b 4096 -N "" -C `hostname -f` -f ~/.ssh/id_rsa
+[ -e ~/.ssh/id_rsa.pub ] || ssh-keygen -t ed25519 -N "" -C `hostname -f` -f ~/.ssh/id_ed25519
 
 # Generate a self-signed certificate for jupyter if it does not exist (only when GEN_CERT or USE_SSL is set to yes).
 JUPYTER_PEM_FILE="/opt/conda/etc/jupyter/certificate.pem"

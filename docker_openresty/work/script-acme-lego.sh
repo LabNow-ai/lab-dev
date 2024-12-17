@@ -1,8 +1,8 @@
 #!/bin/bash
 set -ex
 
-# Function to issue certificates using acme.sh
-issue_certificates_acme_sh() {
+# Function to issue certificates using lego
+issue_certificates_lego() {
     local ACME_EMAIL=$1
     local LIST_DOMAINS=$2
 
@@ -32,7 +32,6 @@ issue_certificates_acme_sh() {
     # Define directories and commands
     local DIR_CERT_INSTALL="/etc/nginx/ssl"
     local DIR_WEB_ROOT="/data/letsencrypt-acme-challenge"
-    local PATH_ACME="/opt/acme.sh"
     local RELOAD_CMD="nginx -t && nginx -s reload"
 
     # Create required directories
@@ -40,23 +39,21 @@ issue_certificates_acme_sh() {
 
     # Process each domain
     for DOMAIN in "${DOMAINS[@]}"; do
-        echo "Applying for certificate for domain using acme.sh HTTP-01 method for: ${DOMAIN}"
+        echo "Applying for certificate for domain using lego HTTP-01 method for: ${DOMAIN}"
 
-        "${PATH_ACME}/acme.sh" --issue --force \
-            --webroot "${DIR_WEB_ROOT}" \
-            -d "${DOMAIN}" \
-            --server letsencrypt
+        lego --email "${ACME_EMAIL}" --accept-tos --dns "none" --http \
+            --http.webroot="${DIR_WEB_ROOT}" \
+            --domains "${DOMAIN}" run
 
         echo "Installing domain certificate to: ${DIR_CERT_INSTALL}"
-        "${PATH_ACME}/acme.sh" --install-cert \
-            -d "${DOMAIN}" \
-            --key-file "${DIR_CERT_INSTALL}/${DOMAIN}.key" \
-            --fullchain-file "${DIR_CERT_INSTALL}/${DOMAIN}.crt" \
-            --reloadcmd "${RELOAD_CMD}"
+        cp "${DOMAIN}.key" "${DOMAIN}.crt" "${DIR_CERT_INSTALL}/
+
+        # Reload nginx to apply the certificate
+        ${RELOAD_CMD}
 
         echo "Certificate successfully applied for domain: ${DOMAIN}"
     done
 }
 
 # Call the function with parameters
-issue_certificates_acme_sh "$1" "$2"
+issue_certificates_lego "$1" "$2"
