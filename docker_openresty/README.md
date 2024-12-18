@@ -1,6 +1,9 @@
-# OpenResty with Lua and certbot
+# OpenResty with Lua, acme.sh and lego
 
-ref: https://github.com/openresty/docker-openresty/blob/master/bionic/Dockerfile
+What's here:
+ - Openresty, ref: https://github.com/openresty/docker-openresty/blob/master/bionic/Dockerfile
+ - acme.sh
+ - lego
 
 ## Debug
 
