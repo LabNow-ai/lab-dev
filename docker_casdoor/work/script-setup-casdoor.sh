@@ -16,14 +16,15 @@ setup_casdoor() {
   && echo "${VER_CASDOOR}" > version_info.txt \
   && mv "./server_linux_${ARCH}" ./swagger ./version_info.txt /opt/casdoor/ \
   && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server \
-  && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf
+  && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
+  && mv ./docker-entrypoint.sh /opt/casdoor/
   # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > version_info.txt \
 
      echo "--> Building Frontend..." \
   && cd /tmp && corepack enable && yarn -v \
   && cd /tmp/casdoor/web \
   && yarn set version berry && yarn install && yarn run build \
-  && mv ./build /opt/casdoor/web/
+  && mv ./build*/* /opt/casdoor/web/
   # && yarn install --frozen-lockfile && yarn run build \
   
      echo "--> Finished building casdoor to /opt/casdoor!" \
