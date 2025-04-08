@@ -4,24 +4,26 @@ on:
   push:
     branches: [ "main" ]
     paths-ignore: [ "*.md" ]
+
   pull_request:
     branches: [ "main" ]
     paths-ignore: [ "*.md" ]
+
   workflow_dispatch:  # Allows you to run this workflow manually from the Actions tab
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true  
+  cancel-in-progress: true
 
 env:
   BUILDKIT_PROGRESS: "plain"  # Full logs for CI build.
-  REGISTRY_URL: "docker.io"  # docker.io or other target registry URL: where to push images to.
-  REGISTRY_SRC: "docker.io"  # For BASE_NAMESPACE of images: where to pull base images from.
+  REGISTRY_SRC: ${{ vars.REGISTRY_SRC || 'docker.io' }} # For BASE_NAMESPACE of images: where to pull base images from, docker.io or other source registry URL.
+  REGISTRY_DST: ${{ vars.REGISTRY_DST || 'docker.io' }} # For tags of built images: where to push images to, docker.io or other destination registry URL.
   # DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD is required for docker image push, they should be set in CI secrets.
-  DOCKER_REGISTRY_USERNAME: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+  DOCKER_REGISTRY_USERNAME: ${{ vars.DOCKER_REGISTRY_USERNAME }}
   DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
   # used to sync image to mirror registry
-  DOCKER_MIRROR_REGISTRY_USERNAME: ${{ secrets.DOCKER_MIRROR_REGISTRY_USERNAME }}
+  DOCKER_MIRROR_REGISTRY_USERNAME: ${{ vars.DOCKER_MIRROR_REGISTRY_USERNAME }}
   DOCKER_MIRROR_REGISTRY_PASSWORD: ${{ secrets.DOCKER_MIRROR_REGISTRY_PASSWORD }}
 
 jobs:
@@ -149,7 +151,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - env:
+          AUTH_FILE_CONTENT: ${{ secrets.AUTH_FILE_CONTENT }}
+          DOCKER_MIRROR_REGISTRY: ${{ vars.DOCKER_MIRROR_REGISTRY }}
+        run: |
           source ./tool.sh
           printenv | sort > /tmp/docker.env
           docker run --rm --env-file /tmp/docker.env -v $(pwd):/tmp -w /tmp ${IMG_NAMESPACE:-qpod}/docker-kit \
