@@ -18,10 +18,12 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 COPY --from=builder /opt/casdoor /opt/casdoor
 COPY work/app.conf /opt/casdoor/conf/app.conf
 RUN set -eux \
- && mkdir -pv /root/web && ln -sf /opt/casdoor/web/build /root/web/ \
- && ls -alh /opt/casdoor
+ && mkdir -pv /root/web && ln -sf /opt/casdoor/web/build /root/web/ && ls -alh /opt/casdoor/web \
+ && chmod +x /opt/casdoor/docker-entrypoint.sh && ls -alh /opt/casdoor
 
 LABEL maintainer="haobibo@gmail.com"
 ENV RUNNING_IN_DOCKER true
 WORKDIR /opt/casdoor
 EXPOSE 8000
+# ENTRYPOINT ["/bin/bash"]
+# CMD ["/opt/casdoor/docker-entrypoint.sh"]
