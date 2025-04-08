@@ -25,5 +25,5 @@ LABEL maintainer="haobibo@gmail.com"
 ENV RUNNING_IN_DOCKER true
 WORKDIR /opt/casdoor
 EXPOSE 8000
-ENTRYPOINT ["/bin/bash"]
-CMD ["/opt/casdoor/docker-entrypoint.sh"]
+# ENTRYPOINT ["/bin/bash"]
+# CMD ["/opt/casdoor/docker-entrypoint.sh"]
