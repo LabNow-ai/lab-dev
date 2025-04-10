@@ -16,6 +16,7 @@ RUN set -eux \
  && useradd nginx -G www-data \
  && mkdir -pv /var/cache/nginx /var/log/nginx \
  && chown -R nginx:www-data /var/cache/nginx /var/log/nginx \
+ && chmod +x  /opt/utils/*.sh \
  && source /opt/utils/script-setup.sh && setup_lua_base && setup_lua_rocks \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
  && source /opt/utils/script-setup-acme.sh      && setup_acme \
