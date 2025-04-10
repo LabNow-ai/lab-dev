@@ -9,7 +9,7 @@ setup_casdoor() {
   && URL_CASDOOR="https://github.com/casdoor/casdoor/archive/refs/tags/v${VER_CASDOOR}.tar.gz" \
   && echo "Downloading casdoor version ${VER_CASDOOR} from: ${URL_CASDOOR}" \
   && install_tar_gz $URL_CASDOOR \
-  && mv /opt/casdoor-* /tmp/casdoor && mkdir -pv /opt/casdoor/web /opt/casdoor/conf
+  && mv /opt/casdoor-* /tmp/casdoor && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
 
      echo "--> Building Backend..." \
   && cd /tmp/casdoor && ./build.sh \
@@ -24,7 +24,7 @@ setup_casdoor() {
   && cd /tmp && corepack enable && yarn -v \
   && cd /tmp/casdoor/web \
   && yarn set version berry && yarn install && yarn run build \
-  && mv ./build*/* /opt/casdoor/web/
+  && mv ./build*/* /opt/casdoor/web/build/
   # && yarn install --frozen-lockfile && yarn run build \
   
      echo "--> Finished building casdoor to /opt/casdoor!" \
