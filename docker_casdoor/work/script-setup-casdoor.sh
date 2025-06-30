@@ -10,8 +10,8 @@ setup_casdoor() {
   && echo "Downloading casdoor version ${VER_CASDOOR} from: ${URL_CASDOOR}" \
   && install_tar_gz $URL_CASDOOR \
   && mv /opt/casdoor-* /tmp/casdoor \
-  && sed -i '311i c.SetSessionUsername(user.GetId())' /tmp/casdoor/controllers/account.go \
-  && sed -i 's|^[[:space:]]*if paidUserName != "" && paidUserName != c.GetSessionUsername() && !c.IsAdmin() {|    if paidUserName != "" && userId != c.GetSessionUsername() && !c.IsAdmin() {|' /tmp/casdoor/controllers/product.go \
+#   && sed -i '311i c.SetSessionUsername(user.GetId())' /tmp/casdoor/controllers/account.go \
+#   && sed -i 's|^[[:space:]]*if paidUserName != "" && paidUserName != c.GetSessionUsername() && !c.IsAdmin() {|    if paidUserName != "" && userId != c.GetSessionUsername() && !c.IsAdmin() {|' /tmp/casdoor/controllers/product.go \
   && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf \
 
      echo "--> Building Backend..." \
