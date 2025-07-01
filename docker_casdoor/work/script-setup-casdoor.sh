@@ -10,7 +10,7 @@ setup_casdoor() {
   && echo "Downloading casdoor version ${VER_CASDOOR} from: ${URL_CASDOOR}" \
   && install_tar_gz $URL_CASDOOR \
   && mv /opt/casdoor-* /tmp/casdoor \
-  && sed -i '/userId := user.GetId()/a\    c.SetSessionUsername(userId)' controllers/account.go \
+  && sed -i '/userId := user.GetId()/a\    c.SetSessionUsername(userId)' /tmp/casdoor/controllers/account.go \
   && sed -i 's|paidUserName != c.GetSessionUsername()|userId != c.GetSessionUsername()|' /tmp/casdoor/controllers/product.go \
   && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
 
