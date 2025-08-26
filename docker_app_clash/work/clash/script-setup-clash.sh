@@ -34,12 +34,12 @@ setup_clash_metacubexd() {
   && mv /tmp/xd/dist /opt/clash/ui-xd
 }
 
-setup_clash_verge() {
-    #  Install the latest release: https://clash-verge-rev.github.io/index.html
-     VER_VERGE=$(curl -sL https://github.com/clash-verge-rev/clash-verge-rev/releases.atom | grep 'releases/tag/v' | head -1 | grep -Po '\d[\d.]+' ) \
-  && URL_VERGE="https://github.com/clash-verge-rev/clash-verge-rev/archive/refs/tags/v$VER_VERGE.tar.gz" \
-  && echo "Downloading clash-verge version ${VER_VERGE} from: ${URL_VERGE}" \
-  && install_tar_gz $URL_VERGE \
+setup_clash_zashboard() {
+    #  Install the latest release: https://github.com/Zephyruso/zashboard
+     VER_ZASHBOARD=$(curl -sL https://github.com/clash-verge-rev/clash-verge-rev/releases.atom | grep 'releases/tag/v' | head -1 | grep -Po '\d[\d.]+' ) \
+  && URL_ZASHBOARD="https://github.com/clash-verge-rev/clash-verge-rev/archive/refs/tags/v$ZASHBOARD.tar.gz" \
+  && echo "Downloading clash-verge version ${VER_ZASHBOARD} from: ${URL_ZASHBOARD}" \
+  && install_tar_gz $URL_ZASHBOARD \
   && mv /opt/clash-verge-* /tmp/verge && cd /tmp/verge \
   && jq '.homepage = "./ui"' package.json > tmp.$$.json && mv tmp.$$.json package.json \
   && npx pnpm i && npx pnpm run web:build && ls -alh \
