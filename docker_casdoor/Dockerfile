@@ -22,7 +22,7 @@ RUN set -eux \
  && mkdir -pv /root/web && ln -sf /opt/casdoor/web/build /root/web/ && ls -alh /opt/casdoor/web \
  && chmod +x /opt/casdoor/docker-entrypoint.sh && ls -alh /opt/casdoor
 
-LABEL maintainer="haobibo@gmail.com"
+LABEL maintainer="postmaster@labnow.ai"
 ENV RUNNING_IN_DOCKER true
 WORKDIR /opt/casdoor
 EXPOSE 8000

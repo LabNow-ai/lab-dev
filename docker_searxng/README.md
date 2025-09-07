@@ -27,7 +27,7 @@ docker run -d --rm \
     -e SEARXNG_BASE_URL=https://${localhost:8000}/ \
     -e UWSGI_WORKERS=${SEARXNG_UWSGI_WORKERS:-4} \
     -e UWSGI_THREADS=${SEARXNG_UWSGI_THREADS:-4} \
-    qpod/searxng
+    labnow/searxng
 
  docker exec -it svc-searxng bash
 ```

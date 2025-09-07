@@ -8,9 +8,9 @@ What's here:
 ## Debug
 
 ```shell
-docker run -it --rm qpod/base bash
+docker run -it --rm labnow/base bash
 
-docker build -t openresty --build-arg BASE_NAMESPACE=qpod .
+docker build -t openresty --build-arg BASE_NAMESPACE=labnow .
 ```
 
 ## Custom Configs
