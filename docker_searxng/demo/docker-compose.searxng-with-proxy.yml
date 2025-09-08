@@ -5,7 +5,7 @@ services:
   svc-searxng:
     container_name: svc-searxng
     hostname: svc-searxng
-    image: docker.io/qpod/searxng:latest
+    image: docker.io/labnow/searxng:latest
     restart: unless-stopped
     networks: ["net-searxng"]
     ports:
@@ -33,7 +33,7 @@ services:
         max-file: "1"
 
   svc-clash:
-    image: docker.io/qpod/app-clash
+    image: docker.io/labnow/app-clash
     container_name: svc-clash
     hostname: svc-clash
     restart: unless-stopped

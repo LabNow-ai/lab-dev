@@ -13,12 +13,12 @@ RUN set -eux \
  && adduser  -uid ${SEARXNG_UID} --disabled-password --home /opt/searxng -shell /bin/bash --ingroup searxng searxng \
  && usermod -aG root searxng \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
-      libxslt-dev zlib1g-dev libffi-dev libssl-dev \
- && pip install -U pyyaml uwsgi \
+      liblzma-dev libxslt-dev zlib1g-dev libffi-dev libssl-dev \
  && cd /opt/searxng \
  && git config --global --add safe.directory /opt/searxng \
  && git init && git remote add origin https://github.com/searxng/searxng \
  && git fetch && git checkout -t origin/master \
+ && pip install -r requirements.txt \
  && pip install --use-pep517 --no-build-isolation -e . \
  && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
  && ln -sf /opt/searxng /usr/local/ \

@@ -4,7 +4,7 @@ ARG BASE_NAMESPACE
 ARG BASE_IMG="jdk-17"
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
-LABEL maintainer="haobibo@gmail.com"
+LABEL maintainer="postmaster@labnow.ai"
 
 COPY work /opt/utils/
 
@@ -36,6 +36,6 @@ CMD ["/bin/bash", "--login", "bin/kc.sh", "start-dev"]
 
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD [ "curl", "--head", "-fsSk", "https://localhost:8080/health/ready" ]
 
-# docker build -t qpod/keycloak --build-arg "BASE_NAMESPACE=qpod" .
-# (docker rm svc-keycloak || true) && docker run -d  -p 8080:8080 --name=svc-keycloak --hostname=svc-keycloak qpod/keycloak
-# (docker rm svc-keycloak || true) && docker run -it -p 8080:8080 --name=svc-keycloak --hostname=svc-keycloak qpod/keycloak bin/kc.sh start-dev --verbose
+# docker build -t labnow/keycloak --build-arg "BASE_NAMESPACE=labnow" .
+# (docker rm svc-keycloak || true) && docker run -d  -p 8080:8080 --name=svc-keycloak --hostname=svc-keycloak labnow/keycloak
+# (docker rm svc-keycloak || true) && docker run -it -p 8080:8080 --name=svc-keycloak --hostname=svc-keycloak labnow/keycloak bin/kc.sh start-dev --verbose

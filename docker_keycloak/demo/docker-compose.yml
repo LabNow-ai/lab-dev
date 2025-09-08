@@ -9,12 +9,12 @@ services:
         POSTGRES_PASSWORD: pg-keycloak-password
 
   svc-keycloak:
-      image: docker.io/qpod/keycloak
+      image: docker.io/labnow/keycloak
       # build:
       #   context: ../
       #   dockerfile: Dockerfile
       #   args:
-      #     BASE_NAMESPACE: qpod0dev
+      #     BASE_NAMESPACE: labnow0dev
       container_name: svc-keycloak
       # command: ["/bin/bash", "--login", "bin/kc.sh", "start-dev", "--verbose"]
       command: |

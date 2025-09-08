@@ -1,7 +1,7 @@
 services:
   db-postgres-casdoor:
       # su postgres && psql -d casdoor -U pg-casdoor-username
-      image: docker.io/qpod/postgres-16:latest
+      image: docker.io/labnow/postgres-16:latest
       container_name: db-postgres
       environment:
         POSTGRES_DB: casdoor
@@ -13,9 +13,9 @@ services:
         context: ../
         dockerfile: Dockerfile
         args:
-          BASE_NAMESPACE: qpod
+          BASE_NAMESPACE: labnow
         tags:
-         - qpod/casdoor
+         - labnow/casdoor
       container_name: svc-casdoor
       # command: ["/bin/bash", "--login", "/opt/casdoor/server", "--createDatabase=true"]
       command: |
