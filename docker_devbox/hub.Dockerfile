@@ -4,7 +4,7 @@ ARG BASE_NAMESPACE
 ARG BASE_IMG="node"
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
-LABEL maintainer="haobibo@gmail.com"
+LABEL maintainer="postmaster@labnow.ai"
 
 # base,kernels,extensions,hub
 ARG ARG_PROFILE_JUPYTER=hub

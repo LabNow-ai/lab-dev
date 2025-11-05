@@ -1,6 +1,6 @@
 services:
   svc-clash:
-    image: docker.io/qpod/app-clash
+    image: docker.io/labnow/app-clash
     container_name: svc-clash
     hostname: svc-clash
     restart: unless-stopped

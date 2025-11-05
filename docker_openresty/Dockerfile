@@ -4,7 +4,7 @@ ARG BASE_NAMESPACE
 ARG BASE_IMG="base"
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
-LABEL maintainer="haobibo@gmail.com"
+LABEL maintainer="postmaster@labnow.ai"
 
 ENV NGINX_ENVSUBST_OUTPUT_DIR       /etc/nginx/conf.d
 ENV NGINX_ENVSUBST_TEMPLATE_DIR     /etc/nginx/templates

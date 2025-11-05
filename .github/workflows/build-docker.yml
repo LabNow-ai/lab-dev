@@ -25,6 +25,7 @@ env:
   # used to sync image to mirror registry
   DOCKER_MIRROR_REGISTRY_USERNAME: ${{ vars.DOCKER_MIRROR_REGISTRY_USERNAME }}
   DOCKER_MIRROR_REGISTRY_PASSWORD: ${{ secrets.DOCKER_MIRROR_REGISTRY_PASSWORD }}
+  CI_PROJECT_NAME: ${{ vars.CI_PROJECT_NAME || 'LabNow/lab-dev' }}
 
 jobs:
   ## Clash
@@ -55,7 +56,7 @@ jobs:
           source ./tool.sh && build_image keycloak latest docker_keycloak/Dockerfile && push_image
 
   ## DevHub
-  qpod_dev-hub:
+  job-dev-hub:
     name: 'dev-hub'
     runs-on: ubuntu-latest
     steps:
@@ -68,7 +69,7 @@ jobs:
           push_image
 
   ## OpenResty as gateway
-  qpod_openresty:
+  job-openresty:
     name: 'openresty'
     runs-on: ubuntu-latest
     steps:
@@ -77,7 +78,7 @@ jobs:
           source ./tool.sh && build_image openresty latest docker_openresty/Dockerfile && push_image
 
   ## OpenResty as gateway
-  qpod_searxng:
+  job-searxng:
     name: 'searxng'
     runs-on: ubuntu-latest
     steps:
@@ -87,7 +88,7 @@ jobs:
 
 
   ## DevBox - base
-  qpod_base-dev:
+  job-base-dev:
     name: 'developer,base-dev'
     runs-on: ubuntu-latest
     steps:
@@ -101,7 +102,7 @@ jobs:
           alias_image base-dev latest developer latest && push_image dev
 
   ## DevBox - data science stack
-  qpod_data-science-dev:
+  job-data-science-dev:
     name: 'data-science-dev'
     runs-on: ubuntu-latest
     steps:
@@ -116,7 +117,7 @@ jobs:
           push_image
 
   ## DevBox - full stack
-  qpod_full-stack-dev:
+  job-full-stack-dev:
     name: 'full-stack-dev'
     runs-on: ubuntu-latest
     steps:
@@ -131,7 +132,7 @@ jobs:
           push_image
 
   ## DevBox - cuda
-  qpod_cuda-dev:
+  job-cuda-dev:
     name: 'full-cuda,cuda-dev'
     runs-on: ubuntu-latest
     steps:
@@ -147,7 +148,7 @@ jobs:
 
   ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    needs: ["qpod_cuda-dev", "qpod_data-science-dev", "qpod_full-stack-dev"]
+    needs: ["job-cuda-dev", "job-data-science-dev", "job-full-stack-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -158,5 +159,5 @@ jobs:
           source ./tool.sh
           printf '%s' "$AUTH_FILE_CONTENT" > .github/workflows/auth.json && ls -alh ./.github/workflows
           printenv | grep -v 'PATH' > /tmp/docker.env && echo "REGISTRY_URL=${REGISTRY_DST}" >> /tmp/docker.env
-          docker run --rm --env-file /tmp/docker.env -v $(pwd):/tmp -w /tmp ${IMG_PREFIX_DST:-qpod}/docker-kit \
+          docker run --rm --env-file /tmp/docker.env -v $(pwd):/tmp -w /tmp ${IMG_PREFIX_DST:-labnow}/docker-kit \
             python /opt/utils/image-syncer/run_jobs.py --auth-file=/tmp/.github/workflows/auth.json
