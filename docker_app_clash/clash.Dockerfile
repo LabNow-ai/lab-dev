@@ -6,12 +6,12 @@ ARG BASE_IMG="atom"
 
 
 # Stage 1: build code, both backend and frontend
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} AS builder
 
 COPY work/clash /opt/utils/
 
 RUN set -eux && source /opt/utils/script-setup-clash.sh \
- && setup_clash && setup_clash_metacubexd && setup_clash_verge \
+ && setup_clash && setup_clash_metacubexd && setup_clash_zashboard \
  && mv /opt/utils/config.yaml    /opt/clash/config \
  && mv /opt/utils/start-clash.sh /opt/clash/
 
