@@ -9,7 +9,10 @@ setup_casdoor() {
   && URL_CASDOOR="https://github.com/casdoor/casdoor/archive/refs/tags/v${VER_CASDOOR}.tar.gz" \
   && echo "Downloading casdoor version ${VER_CASDOOR} from: ${URL_CASDOOR}" \
   && install_tar_gz $URL_CASDOOR \
-  && mv /opt/casdoor-* /tmp/casdoor && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
+  && mv /opt/casdoor-* /tmp/casdoor \
+  && sed -i '/userId := user.GetId()/a\    c.SetSessionUsername(userId)' /tmp/casdoor/controllers/account.go \
+  && sed -i 's|paidUserName != c.GetSessionUsername()|userId != c.GetSessionUsername()|' /tmp/casdoor/controllers/product.go \
+  && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
 
      echo "--> Building Backend..." \
   && cd /tmp/casdoor && ./build.sh \
