@@ -26,6 +26,8 @@ RUN set -eux \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
  fi \
+ # network-tools https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/network-tools/Dockerfile
+ && apt-get update && apt-get install -y --no-install-recommends iptables \
  # Clean up and display components version information...
  && source /opt/utils/script-utils.sh && install__clean && list_installed_packages
 

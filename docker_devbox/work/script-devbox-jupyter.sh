@@ -102,13 +102,18 @@ setup_jupyter_extensions() {
 setup_jupyter_hub() {  
    # ref1: https://github.com/jupyterhub/jupyterhub
    # ref2: https://github.com/jupyterhub/jupyterhub/blob/main/Dockerfile
-      which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 )
+   # ref3: https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/hub/unfrozen/requirements.txt
+   which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 )
 
-      pip install -Uq --pre jupyterhub \
-   && pip install -Uq oauthenticator jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
-   && pip install -Uq dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
-   && pip install -Uq psutil pycurl jupyter_client jupyterhub \
-   && pip install -Uq jupyterhub-traefik-proxy configurable-http-proxy
+   pip install -Uq --pre jupyterhub jupyter_client \
+      dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \       
+      jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
+      jupyterhub-firstuseauthenticator jupyterhub-hmacauthenticator jupyterhub-ltiauthenticator \
+      jupyterhub-nativeauthenticator jupyterhub-tmpauthenticator \
+      oauthenticator[googlegroups,mediawiki] jupyterhub-idle-culler \
+      psycopg pymysql sqlalchemy-cockroachdb \
+      psutil pycurl py-spy \
+      jupyterhub-traefik-proxy configurable-http-proxy
 
    type jupyterhub && echo "@ JupyterHub version: $(jupyterhub --version)" || return -1 ;
 }
