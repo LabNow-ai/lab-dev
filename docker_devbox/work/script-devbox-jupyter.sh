@@ -106,7 +106,7 @@ setup_jupyter_hub() {
    which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 )
 
    pip install -Uq --pre jupyterhub jupyter_client \
-      dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \       
+      dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
       jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
       jupyterhub-firstuseauthenticator jupyterhub-hmacauthenticator jupyterhub-ltiauthenticator \
       jupyterhub-nativeauthenticator jupyterhub-tmpauthenticator \
