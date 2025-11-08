@@ -113,7 +113,11 @@ setup_jupyter_hub() {
       oauthenticator[googlegroups,mediawiki] jupyterhub-idle-culler \
       psycopg pymysql sqlalchemy-cockroachdb \
       psutil pycurl py-spy \
-      jupyterhub-traefik-proxy configurable-http-proxy
+      jupyterhub-traefik-proxy configurable-http-proxy ;
+
+   ln -sf $(which configurable-http-proxy) /usr/local/bin/configurable-http-proxy ;
+
+   type configurable-http-proxy && echo "@ Configurable HTTP Proxy version: $(configurable-http-proxy --version)" || return -1 ;
 
    type jupyterhub && echo "@ JupyterHub version: $(jupyterhub --version)" || return -1 ;
 }
