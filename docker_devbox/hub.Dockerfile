@@ -14,11 +14,10 @@ ARG ARG_KEEP_NODEJS=true
 COPY work /opt/utils/
 
 RUN set -eux \
- && chmod +x /opt/utils/*.sh \
+ && chmod +x /opt/utils/*.sh && rm -rf /opt/utils/etc_jupyter \
  # Setup JupyterHub
  && source /opt/utils/script-devbox-jupyter.sh \
- && mv /opt/utils/start-*.sh /usr/local/bin/ && chmod +x /usr/local/bin/start-*.sh \
- && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} || true ) ; done \
+ && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} ) ; done \
  # If not keeping NodeJS, remove NoedJS to reduce image size, and install Traefik instead
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
       echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
@@ -26,6 +25,12 @@ RUN set -eux \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
  fi \
+ # network-tools https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/network-tools/Dockerfile
+ && apt-get update && apt-get install -y --no-install-recommends \
+      iptables dnsutils libcurl4 libpq5 sqlite3 \
+ && curl -fsSL -o /usr/local/bin/start-configurable-http-proxy.sh https://raw.githubusercontent.com/jupyterhub/configurable-http-proxy/refs/heads/main/chp-docker-entrypoint \
+ && mv /opt/utils/start-*.sh /usr/local/bin/ \
+ && chmod +x /usr/local/bin/start-*.sh \
  # Clean up and display components version information...
  && source /opt/utils/script-utils.sh && install__clean && list_installed_packages
 
