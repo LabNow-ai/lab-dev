@@ -5,12 +5,21 @@ What's here:
  - acme.sh
  - lego
 
-## Debug
+## How to apply for certificates using ACME.sh
 
-```shell
-docker run -it --rm labnow/base bash
+```bash
+# docker exec -it svc-proxy-openresty bash (enter into the container)
 
-docker build -t openresty --build-arg BASE_NAMESPACE=labnow .
+cd /etc/nginx/ssl && ls -alh
+
+# If you don't have any certs yet, set your DOMAIN list to DOMAINS
+DOMAINS='a1.example.com a2.example.com a3.example.com'
+
+# If you already have certs in this folder, run the command below to get a list of DOMAINS
+DOMAINS=$(printf "%s\n" *.crt *.key 2>/dev/null | sed 's/\.[^.]*$//' | sort -u)
+
+
+/opt/utils/script-acme-sh.sh 'your@email.com' "${DOMAINS}"
 ```
 
 ## Custom Configs
@@ -29,3 +38,11 @@ You can add your custom configuration snippet files at /data/nginx/custom as fol
 - `conf/server_stream.conf`: Included at the end of every stream server block
 - `conf/server_stream_tcp.conf`: Included at the end of every TCP stream server block
 - `conf/server_stream_udp.conf`: Included at the end of every UDP stream server block
+
+## Debug
+
+```bash
+docker run -it --rm labnow/openresty bash
+
+docker build -t openresty --build-arg BASE_NAMESPACE=labnow .
+```

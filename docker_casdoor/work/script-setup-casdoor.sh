@@ -24,7 +24,7 @@ setup_casdoor() {
   # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > version_info.txt \
 
      echo "--> Building Frontend..." \
-  && cd /tmp && corepack enable && yarn -v \
+  && cd /tmp && npm install -g yarn && yarn -v \
   && cd /tmp/casdoor/web \
   && yarn set version berry && yarn install && yarn run build \
   && mv ./build*/* /opt/casdoor/web/build/
