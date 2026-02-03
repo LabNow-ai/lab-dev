@@ -20,8 +20,8 @@ setup_rclone() {
   echo "Installing rclone v${VER} for arch ${ARCH} (${RCLONE_ARCH})" \
   && curl -fSL -o /tmp/rclone.zip "${URL}" \
   && unzip -oj /tmp/rclone.zip "*/rclone" -d /tmp/ \
-  && install -m 0755 -D /tmp/rclone /opt/rclone/rclone \
-  && ln -sf /opt/rclone/rclone /usr/bin/rclone \
+  && install -m 0755 -D /tmp/rclone /opt/bin/rclone \
+  && ln -sf /opt/bin/rclone /usr/bin/rclone \
   && rm -f /tmp/rclone.zip /tmp/rclone \
   && echo "@ Installed rclone: $(rclone --version | head -1)"
 }

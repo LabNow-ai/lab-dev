@@ -75,7 +75,7 @@ profile:
 
 external-controller: :9090
 external-ui: /opt/clash/
-external-ui-name: ui-xd
+external-ui-name: ui-zashboard
 
 
 # ------------------------- dns and network config -------------------------

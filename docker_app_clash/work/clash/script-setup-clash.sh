@@ -25,13 +25,14 @@ setup_clash() {
 
 setup_clash_metacubexd() {
    #  Install the latest release: https://github.com/MetaCubeX/metacubexd
+   ## Notice: metacube UI now requires a NodeJS backend to run.
      VER_XD=$(curl -sL https://github.com/MetaCubeX/metacubexd/releases.atom | grep 'releases/tag/v' | head -1 | grep -Po '\d[\d.]+' ) \
   && URL_XD="https://github.com/MetaCubeX/metacubexd/archive/refs/tags/v$VER_XD.tar.gz" \
   && echo "Downloading XD version ${VER_XD} from: ${URL_XD}" \
   && install_tar_gz $URL_XD \
   && mv /opt/metacubexd-* /tmp/xd && cd /tmp/xd \
   && npx pnpm i && npx pnpm run build && ls -alh \
-  && mv /tmp/xd/dist /opt/clash/ui-xd
+  && mv /tmp/xd/.output /opt/clash/ui-xd
 }
 
 setup_clash_zashboard() {

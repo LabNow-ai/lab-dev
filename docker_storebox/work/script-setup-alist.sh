@@ -16,8 +16,8 @@ setup_alist() {
 
   echo "Installing alist v${VER} for arch ${ARCH} (${ALIST_ARCH})" \
   && curl -fSL "${URL}" | tar -xz -C /tmp/ \
-  && install -m 0755 -D /tmp/alist /opt/alist/alist \
-  && ln -sf /opt/alist/alist /usr/bin/alist \
+  && install -m 0755 -D /tmp/alist /opt/bin/alist \
+  && ln -sf /opt/bin/alist /usr/bin/alist \
   && rm -f /tmp/alist \
   && echo "@ Installed alist: $(alist version)"
 }
