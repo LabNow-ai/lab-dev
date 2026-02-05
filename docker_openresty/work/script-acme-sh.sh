@@ -1,61 +1,129 @@
 #!/bin/bash
 set -ex
 
-# Function to issue certificates using acme.sh
-issue_certificates_acme_sh() {
-    local ACME_EMAIL=$1
-    local LIST_DOMAINS=$2
+##########################
+# Top-level global variables
+##########################
+ACME_SH_PATH="/opt/acme.sh"
+DIR_CERT_INSTALL="/etc/nginx/ssl"
+DIR_WEB_ROOT="/data/letsencrypt-acme-challenge"
+RELOAD_CMD="nginx -t && nginx -s reload"
+DEFAULT_ACME_EMAIL="admin@example.com"
 
-    echo "ACME_EMAIL set to ${ACME_EMAIL}"
-    echo "LIST_DOMAINS set to ${LIST_DOMAINS}"
+##########################
+# DNS provider environment variables template (https://github.com/acmesh-official/acme.sh/wiki/dnsapi)
+# Export before running:
+# Cloudflare: export CF_Key="xxx"; export CF_Email="xxx"
+# DNSPod: export DP_Id="xxx"; export DP_Key="xxx"
+# AWS Route53: export AWS_ACCESS_KEY_ID="xxx"; export AWS_SECRET_ACCESS_KEY="xxx"
+##########################
 
-    # Validate and define email address
-    ACME_EMAIL=${ACME_EMAIL:-"admin@example.com"}
+##########################
+# HTTP-01 certificate issuance
+# Parameters: email, domains
+##########################
+issue_cert_http01() {
+  local email=$1
+  local domains=$2
 
-    if [ -z "$LIST_DOMAINS" ]; then
-        echo "Please define variable LIST_DOMAINS: domain names separated by space"
-        echo "example: LIST_DOMAINS=\"example.com api.example.com\""
-        exit 2
+  mkdir -pv "$DIR_CERT_INSTALL" "$DIR_WEB_ROOT"
+
+  for d in $domains; do
+    if [[ $d == *"*"* ]]; then
+      echo "Wildcard detected, HTTP-01 cannot be used for $d"
+      exit 3
     fi
 
-    # Split LIST_DOMAINS into array
-    local DOMAINS=($LIST_DOMAINS)
+    echo "Issuing certificate via HTTP-01 for $d"
+    "$ACME_SH_PATH/acme.sh" --issue --force \
+      --webroot "$DIR_WEB_ROOT" \
+      -d "$d" \
+      --server letsencrypt
 
-    # Check for wildcard domains
-    for DOMAIN in "${DOMAINS[@]}"; do
-        if [[ "$DOMAIN" == *"*"* ]]; then
-            echo "Wildcard domains (e.g., *.example.com) are not supported by this function."
-            exit 3
-        fi
-    done
-
-    # Define directories and commands
-    local DIR_CERT_INSTALL="/etc/nginx/ssl"
-    local DIR_WEB_ROOT="/data/letsencrypt-acme-challenge"
-    local PATH_ACME="/opt/acme.sh"
-    local RELOAD_CMD="nginx -t && nginx -s reload"
-
-    # Create required directories
-    mkdir -pv "$DIR_CERT_INSTALL" "$DIR_WEB_ROOT"
-
-    # Process each domain
-    for DOMAIN in "${DOMAINS[@]}"; do
-        echo "Applying for certificate for domain using acme.sh HTTP-01 method for: ${DOMAIN}"
-        "${PATH_ACME}/acme.sh" --issue --force \
-            --webroot "${DIR_WEB_ROOT}" \
-            -d "${DOMAIN}" \
-            --server letsencrypt
-
-        echo "Installing domain certificate to: ${DIR_CERT_INSTALL}"
-        "${PATH_ACME}/acme.sh" --install-cert \
-            -d "${DOMAIN}" \
-            --key-file "${DIR_CERT_INSTALL}/${DOMAIN}.key" \
-            --fullchain-file "${DIR_CERT_INSTALL}/${DOMAIN}.crt" \
-            --reloadcmd "${RELOAD_CMD}"
-
-        echo "Certificate successfully applied for domain: ${DOMAIN}"
-    done
+    echo "Installing certificate for $d"
+    "$ACME_SH_PATH/acme.sh" --install-cert -d "$d" \
+      --key-file "$DIR_CERT_INSTALL/$d.key" \
+      --fullchain-file "$DIR_CERT_INSTALL/$d.crt" \
+      --reloadcmd "$RELOAD_CMD"
+  done
 }
 
-# Call the function with parameters
-issue_certificates_acme_sh "$1" "$2"
+##########################
+# DNS-01 certificate issuance (single certificate for multiple domains)
+# Parameters: email, domains, provider
+##########################
+issue_cert_dns01() {
+  local email=$1
+  local domains=$2
+  local provider=$3
+
+  if [[ -z "$provider" ]]; then
+    echo "DNS provider is required for DNS-01 method"
+    exit 2
+  fi
+
+  mkdir -pv "$DIR_CERT_INSTALL"
+
+  # Split domains into array and build -d arguments
+  local D_ARGS=""
+  for d in $domains; do
+    D_ARGS="$D_ARGS -d $d"
+  done
+
+  # Issue certificate once for all domains
+  echo "Issuing certificate via DNS-01 for domains: $domains using provider $provider"
+  "$ACME_SH_PATH/acme.sh" --issue --force \
+    --dns "$provider" $D_ARGS \
+    --server letsencrypt
+
+  # Install certificate once (all domains together)
+  local FIRST_DOMAIN=$(echo $domains | awk '{print $1}')
+  "$ACME_SH_PATH/acme.sh" --install-cert -d $FIRST_DOMAIN \
+    --key-file "$DIR_CERT_INSTALL/${FIRST_DOMAIN}_multi.key" \
+    --fullchain-file "$DIR_CERT_INSTALL/${FIRST_DOMAIN}_multi.crt" \
+    --reloadcmd "$RELOAD_CMD"
+
+  echo "Certificate installed for all domains in one file: ${FIRST_DOMAIN}_multi.crt"
+}
+
+##########################
+# Auto-detect method based on domain wildcard
+# Parameters: email, domains, provider
+##########################
+auto_issue_cert() {
+  local email=$1
+  local domains=$2
+  local provider=$3
+  local use_dns01=false
+
+  for d in $domains; do
+    if [[ $d == *"*"* ]]; then
+      use_dns01=true
+      break
+    fi
+  done
+
+  if $use_dns01; then
+    echo "Wildcard domain detected, using DNS-01 method"
+    issue_cert_dns01 "$email" "$domains" "$provider"
+  else
+    echo "No wildcard detected, using HTTP-01 method"
+    issue_cert_http01 "$email" "$domains"
+  fi
+}
+
+##########################
+# Main
+# Usage:
+# ./script-acme-sh.sh "admin@example.com" "example.com www.example.com" [dns_provider_for_dns01]
+##########################
+EMAIL=${1:-$DEFAULT_ACME_EMAIL}
+DOMAINS=$2
+DNS_PROVIDER=$3
+
+if [[ -z "$DOMAINS" ]]; then
+  echo "Please specify domain names separated by space"
+  exit 1
+fi
+
+auto_issue_cert "$EMAIL" "$DOMAINS" "$DNS_PROVIDER"
