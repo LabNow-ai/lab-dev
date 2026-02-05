@@ -1,6 +1,7 @@
 # Clash / Mihomo
 
 - mihomo core: https://github.com/MetaCubeX/mihomo/tree/Alpha
+- webui zashboard: https://github.com/Zephyruso/zashboard
 - webui matacubexd: https://github.com/MetaCubeX/metacubexd
 - webui verge / client: https://clash-verge-rev.github.io
 
@@ -14,4 +15,4 @@ docker run -d \
     labnow/app-clash
 ```
 
-After the container starts, visit this page to manage proxy: http://localhost:9090/ui/ui-xd/
+After the container starts, visit this page to manage proxy: http://localhost:9090/ui/ui-zashboard/

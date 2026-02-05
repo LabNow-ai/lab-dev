@@ -6,9 +6,9 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 LABEL maintainer="postmaster@labnow.ai"
 
-ENV NGINX_ENVSUBST_OUTPUT_DIR       /etc/nginx/conf.d
-ENV NGINX_ENVSUBST_TEMPLATE_DIR     /etc/nginx/templates
-ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX  .template
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
+ENV NGINX_ENVSUBST_TEMPLATE_DIR=/etc/nginx/templates
+ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
 
 COPY work /opt/utils/
 

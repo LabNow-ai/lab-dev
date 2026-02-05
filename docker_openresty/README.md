@@ -1,9 +1,8 @@
-# OpenResty with Lua, acme.sh and lego
+# OpenResty with Lua, acme.sh
 
-What's here:
+What's inside this docker image:
  - Openresty, ref: https://github.com/openresty/docker-openresty/blob/master/bionic/Dockerfile
- - acme.sh
- - lego
+ - acme.sh, ref: https://github.com/acmesh-official/acme.sh
 
 ## How to apply for certificates using ACME.sh
 
@@ -24,10 +23,11 @@ DOMAINS=$(printf "%s\n" *.crt *.key 2>/dev/null | sed 's/\.[^.]*$//' | sort -u)
 
 ## Custom Configs
 
-- ref: https://nginxproxymanager.com/advanced-config/#custom-nginx-configurations
+- Refer to [source code](https://github.com/NginxProxyManager/nginx-proxy-manager/tree/develop/docker/rootfs/etc/nginx/conf.d) and [docs](https://nginxproxymanager.com/advanced-config/#custom-nginx-configurations) of [Nginx Proxy Manager](https://nginxproxymanager.com/).
 
 You can add your custom configuration snippet files at /data/nginx/custom as follows:
 
+- `/data/nginx/custom/root_top.conf`: Included at the top of nginx.conf
 - `conf/root.conf`: Included at the very end of nginx.conf
 - `conf/http_top.conf`: Included at the top of the main http block
 - `conf/http.conf`: Included at the end of the main http block
@@ -38,6 +38,7 @@ You can add your custom configuration snippet files at /data/nginx/custom as fol
 - `conf/server_stream.conf`: Included at the end of every stream server block
 - `conf/server_stream_tcp.conf`: Included at the end of every TCP stream server block
 - `conf/server_stream_udp.conf`: Included at the end of every UDP stream server block
+- `/data/nginx/custom/server_dead.conf`: Included at the end of every 404 server block
 
 ## Debug
 
