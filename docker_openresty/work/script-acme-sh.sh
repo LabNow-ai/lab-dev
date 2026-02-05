@@ -41,7 +41,6 @@ issue_certificates_acme_sh() {
     # Process each domain
     for DOMAIN in "${DOMAINS[@]}"; do
         echo "Applying for certificate for domain using acme.sh HTTP-01 method for: ${DOMAIN}"
-
         "${PATH_ACME}/acme.sh" --issue --force \
             --webroot "${DIR_WEB_ROOT}" \
             -d "${DOMAIN}" \
