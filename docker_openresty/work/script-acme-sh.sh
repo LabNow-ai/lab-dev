@@ -4,11 +4,11 @@ set -ex
 ##########################
 # Top-level global variables
 ##########################
-ACME_SH_PATH="/opt/acme.sh"
-DIR_CERT_INSTALL="/etc/nginx/ssl"
-DIR_WEB_ROOT="/data/letsencrypt-acme-challenge"
-RELOAD_CMD="nginx -t && nginx -s reload"
-DEFAULT_ACME_EMAIL="admin@example.com"
+ACME_SH_PATH="${ACME_SH_PATH:-/opt/acme.sh}"
+DIR_CERT_INSTALL="${DIR_CERT_INSTALL:-/etc/nginx/ssl}"
+DIR_WEB_ROOT="${DIR_WEB_ROOT:-/data/letsencrypt-acme-challenge}"
+RELOAD_CMD="${RELOAD_CMD:-nginx -t && nginx -s reload}"
+DEFAULT_ACME_EMAIL="${DEFAULT_ACME_EMAIL:-admin@example.com}"
 
 ##########################
 # DNS provider environment variables template (https://github.com/acmesh-official/acme.sh/wiki/dnsapi)
@@ -79,11 +79,11 @@ issue_cert_dns01() {
   # Install certificate once (all domains together)
   local FIRST_DOMAIN=$(echo $domains | awk '{print $1}')
   "$ACME_SH_PATH/acme.sh" --install-cert -d $FIRST_DOMAIN \
-    --key-file "$DIR_CERT_INSTALL/_${FIRST_DOMAIN}.key" \
-    --fullchain-file "$DIR_CERT_INSTALL/_${FIRST_DOMAIN}.crt" \
+    --key-file "$DIR_CERT_INSTALL/_.${FIRST_DOMAIN}.key" \
+    --fullchain-file "$DIR_CERT_INSTALL/_.${FIRST_DOMAIN}.crt" \
     --reloadcmd "$RELOAD_CMD"
 
-  echo "Certificate installed for all domains in one file: _${FIRST_DOMAIN}.crt"
+  echo "Certificate installed for all domains in one file: _.${FIRST_DOMAIN}.crt"
 }
 
 ##########################
