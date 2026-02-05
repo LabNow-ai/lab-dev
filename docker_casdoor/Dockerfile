@@ -23,7 +23,7 @@ RUN set -eux \
  && chmod +x /opt/casdoor/docker-entrypoint.sh && ls -alh /opt/casdoor
 
 LABEL maintainer="postmaster@labnow.ai"
-ENV RUNNING_IN_DOCKER true
+ENV RUNNING_IN_DOCKER=true
 WORKDIR /opt/casdoor
 EXPOSE 8000
 # ENTRYPOINT ["/bin/bash"]

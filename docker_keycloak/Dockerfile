@@ -14,10 +14,10 @@ RUN set -eux \
  && echo "keycloak:x:1000:0:keycloak user:/opt/keycloak:/sbin/nologin" >> /etc/passwd \
  && chown -R 1000:0 /opt/keycloak
 
-ENV KEYCLOAK_HOME /opt/keycloak
-ENV KC_RUN_IN_CONTAINER true
-ENV KC_HEALTH_ENABLED true
-ENV KC_METRICS_ENABLED true
+ENV KEYCLOAK_HOME=/opt/keycloak
+ENV KC_RUN_IN_CONTAINER=true
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
 
 USER 1000
 EXPOSE 8080

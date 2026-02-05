@@ -50,7 +50,7 @@ issue_cert_http01() {
 
 ##########################
 # DNS-01 certificate issuance (single certificate for multiple domains)
-# Parameters: email, domains, provider
+# Parameters: email, domains, provider (e.g.: dns_cf, dns_dp)
 ##########################
 issue_cert_dns01() {
   local email=$1
@@ -79,11 +79,11 @@ issue_cert_dns01() {
   # Install certificate once (all domains together)
   local FIRST_DOMAIN=$(echo $domains | awk '{print $1}')
   "$ACME_SH_PATH/acme.sh" --install-cert -d $FIRST_DOMAIN \
-    --key-file "$DIR_CERT_INSTALL/${FIRST_DOMAIN}_multi.key" \
-    --fullchain-file "$DIR_CERT_INSTALL/${FIRST_DOMAIN}_multi.crt" \
+    --key-file "$DIR_CERT_INSTALL/_${FIRST_DOMAIN}.key" \
+    --fullchain-file "$DIR_CERT_INSTALL/_${FIRST_DOMAIN}.crt" \
     --reloadcmd "$RELOAD_CMD"
 
-  echo "Certificate installed for all domains in one file: ${FIRST_DOMAIN}_multi.crt"
+  echo "Certificate installed for all domains in one file: _${FIRST_DOMAIN}.crt"
 }
 
 ##########################
