@@ -8,10 +8,8 @@ services:
     ipc: host
     # When your system is Linux, you can use `network_mode: "host"` directly.
     # network_mode: "host"
-    ports:
-      - "7890:7890"
-      - "9090:9090"
+    ports: ["7890:7890", "9090:9090"]
     # volumes:
     #   - ../work/clash/config.yaml:/opt/clash/config/config.yaml
     environment:
-      - PROXY_PROVIDER="https://subs.zeabur.app/clash"
+      - PROXY_PROVIDER=https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
