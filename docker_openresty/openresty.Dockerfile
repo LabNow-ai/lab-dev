@@ -19,6 +19,7 @@ RUN set -eux \
  # ----------------------------- Install lua and lua-rocks
  && source /opt/utils/script-setup.sh && setup_lua_base && setup_lua_rocks \
  # ----------------------------- Install openresty
+ && useradd nginx -G www-data \
  && mkdir -pv /var/cache/nginx /var/log/nginx \
  && chown -R nginx:www-data /var/cache/nginx /var/log/nginx \
  && source /opt/utils/script-setup-openresty.sh && setup_openresty \
@@ -26,7 +27,6 @@ RUN set -eux \
  && cp -rf /opt/utils/nginx/*      /etc/nginx/  && rm -rf /opt/utils/nginx \
  && chmod -R +x /docker-entrypoint.* && ls -alh /docker-entrypoint.* /etc/nginx/* \
  && nginx -t \
- && useradd nginx -G www-data \
  && install__clean
 
 VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/templates/", "/etc/nginx/ssl", "/root/.acme.sh"]
