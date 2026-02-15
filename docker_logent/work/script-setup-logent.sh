@@ -4,13 +4,13 @@ setup_vector() {
     echo "Unsupported architecture for Vector: $(uname -m)" && return 1 ;
   }
 
-  VER=$(curl -sL -o /dev/null -w "%{url_effective}" https://github.com/vectordotdev/vector/releases/latest | grep -oP 'v\K[\d.]+') \
-  && PKG="vector-${VER}-${ARCH}-unknown-linux-gnu.tar.gz" \
-  && URL="https://github.com/vectordotdev/vector/releases/download/v${VER}/${PKG}" \
-  && echo "Installing Vector v${VER} for arch ${ARCH} from: ${URL}" \
-  && curl -fSL "${URL}" -o /tmp/vector.tar.gz \
+  VER_VECTOR=$(curl -sL -o /dev/null -w "%{url_effective}" https://github.com/vectordotdev/vector/releases/latest | grep -oP 'v\K[\d.]+') \
+  && PKG_VECTOR="vector-${VER_VECTOR}-${ARCH}-unknown-linux-gnu.tar.gz" \
+  && URL_VECTOR="https://github.com/vectordotdev/vector/releases/download/v${VER_VECTOR}/${PKG_VECTOR}" \
+  && echo "Installing Vector v${VER_VECTOR} for arch ${ARCH} from: ${URL_VECTOR}" \
+  && curl -fSL "${URL_VECTOR}" -o /tmp/vector.tar.gz \
   && tar -xzf /tmp/vector.tar.gz -C /tmp \
-  && install -m 0755 -D /tmp/vector-${VER}-${ARCH}-unknown-linux-gnu/bin/vector /opt/bin/vector \
+  && install -m 0755 -D /tmp/vector-*-linux-*/bin/vector /opt/bin/vector \
   && ln -sf /opt/bin/vector /usr/bin/vector \
   && rm -rf /tmp/vector* 
 

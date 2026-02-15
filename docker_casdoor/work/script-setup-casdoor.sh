@@ -17,11 +17,10 @@ setup_casdoor() {
   && sed -i 's|paidUserName != c.GetSessionUsername()|userId != c.GetSessionUsername()|'  /tmp/casdoor/controllers/product.go
 
      echo "--> Building Backend..." \
-  && cd /tmp/casdoor \
+  && cd /tmp/casdoor && echo "${VER_CASDOOR}" > /tmp/version_info.txt \
   && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go \
   && ./build.sh \
-  && echo "${VER_CASDOOR}" > /opt/casdoor/version_info.txt \
-  && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh /opt/casdoor/ \
+  && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
   && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server
 
