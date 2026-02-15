@@ -20,11 +20,19 @@ COPY work/app.conf /opt/casdoor/conf/app.conf
 RUN set -eux \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends lsof \
  && mkdir -pv /root/web && ln -sf /opt/casdoor/web/build /root/web/ && ls -alh /opt/casdoor/web \
- && chmod +x /opt/casdoor/docker-entrypoint.sh && ls -alh /opt/casdoor
+ && chmod +x /opt/casdoor/docker-entrypoint.sh \
+ && ln -sf /opt/casdoor/server /server \
+ && ln -sf /opt/casdoor/conf   /conf \
+ && ls -alh /opt/casdoor \
+ && echo "@ Version of Casdoor $(cat /opt/casdoor/version_info.txt)"
 
 LABEL maintainer="postmaster@labnow.ai"
 ENV RUNNING_IN_DOCKER=true
 WORKDIR /opt/casdoor
-EXPOSE 8000
-# ENTRYPOINT ["/bin/bash"]
-# CMD ["/opt/casdoor/docker-entrypoint.sh"]
+# 8000=web, 389=ldap, 1812=radius
+EXPOSE 8000 389 1812
+ENTRYPOINT ["/bin/bash"]
+CMD ["/opt/casdoor/docker-entrypoint.sh"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD ["curl", "--head", "-fsSk", "http://localhost:8000/health/ready"]
