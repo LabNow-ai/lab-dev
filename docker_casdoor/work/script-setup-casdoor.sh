@@ -12,17 +12,13 @@ setup_casdoor() {
   && mv /opt/casdoor-* /tmp/casdoor \
   && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
 
-     echo "--> Patching casdoor for docker..." \
-  && sed -i '/userId := user.GetId()/a\    c.SetSessionUsername(userId)'                  /tmp/casdoor/controllers/account.go \
-  && sed -i 's|paidUserName != c.GetSessionUsername()|userId != c.GetSessionUsername()|'  /tmp/casdoor/controllers/product.go
-
      echo "--> Building Backend..." \
-  && cd /tmp/casdoor && echo "${VER_CASDOOR}" > /tmp/version_info.txt \
-  && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go \
+  && cd /tmp/casdoor && echo "${VER_CASDOOR}" > /tmp/casdoor/version_info.txt \
   && ./build.sh \
   && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
   && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server
+  # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go \
 
      echo "--> Building Frontend..." \
   && cd /tmp && npm install -g yarn && yarn -v \
