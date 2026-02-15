@@ -11,7 +11,6 @@ services:
   svc-casdoor:
       image: docker.io/labnow/casdoor
       container_name: svc-casdoor
-      # command: ["/bin/bash", "--login", "/opt/casdoor/server", "--createDatabase=true"]
       command: |
         /bin/bash -l -c '
         ls -alh /opt/casdoor
@@ -25,8 +24,8 @@ services:
       depends_on:
         - db-postgres-casdoor
       healthcheck:
-        test:  ["CMD-SHELL", "curl", "--head", "-fsSk", "https://localhost:8000/health/ready" ]
+        test:  ["CMD-SHELL", "curl --head -fsSk http://localhost:8000/health/ready" ]
         interval: 30s
-        timeout: 30s
+        timeout: 10s
         start_period: 5s
         retries: 3
