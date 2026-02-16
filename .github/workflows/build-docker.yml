@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image app-clash latest docker_app_clash/clash.Dockerfile && push_image
+          source ./tool.sh && build_image app-clash latest docker_clash/clash.Dockerfile && push_image clash
 
   ## Casdoor
   docker_casdoor:
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image casdoor latest docker_casdoor/Dockerfile && push_image
+          source ./tool.sh && build_image casdoor latest docker_casdoor/casdoor.Dockerfile && push_image casdoor
 
   ## Keycloak
   docker_keycloak:
@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image keycloak latest docker_keycloak/Dockerfile && push_image
+          source ./tool.sh && build_image keycloak latest docker_keycloak/keycloak.Dockerfile && push_image keycloak
 
   ## DevHub
   job-dev-hub:
@@ -66,7 +66,7 @@ jobs:
           build_image dev-hub latest docker_devbox/hub.Dockerfile \
             --build-arg "BASE_IMG=node" \
             --build-arg "ARG_PROFILE_JUPYTER=hub"
-          push_image
+          push_image dev-hub
 
   ## OpenResty as gateway
   job-openresty:
@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image openresty latest docker_openresty/Dockerfile && push_image
+          source ./tool.sh && build_image openresty latest docker_openresty/openresty.Dockerfile && push_image openresty
 
   ## SearchNGX for searching
   job-searxng:
@@ -84,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          source ./tool.sh && build_image searxng latest docker_searxng/searxng.Dockerfile && push_image
+          source ./tool.sh && build_image searxng latest docker_searxng/searxng.Dockerfile && push_image searxng
 
   ## StoreBox
   job-storebox:
@@ -94,9 +94,17 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           source ./tool.sh
-          build_image storebox latest docker_storebox/storebox.Dockerfile \
-            --build-arg "BASE_IMG=node"
-          push_image
+          build_image storebox latest docker_storebox/storebox.Dockerfile && push_image storebox
+
+  ## lognet for log management
+  job-logent:
+    name: 'logent'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          source ./tool.sh
+          build_image logent latest docker_logent/logent.Dockerfile && push_image logent
 
 
   ## DevBox - base
@@ -126,7 +134,7 @@ jobs:
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base" \
             --build-arg "ARG_PROFILE_R=rstudio,rshiny"
-          push_image
+          push_image dev
 
   ## DevBox - full stack
   job-full-stack-dev:
@@ -141,7 +149,7 @@ jobs:
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base" \
             --build-arg "ARG_PROFILE_R=rstudio,rshiny"
-          push_image
+          push_image dev
 
   ## DevBox - cuda
   job-cuda-dev:
@@ -155,7 +163,7 @@ jobs:
             --build-arg "BASE_IMG=core-cuda" \
             --build-arg "ARG_PROFILE_JUPYTER=base,kernels,extensions" \
             --build-arg "ARG_PROFILE_VSCODE=base"
-          alias_image cuda-dev latest full-cuda latest && push_image
+          alias_image cuda-dev latest full-cuda latest && push_image dev
 
 
   ## Sync all images in this build (listed by "names") to mirror registry.

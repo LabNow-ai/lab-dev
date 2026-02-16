@@ -4,32 +4,30 @@ setup_casdoor() {
      export ARCH=$(dpkg --print-architecture)
 
   # ref: https://github.com/casdoor/casdoor/blob/master/Dockerfile
-  # Install the latest release of casdoor
+  # Download the latest release of casdoor
      VER_CASDOOR=$(curl -sL https://github.com/casdoor/casdoor/releases.atom | grep 'releases/tag' | head -1 | grep -Po '\d[\d.]+' ) \
   && URL_CASDOOR="https://github.com/casdoor/casdoor/archive/refs/tags/v${VER_CASDOOR}.tar.gz" \
   && echo "Downloading casdoor version ${VER_CASDOOR} from: ${URL_CASDOOR}" \
   && install_tar_gz $URL_CASDOOR \
   && mv /opt/casdoor-* /tmp/casdoor \
-  && sed -i '/userId := user.GetId()/a\    c.SetSessionUsername(userId)' /tmp/casdoor/controllers/account.go \
-  && sed -i 's|paidUserName != c.GetSessionUsername()|userId != c.GetSessionUsername()|' /tmp/casdoor/controllers/product.go \
   && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
 
      echo "--> Building Backend..." \
-  && cd /tmp/casdoor && ./build.sh \
-  && echo "${VER_CASDOOR}" > version_info.txt \
-  && mv "./server_linux_${ARCH}" ./swagger ./version_info.txt /opt/casdoor/ \
-  && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server \
+  && cd /tmp/casdoor && echo "${VER_CASDOOR}" > /tmp/casdoor/version_info.txt \
+  && ./build.sh \
+  && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
-  && mv ./docker-entrypoint.sh /opt/casdoor/
-  # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go > version_info.txt \
+  && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server
+  # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go \
 
      echo "--> Building Frontend..." \
   && cd /tmp && npm install -g yarn && yarn -v \
   && cd /tmp/casdoor/web \
-  && yarn set version berry && yarn install && yarn run build \
+  && yarn set version berry \
+  && yarn install --frozen-lockfile --network-timeout 1000000 \
+  && NODE_OPTIONS="--max-old-space-size=4096" yarn run build \
   && mv ./build*/* /opt/casdoor/web/build/
-  # && yarn install --frozen-lockfile && yarn run build \
-  
+
      echo "--> Finished building casdoor to /opt/casdoor!" \
   && rm -rf /tmp/casdoor \
   && echo "@ Version of Casdoor $(cat /opt/casdoor/version_info.txt)"
