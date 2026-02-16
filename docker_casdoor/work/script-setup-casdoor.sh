@@ -21,12 +21,15 @@ setup_casdoor() {
   # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go \
 
      echo "--> Building Frontend..." \
-  && cd /tmp && npm install -g yarn && yarn -v \
+  && cd /tmp && npm install -g pnpm \
   && cd /tmp/casdoor/web \
-  && yarn set version berry \
-  && yarn install --frozen-lockfile --network-timeout 1000000 \
-  && NODE_OPTIONS="--max-old-space-size=4096" yarn run build \
+  && export NODE_OPTIONS="--max-old-space-size=4096" && export GENERATE_SOURCEMAP=false \
+  && jq 'del(.scripts.preinstall)' package.json > package.tmp.json && mv package.tmp.json package.json \
+  && pnpm i && CI=true npx craco build \
   && mv ./build*/* /opt/casdoor/web/build/
+
+  # npm install -g yarn && yarn -v && yarn set version berry \
+  # && yarn install --frozen-lockfile --network-timeout 1000000 && yarn run build \
 
      echo "--> Finished building casdoor to /opt/casdoor!" \
   && rm -rf /tmp/casdoor \
