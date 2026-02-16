@@ -26,7 +26,7 @@ setup_casdoor() {
   && cd /tmp/casdoor/web \
   && export NODE_OPTIONS="--max-old-space-size=4096" && export GENERATE_SOURCEMAP=false \
   && jq 'del(.scripts.preinstall)' package.json > package.tmp.json && mv package.tmp.json package.json \
-  && yarn install --frozen-lockfile --network-timeout 1000000 && yarn run build \  
+  && yarn install --frozen-lockfile --network-timeout 1000000 && yarn run build \
   && mv ./build*/* /opt/casdoor/web/build/ \
   && echo "Successfully built casdoor frontend to /opt/casdoor/web/build!"
 
