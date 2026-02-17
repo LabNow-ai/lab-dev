@@ -17,9 +17,9 @@ setup_casdoor() {
   && ./build.sh \
   && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
-  && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server \
-  && echo "Successfully built casdoor backend to /opt/casdoor/server!"
-  # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go \
+  && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server ;
+  # && go test -v -run TestGetVersionInfo ./util/system_test.go ./util/system.go ./util/variable.go
+  [ -f "/opt/casdoor/server_linux_${ARCH}" ] && echo "Successfully built casdoor backend!" || exit 1 ;
 
      echo "--> Building Frontend..." \
   && cd /tmp && npm install -g yarn && yarn -v \
@@ -27,11 +27,8 @@ setup_casdoor() {
   && export NODE_OPTIONS="--max-old-space-size=4096" && export GENERATE_SOURCEMAP=false \
   && jq 'del(.scripts.preinstall)' package.json > package.tmp.json && mv package.tmp.json package.json \
   && yarn install --frozen-lockfile --network-timeout 1000000 && yarn run build \
-  && mv ./build*/* /opt/casdoor/web/build/ \
-  && echo "Successfully built casdoor frontend to /opt/casdoor/web/build!"
-
-  # npm install -g pnpm && pnpm i && CI=true npx craco build \
-
+  && mv ./build*/* /opt/casdoor/web/build/ ;
+  [ -f "/opt/casdoor/web/build/index.html" ] && echo "Successfully built casdoor frontend!" || exit 2 ;
 
      echo "--> Finished building casdoor to /opt/casdoor!" \
   && rm -rf /tmp/casdoor \
