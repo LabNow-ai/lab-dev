@@ -65,3 +65,37 @@ You can add your custom configuration snippet files at /data/nginx/custom as fol
 - `conf/server_stream_tcp.conf`: Included at the end of every TCP stream server block
 - `conf/server_stream_udp.conf`: Included at the end of every UDP stream server block
 - `/data/nginx/custom/server_dead.conf`: Included at the end of every 404 server block
+- 
+
+## Log fields mappings
+
+| JSON key | standard                  | proxy                     | stream                     |
+| -------- | ------------------------- | ------------------------- | -------------------------- |
+| `T`      | `$fmt_localtime`          | `$fmt_localtime`          | `$fmt_localtime`           |
+| `t`      | `$request_time`           | `$request_time`           | —                          |
+| `tr`     | `$upstream_response_time` | `$upstream_response_time` | —                          |
+| `ts`     | —                         | —                         | `$session_time`            |
+| `tc`     | —                         | —                         | `$upstream_connect_time`   |
+| `s`      | `$status`                 | `$status`                 | `$status`                  |
+| `r`      | `$remote_addr`            | `$remote_addr`            | `$remote_addr`             |
+| `m`      | `$request_method`         | `$request_method`         | —                          |
+| `e`      | `$scheme`                 | `$scheme`                 | —                          |
+| `h`      | `$host`                   | `$host`                   | —                          |
+| `u`      | `$request_uri`            | `$request_uri`            | —                          |
+| `R`      | `$http_x_forwarded_for`   | `$http_x_forwarded_for`   | —                          |
+| `L`      | `$body_bytes_sent`        | `$body_bytes_sent`        | —                          |
+| `G`      | `$gzip_ratio`             | `$gzip_ratio`             | —                          |
+| `a`      | `$http_user_agent`        | `$http_user_agent`        | —                          |
+| `f`      | `$http_referer`           | `$http_referer`           | —                          |
+| `U`      | —                         | `$upstream_status`        | —                          |
+| `C`      | —                         | `$upstream_cache_status`  | —                          |
+| `S`      | —                         | `$server_name`            | —                          |
+| `P`      | —                         | —                         | `$protocol`                |
+| `p`      | —                         | —                         | `$remote_port`             |
+| `bs`     | —                         | —                         | `$bytes_sent`              |
+| `br`     | —                         | —                         | `$bytes_received`          |
+| `ua`     | —                         | —                         | `$upstream_addr`           |
+| `ubs`    | —                         | —                         | `$upstream_bytes_sent`     |
+| `ubr`    | —                         | —                         | `$upstream_bytes_received` |
+| `ssl_p`  | —                         | —                         | `$ssl_protocol`            |
+| `ssl_c`  | —                         | —                         | `$ssl_cipher`              |
