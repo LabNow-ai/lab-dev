@@ -9,18 +9,19 @@ COPY work /opt/utils
 
 RUN set -eux \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
-      git jq \
- && mkdir -pv /opt/nocobase && cd /opt/nocobase \
- && git config --global --add safe.directory /opt/nocobase \
- && git init && git remote add origin https://github.com/nocobase/nocobase \
- && git fetch && git checkout -t origin/main \
- # ----------------------------- Install dependencies and build
- && source /opt/utils/script-setup.sh && setup_node_base 20 && source /etc/profile.d/path-*.sh \
- && npm  install -g yarn \
- && yarn install --frozen-lockfile && yarn run build --not-dts \
- # ----------------------------- Install supervisord
+      git jq libaio1 libgssapi-krb5-2 \
+      libfreetype6 fontconfig fonts-liberation fonts-noto-cjk \
+ ## ----------------------------- Install postgresql client
+ && source /opt/utils/script-setup-db-clients.sh && setup_postgresql_client \
+ ## ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
- # ----------------------------- Install caddy
+ ## ----------------------------- Install caddy
  && source /opt/utils/script-setup-net.sh && setup_caddy \
+ ## ----------------------------- Install dependencies and build
+ && source /opt/utils/script-setup.sh && setup_node_base 20 && source /etc/profile.d/path-*.sh \
+ && npm install -g yarn \
+ && source /opt/utils/script-setup-nocobase.sh \
+ && cd /opt && setup_nocobase_create_app \
+ && ls -alh \
  # Clean up and display components version information...
  && list_installed_packages && install__clean
