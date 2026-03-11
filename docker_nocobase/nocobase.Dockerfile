@@ -15,7 +15,7 @@ RUN set -eux \
  && git init && git remote add origin https://github.com/nocobase/nocobase \
  && git fetch && git checkout -t origin/main \
  # ----------------------------- Install dependencies and build
- && source /opt/utils/script-setup.sh && setup_node_base 20 && source /etc/profile\
+ && source /opt/utils/script-setup.sh && setup_node_base 20 && source /etc/profile.d/path-*.sh \
  && npm  install -g yarn \
  && yarn install --frozen-lockfile && yarn run build --not-dts \
  # ----------------------------- Install supervisord
