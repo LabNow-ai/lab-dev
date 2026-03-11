@@ -27,12 +27,12 @@ RUN set -eux \
  && ls -alh \
  # Clean up and display components version information...
  && find ./node_modules -type f \( -name "README.md" -o -name "License" \) -delete 2>/dev/null \
- && find ./node_modules \( \
-      -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "docs" -o -name "doc" \) \
-    \) -exec rm -rf {} + 2>/dev/null \
+ && find ./node_modules -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "docs" -o -name "doc" \) -exec rm -rf {} + 2>/dev/null \
  && list_installed_packages && install__clean
 
+LABEL maintainer="postmaster@labnow.ai"
 EXPOSE 13000
 WORKDIR /opt/nocobase
 VOLUME [ "/opt/nocobase/storage" ]
-ENTRYPOINT [ "/opt/nocobase/docker-entrypoint.sh" ]
+ENTRYPOINT ["/bin/bash"]
+CMD [ "/opt/nocobase/docker-entrypoint.sh" ]

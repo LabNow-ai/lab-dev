@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # run scripts in storage/scripts
 if [ -d "/opt/nocobase/storage/scripts" ]; then
   for f in /opt/nocobase/storage/scripts/*.sh; do
