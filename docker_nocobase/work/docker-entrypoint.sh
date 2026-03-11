@@ -9,4 +9,6 @@ if [ -d "/opt/nocobase/storage/scripts" ]; then
   done
 fi
 
-cd /opt/nocobase && yarn start --quickstart
+source /etc/profile.d/path-*.sh
+
+cd /opt/nocobase && yarn nocobase install --lang=${LOCALE:-"zh-CN"} && yarn start --quickstart
