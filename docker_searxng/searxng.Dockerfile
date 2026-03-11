@@ -5,6 +5,8 @@ ARG BASE_IMG="base"
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
+LABEL maintainer="postmaster@labnow.ai"
+
 COPY work /tmp/searxng
 
 RUN set -eux \
@@ -51,6 +53,6 @@ ENTRYPOINT ["tini", "-g", "--"]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
-WORKDIR /opt/searxng
 CMD ["/opt/searxng/start-supervisord.sh"]
 EXPOSE 8080 9001 8000
+WORKDIR /opt/searxng

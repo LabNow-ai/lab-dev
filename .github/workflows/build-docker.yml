@@ -33,7 +33,7 @@ jobs:
     name: 'app-clash'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && build_image app-clash latest docker_clash/clash.Dockerfile && push_image clash
 
@@ -42,7 +42,7 @@ jobs:
     name: 'casdoor'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && build_image casdoor latest docker_casdoor/casdoor.Dockerfile && push_image casdoor
 
@@ -51,7 +51,7 @@ jobs:
     name: 'keycloak'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && build_image keycloak latest docker_keycloak/keycloak.Dockerfile && push_image keycloak
 
@@ -60,7 +60,7 @@ jobs:
     name: 'dev-hub'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh
           build_image dev-hub latest docker_devbox/hub.Dockerfile \
@@ -73,7 +73,7 @@ jobs:
     name: 'openresty'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && build_image openresty latest docker_openresty/openresty.Dockerfile && push_image openresty
 
@@ -82,7 +82,7 @@ jobs:
     name: 'searxng'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && build_image searxng latest docker_searxng/searxng.Dockerfile && push_image searxng
 
@@ -91,7 +91,7 @@ jobs:
     name: 'storebox'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh
           build_image storebox latest docker_storebox/storebox.Dockerfile && push_image storebox
@@ -101,10 +101,20 @@ jobs:
     name: 'logent'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh
           build_image logent latest docker_logent/logent.Dockerfile && push_image logent
+
+  ## nocobase for low-code development platform
+  job-nocobase:
+    name: 'nocobase'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          source ./tool.sh
+          build_image nocobase latest docker_nocobase/nocobase.Dockerfile && push_image nocobase
 
 
   ## DevBox - base
@@ -112,7 +122,7 @@ jobs:
     name: 'developer,base-dev'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && free_diskspace
           build_image base-dev latest docker_devbox/dev.Dockerfile \
@@ -126,7 +136,7 @@ jobs:
     name: 'data-science-dev'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && free_diskspace
           build_image data-science-dev latest docker_devbox/dev.Dockerfile \
@@ -141,7 +151,7 @@ jobs:
     name: 'full-stack-dev'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && free_diskspace
           build_image full-stack-dev latest docker_devbox/dev.Dockerfile \
@@ -156,7 +166,7 @@ jobs:
     name: 'full-cuda,cuda-dev'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           source ./tool.sh && free_diskspace
           build_image cuda-dev latest docker_devbox/dev.Dockerfile \
@@ -168,10 +178,10 @@ jobs:
 
   ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    needs: ["job-cuda-dev", "job-data-science-dev", "job-full-stack-dev"]
+    needs: ["job-cuda-dev", "job-data-science-dev", "job-full-stack-dev", "job-base-dev", "job-nocobase", "job-logent", "job-storebox", "job-searxng", "job-openresty", "job-dev-hub", "docker_keycloak", "docker_casdoor", "docker_clash"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - env:
           AUTH_FILE_CONTENT: ${{ secrets.AUTH_FILE_CONTENT }}
           DOCKER_MIRROR_REGISTRY: ${{ vars.DOCKER_MIRROR_REGISTRY }}

@@ -5,6 +5,8 @@ ARG BASE_IMG="atom"
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
+LABEL maintainer="postmaster@labnow.ai"
+
 COPY work /opt/utils
 
 RUN set -eux \

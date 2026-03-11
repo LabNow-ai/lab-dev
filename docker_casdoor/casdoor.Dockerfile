@@ -28,11 +28,13 @@ RUN set -eux \
 
 LABEL maintainer="postmaster@labnow.ai"
 ENV RUNNING_IN_DOCKER=true
-WORKDIR /opt/casdoor
 # 8000=web, 389=ldap, 1812=radius
 EXPOSE 8000 389 1812
 ENTRYPOINT ["/bin/bash"]
 CMD ["/opt/casdoor/docker-entrypoint.sh"]
+WORKDIR /opt/casdoor
+# https://casdoor.org/zh/docs/provider/storage/localFileSystem/
+VOLUME [ "/opt/casdoor/files" ]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD ["curl", "--head", "-fsSk", "http://localhost:8000/health/ready"]
