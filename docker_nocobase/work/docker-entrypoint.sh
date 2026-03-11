@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # run scripts in storage/scripts
 if [ -d "/opt/nocobase/storage/scripts" ]; then
