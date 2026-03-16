@@ -20,6 +20,64 @@ setup_terraform() {
 }
 
 
+setup_terraform_providers() {
+  local mirror_dir="/opt/terraform-providers"
+  local plugin_cache_dir="/opt/terraform-plugin-cache"
+  local bootstrap_dir="/tmp/terraform-provider-bootstrap"
+
+  mkdir -p "${mirror_dir}" "${plugin_cache_dir}" "${bootstrap_dir}" /etc/terraform.d
+
+  cat >"${bootstrap_dir}/main.tf" <<'EOF'
+terraform {
+  required_providers {
+    coder = {
+      source  = "coder/coder"
+      version = ">= 2.5.0"
+    }
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = ">= 3.0.0"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = ">= 3.0.0"
+    }
+  }
+}
+EOF
+
+  echo "Installing terraform providers to mirror: ${mirror_dir}" \
+  && terraform -chdir="${bootstrap_dir}" init -backend=false \
+  && terraform -chdir="${bootstrap_dir}" providers mirror "${mirror_dir}" \
+  && cat >/etc/terraform.d/terraform.rc <<EOF
+plugin_cache_dir = "${plugin_cache_dir}"
+
+provider_installation {
+  filesystem_mirror {
+    path    = "${mirror_dir}"
+    include = [
+      "coder/coder",
+      "hashicorp/http",
+      "kreuzwerker/docker",
+    ]
+  }
+
+  direct {
+    exclude = [
+      "coder/coder",
+      "hashicorp/http",
+      "kreuzwerker/docker",
+    ]
+  }
+}
+EOF
+
+  ln -sf /etc/terraform.d/terraform.rc /root/.terraformrc \
+  && rm -rf "${bootstrap_dir}" \
+  && echo "@ Installed terraform providers mirror at ${mirror_dir}"
+}
+
+
 setup_coder() {
   ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/') \
   && [[ "$ARCH" =~ ^(amd64|arm64)$ ]] || {
