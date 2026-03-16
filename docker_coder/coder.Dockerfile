@@ -10,6 +10,7 @@ COPY work /opt/utils
 RUN set -eux \
  # ----------------------------- Install terraform
  && source /opt/utils/script-setup-coder.sh && setup_terraform \
+ && source /opt/utils/script-setup-coder.sh && setup_terraform_providers \
  # ----------------------------- Install coder
  && source /opt/utils/script-setup-coder.sh && setup_coder \
  # Clean up and display components version information...
