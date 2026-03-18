@@ -2,21 +2,21 @@ name: build-docker-images
 
 on:
   push:
-    branches: [ "main" ]
-    paths-ignore: [ "*.md" ]
+    branches: ["main"]
+    paths-ignore: ["*.md"]
 
   pull_request:
-    branches: [ "main" ]
-    paths-ignore: [ "*.md" ]
+    branches: ["main"]
+    paths-ignore: ["*.md"]
 
-  workflow_dispatch:  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  BUILDKIT_PROGRESS: "plain"  # Full logs for CI build.
+  BUILDKIT_PROGRESS: "plain" # Full logs for CI build.
   REGISTRY_SRC: ${{ vars.REGISTRY_SRC || 'docker.io' }} # For BASE_NAMESPACE of images: where to pull base images from, docker.io or other source registry URL.
   REGISTRY_DST: ${{ vars.REGISTRY_DST || 'docker.io' }} # For tags of built images: where to push images to, docker.io or other destination registry URL.
   # DOCKER_REGISTRY_USERNAME and DOCKER_REGISTRY_PASSWORD is required for docker image push, they should be set in CI secrets.
@@ -30,7 +30,7 @@ env:
 jobs:
   ## Clash
   docker_clash:
-    name: 'app-clash'
+    name: "app-clash"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -39,7 +39,7 @@ jobs:
 
   ## Casdoor
   docker_casdoor:
-    name: 'casdoor'
+    name: "casdoor"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -48,7 +48,7 @@ jobs:
 
   ## Keycloak
   docker_keycloak:
-    name: 'keycloak'
+    name: "keycloak"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -57,7 +57,7 @@ jobs:
 
   ## DevHub
   job-dev-hub:
-    name: 'dev-hub'
+    name: "dev-hub"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -70,7 +70,7 @@ jobs:
 
   ## OpenResty as gateway
   job-openresty:
-    name: 'openresty'
+    name: "openresty"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -79,7 +79,7 @@ jobs:
 
   ## SearchNGX for searching
   job-searxng:
-    name: 'searxng'
+    name: "searxng"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -88,7 +88,7 @@ jobs:
 
   ## StoreBox
   job-storebox:
-    name: 'storebox'
+    name: "storebox"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -98,7 +98,7 @@ jobs:
 
   ## lognet for log management
   job-logent:
-    name: 'logent'
+    name: "logent"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -108,7 +108,7 @@ jobs:
 
   ## nocobase for low-code development platform
   job-nocobase:
-    name: 'nocobase'
+    name: "nocobase"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -116,10 +116,19 @@ jobs:
           source ./tool.sh
           build_image nocobase latest docker_nocobase/nocobase.Dockerfile && push_image nocobase
 
+  ## OpenClaw
+  job-openclaw:
+    name: "openclaw"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          source ./tool.sh
+          build_image openclaw latest docker_openclaw/openclaw.Dockerfile && push_image openclaw
 
   ## DevBox - base
   job-base-dev:
-    name: 'developer,base-dev'
+    name: "developer,base-dev"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -133,7 +142,7 @@ jobs:
 
   ## DevBox - data science stack
   job-data-science-dev:
-    name: 'data-science-dev'
+    name: "data-science-dev"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -148,7 +157,7 @@ jobs:
 
   ## DevBox - full stack
   job-full-stack-dev:
-    name: 'full-stack-dev'
+    name: "full-stack-dev"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -163,7 +172,7 @@ jobs:
 
   ## DevBox - cuda
   job-cuda-dev:
-    name: 'full-cuda,cuda-dev'
+    name: "full-cuda,cuda-dev"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -175,10 +184,25 @@ jobs:
             --build-arg "ARG_PROFILE_VSCODE=base"
           alias_image cuda-dev latest full-cuda latest && push_image dev
 
-
   ## Sync all images in this build (listed by "names") to mirror registry.
   sync_images:
-    needs: ["job-cuda-dev", "job-data-science-dev", "job-full-stack-dev", "job-base-dev", "job-nocobase", "job-logent", "job-storebox", "job-searxng", "job-openresty", "job-dev-hub", "docker_keycloak", "docker_casdoor", "docker_clash"]
+    needs:
+      [
+        "job-cuda-dev",
+        "job-data-science-dev",
+        "job-full-stack-dev",
+        "job-base-dev",
+        "job-nocobase",
+        "job-openclaw",
+        "job-logent",
+        "job-storebox",
+        "job-searxng",
+        "job-openresty",
+        "job-dev-hub",
+        "docker_keycloak",
+        "docker_casdoor",
+        "docker_clash",
+      ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

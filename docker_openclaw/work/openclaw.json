@@ -1,0 +1,40 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "/home/node/.openclaw/workspace"
+    }
+  },
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "appId": "",
+      "appSecret": "",
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "requireMention": true,
+      "dmPolicy": "pairing",
+      "groupPolicy": "open",
+      "allowFrom": [],
+      "groupAllowFrom": []
+    }
+  },
+  "plugins": {
+    "allow": [
+      "openclaw-lark"
+    ],
+    "entries": {
+      "feishu": {
+        "enabled": false
+      },
+      "openclaw-lark": {
+        "enabled": true
+      }
+    }
+  },
+  "gateway": {
+    "controlUi": {
+      "dangerouslyAllowHostHeaderOriginFallback": true,
+      "dangerouslyDisableDeviceAuth": true
+    }
+  }
+}
