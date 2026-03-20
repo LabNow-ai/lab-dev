@@ -1,8 +1,4 @@
-FROM ghcr.io/openclaw/openclaw:latest
-
-ARG OPENCLAW_GIT_URL=https://gh-proxy.com/https://github.com/openclaw/openclaw.git
-ARG OPENCLAW_GIT_REF=main
-ARG NPM_REGISTRY=https://registry.npmmirror.com
+FROM node:22-bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -10,19 +6,17 @@ USER root
 
 WORKDIR /opt/openclaw
 
-RUN git clone --depth 1 --branch "${OPENCLAW_GIT_REF}" "${OPENCLAW_GIT_URL}" /opt/openclaw
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    bash \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable
-
-ENV NODE_ENV=development
-ENV NPM_CONFIG_PRODUCTION=false
-
-RUN pnpm config set registry "${NPM_REGISTRY}" \
-    && pnpm config set ignore-workspace-root-check true \
-    && NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile \
-    && pnpm build \
-    && pnpm ui:install \
-    && pnpm ui:build
+RUN curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm
 
 COPY work/openclaw.json /opt/openclaw/openclaw.template.json
 COPY work/bootstrap-openclaw.sh /usr/local/bin/bootstrap-openclaw.sh

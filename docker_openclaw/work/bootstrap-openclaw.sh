@@ -99,11 +99,11 @@ bootstrap() {
   if [ ! -d "${PLUGIN_DIR}" ]; then
     echo "[bootstrap] openclaw-lark not found, installing..."
     remove_uninstalled_plugin_refs
-    node openclaw.mjs plugins install @larksuite/openclaw-lark
+    openclaw plugins install @larksuite/openclaw-lark
     enable_feishu_plugin
     echo "[bootstrap] openclaw-lark installation completed."
   fi
 }
 
 bootstrap
-exec node openclaw.mjs "$@"
+exec openclaw "$@"
