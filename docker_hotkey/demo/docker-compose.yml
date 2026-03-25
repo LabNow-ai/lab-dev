@@ -1,0 +1,20 @@
+networks:
+  net-hotkey:
+
+services:
+  svc-hotkey:
+    container_name: svc-hotkey
+    image: docker.io/labnow/hotkey:latest
+    restart: unless-stopped
+    networks:
+      - net-hotkey
+    ports:
+      - "13000:13000"
+    environment:
+      - PORT=13000
+    # command: ["--headless"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
