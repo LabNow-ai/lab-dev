@@ -116,15 +116,15 @@ jobs:
           source ./tool.sh
           build_image nocobase latest docker_nocobase/nocobase.Dockerfile && push_image nocobase
 
-  ## hotkey for Portkey gateway
-  job-hotkey:
-    name: "hotkey"
+  ## portkey for Portkey gateway
+  job-portkey:
+    name: "portkey"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - run: |
           source ./tool.sh
-          build_image hotkey latest docker_hotkey/hotkey.Dockerfile && push_image hotkey
+          build_image portkey latest docker_portkey/portkey.Dockerfile && push_image portkey
 
   ## DevBox - base
   job-base-dev:
@@ -193,7 +193,7 @@ jobs:
         "job-full-stack-dev",
         "job-base-dev",
         "job-nocobase",
-        "job-hotkey",
+        "job-portkey",
         "job-logent",
         "job-storebox",
         "job-searxng",
