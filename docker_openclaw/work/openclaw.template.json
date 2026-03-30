@@ -1,7 +1,7 @@
 {
   "agents": {
     "defaults": {
-      "workspace": "/home/node/.openclaw/workspace"
+      "workspace": "/opt/openclaw/data/workspace"
     }
   },
   "channels": {

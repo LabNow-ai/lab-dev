@@ -1,23 +1,24 @@
 #!/bin/sh
 set -eu
 
-STATE_DIR="${OPENCLAW_STATE_DIR:-/home/node/.openclaw}"
-CONFIG_PATH="${STATE_DIR}/openclaw.json"
-TEMPLATE_PATH="${OPENCLAW_CONFIG_TEMPLATE:-/opt/openclaw/openclaw.template.json}"
-PLUGIN_DIR="${STATE_DIR}/extensions/openclaw-lark"
+DIR_STATE="${OPENCLAW_DIR_STATE:-/opt/openclaw/data}"
+DIR_PLUGIN="${DIR_STATE}/extensions/openclaw-lark"
+PATH_CONFIG="${DIR_STATE}/openclaw.json"
+PATH_TEMPLATE="${OPENCLAW_CONFIG_TEMPLATE:-/opt/openclaw/openclaw.template.json}"
+
 
 ensure_config_file() {
-  mkdir -p "${STATE_DIR}"
+  mkdir -p "${DIR_STATE}"
 
-  if [ ! -s "${CONFIG_PATH}" ]; then
-    if [ -f "${TEMPLATE_PATH}" ]; then
-      cp "${TEMPLATE_PATH}" "${CONFIG_PATH}"
+  if [ ! -s "${PATH_CONFIG}" ]; then
+    if [ -f "${PATH_TEMPLATE}" ]; then
+      cp "${PATH_TEMPLATE}" "${PATH_CONFIG}"
     else
-      cat >"${CONFIG_PATH}" <<'JSON'
+      cat >"${PATH_CONFIG}" <<'JSON'
 {
   "agents": {
     "defaults": {
-      "workspace": "/home/node/.openclaw/workspace"
+      "workspace": "/opt/openclaw/data/workspace"
     }
   },
   "gateway": {
@@ -35,7 +36,7 @@ JSON
 remove_uninstalled_plugin_refs() {
   node <<'NODE'
 const fs = require('fs');
-const p = process.env.CONFIG_PATH;
+const p = process.env.PATH_CONFIG;
 const raw = fs.readFileSync(p, 'utf8');
 const c = JSON.parse(raw);
 
@@ -61,7 +62,7 @@ NODE
 enable_feishu_plugin() {
   node <<'NODE'
 const fs = require('fs');
-const p = process.env.CONFIG_PATH;
+const p = process.env.PATH_CONFIG;
 const raw = fs.readFileSync(p, 'utf8');
 const c = JSON.parse(raw);
 
@@ -93,10 +94,10 @@ NODE
 }
 
 bootstrap() {
-  export CONFIG_PATH
+  export PATH_CONFIG
   ensure_config_file
 
-  if [ ! -d "${PLUGIN_DIR}" ]; then
+  if [ ! -d "${DIR_PLUGIN}" ]; then
     echo "[bootstrap] openclaw-lark not found, installing..."
     remove_uninstalled_plugin_refs
     openclaw plugins install @larksuite/openclaw-lark
