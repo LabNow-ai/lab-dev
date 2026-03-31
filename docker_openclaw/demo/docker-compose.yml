@@ -9,29 +9,12 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
-      - HOME=/home/node
-      - TERM=xterm-256color
-      - OPENCLAW_GATEWAY_BIND=${OPENCLAW_GATEWAY_BIND:-lan}
-      - OPENCLAW_GATEWAY_PORT=${OPENCLAW_GATEWAY_PORT:-18789}
-      - OPENCLAW_BRIDGE_PORT=${OPENCLAW_BRIDGE_PORT:-18790}
-      - XDG_CONFIG_HOME=/opt/openclaw/data
     volumes:
       - /data/openclaw:/opt/openclaw/data
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     init: true
-    command:
-      [
-        "sh",
-        "/usr/local/bin/start-openclaw.sh",
-        "gateway",
-        "--allow-unconfigured",
-        "--bind",
-        "${OPENCLAW_GATEWAY_BIND:-lan}",
-        "--port",
-        "${OPENCLAW_GATEWAY_PORT:-18789}"
-      ]
 
   openclaw-cli:
     container_name: svc-openclaw-cli
@@ -41,10 +24,7 @@ services:
     restart: "no"
     environment:
       - TZ=Asia/Shanghai
-      - HOME=/home/node
-      - TERM=xterm-256color
       - BROWSER=echo
-      - XDG_CONFIG_HOME=/opt/openclaw/data
     volumes:
       - /data/openclaw:/opt/openclaw/data
     stdin_open: true

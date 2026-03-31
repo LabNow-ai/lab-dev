@@ -5,6 +5,20 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+const DEFAULT_CONFIG = {
+  agents: {
+    defaults: {
+      workspace: '/opt/openclaw/data/workspace'
+    }
+  },
+  gateway: {
+    controlUi: {
+      dangerouslyAllowHostHeaderOriginFallback: true,
+      dangerouslyDisableDeviceAuth: true
+    }
+  }
+};
+
 function parseArgs(argv) {
   const args = { _: [] };
   for (let i = 0; i < argv.length; i += 1) {
@@ -44,6 +58,10 @@ function parseCommaList(value) {
     .filter(Boolean);
 }
 
+function pluginIdFromPackage(packageName) {
+  return packageName.split('/').pop();
+}
+
 function ensureConfigShape(config) {
   if (!config.plugins) config.plugins = {};
   if (!Array.isArray(config.plugins.allow)) config.plugins.allow = [];
@@ -59,31 +77,42 @@ function saveConfig(configPath, config) {
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 }
 
-function pluginDirectoryCandidates(homeClaw, pluginDirName, extensionsDir) {
-  const roots = new Set();
-  const normalizedHome = homeClaw && path.resolve(homeClaw);
-
-  if (extensionsDir) roots.add(path.resolve(extensionsDir));
-  if (normalizedHome) {
-    roots.add(path.join(normalizedHome, 'extensions'));
-    roots.add(path.join(normalizedHome, '.openclaw', 'extensions'));
+function ensureConfigFile(configPath, templatePath) {
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  if (fs.existsSync(configPath) && fs.statSync(configPath).size > 0) {
+    return;
   }
-  roots.add(path.join('/opt/openclaw', '.openclaw', 'extensions'));
 
-  return Array.from(roots).map((root) => path.join(root, pluginDirName));
+  if (templatePath && fs.existsSync(templatePath)) {
+    fs.copyFileSync(templatePath, configPath);
+    return;
+  }
+
+  saveConfig(configPath, DEFAULT_CONFIG);
 }
 
-function pluginDirectoryExists(homeClaw, pluginDirName, extensionsDir) {
-  const candidates = pluginDirectoryCandidates(homeClaw, pluginDirName, extensionsDir);
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return { exists: true, path: candidate };
-    }
+function mergeDefaultConfig(configPath) {
+  const config = loadConfig(configPath);
+
+  if (!config.agents) config.agents = {};
+  if (!config.agents.defaults) config.agents.defaults = {};
+  if (!config.agents.defaults.workspace) {
+    config.agents.defaults.workspace = DEFAULT_CONFIG.agents.defaults.workspace;
   }
-  return { exists: false, path: '' };
+
+  if (!config.gateway) config.gateway = {};
+  if (!config.gateway.controlUi) config.gateway.controlUi = {};
+  if (typeof config.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback !== 'boolean') {
+    config.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback = true;
+  }
+  if (typeof config.gateway.controlUi.dangerouslyDisableDeviceAuth !== 'boolean') {
+    config.gateway.controlUi.dangerouslyDisableDeviceAuth = true;
+  }
+
+  saveConfig(configPath, config);
 }
 
-function installOpenclawPlugin(packageName, env) {
+function runOpenclawInstall(packageName, env) {
   const result = spawnSync('openclaw', ['plugins', 'install', packageName], {
     encoding: 'utf8',
     env
@@ -93,12 +122,12 @@ function installOpenclawPlugin(packageName, env) {
   if (result.stderr) process.stderr.write(result.stderr);
 
   if (result.status === 0) {
-    return { installed: true, alreadyExists: false };
+    return { ok: true, alreadyExists: false };
   }
 
   const output = `${result.stdout || ''}\n${result.stderr || ''}`;
   if (output.includes('plugin already exists')) {
-    return { installed: false, alreadyExists: true };
+    return { ok: true, alreadyExists: true };
   }
 
   const err = new Error(`Command failed: openclaw plugins install ${packageName}`);
@@ -107,71 +136,177 @@ function installOpenclawPlugin(packageName, env) {
   throw err;
 }
 
-function applyPluginConfig(config, pluginId, disableEntries) {
+function safeRemove(targetPath) {
+  if (!fs.existsSync(targetPath)) return;
+  const stat = fs.lstatSync(targetPath);
+  if (stat.isDirectory() && !stat.isSymbolicLink()) {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+  } else {
+    fs.unlinkSync(targetPath);
+  }
+}
+
+function ensurePluginAtTarget(options) {
+  const { homeClaw, stateDir, extensionsDir, pluginDirName } = options;
+  const targetPath = path.join(extensionsDir, pluginDirName);
+
+  if (fs.existsSync(targetPath)) {
+    return targetPath;
+  }
+
+  const candidates = [
+    path.join(stateDir, '.openclaw', 'extensions', pluginDirName),
+    path.join(homeClaw, '.openclaw', 'extensions', pluginDirName),
+    path.join('/opt/openclaw', '.openclaw', 'extensions', pluginDirName),
+    path.join(homeClaw, 'extensions', pluginDirName)
+  ];
+
+  const actualPath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!actualPath) {
+    return '';
+  }
+
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+
+  try {
+    fs.renameSync(actualPath, targetPath);
+  } catch (err) {
+    if (!err || err.code !== 'EXDEV') throw err;
+    fs.cpSync(actualPath, targetPath, { recursive: true });
+    safeRemove(actualPath);
+  }
+
+  fs.mkdirSync(path.dirname(actualPath), { recursive: true });
+  safeRemove(actualPath);
+  fs.symlinkSync(targetPath, actualPath, 'dir');
+
+  return targetPath;
+}
+
+function applyInstallConfig(configPath, pluginId) {
+  const config = loadConfig(configPath);
   ensureConfigShape(config);
 
   if (!config.plugins.allow.includes(pluginId)) {
     config.plugins.allow.push(pluginId);
   }
-
   config.plugins.entries[pluginId] = { enabled: true };
 
-  for (const entryId of disableEntries) {
-    config.plugins.entries[entryId] = { enabled: false };
-  }
+  saveConfig(configPath, config);
 }
 
-function installPlugin(options) {
-  const {
-    homeClaw,
-    configPath,
-    packageName,
-    pluginId,
-    pluginDirName,
-    forceInstall,
-    stateDir,
-    extensionsDir,
-    disableEntries
-  } = options;
+function applyDisableConfig(configPath, entryIds) {
+  const config = loadConfig(configPath);
+  ensureConfigShape(config);
+
+  for (const entryId of entryIds) {
+    config.plugins.entries[entryId] = { enabled: false };
+  }
+
+  saveConfig(configPath, config);
+}
+
+function installCommand(args) {
+  const packageName = args.package;
+  const configPath = args.config;
+  const homeClaw = path.resolve(args.home || '/opt/openclaw');
+  const stateDir = path.resolve(args['state-dir'] || path.dirname(configPath || ''));
+  const extensionsDir = path.resolve(args['extensions-dir'] || path.join(stateDir, 'extensions'));
+  const pluginId = args.id || pluginIdFromPackage(packageName || '');
+  const pluginDirName = args['plugin-dir'] || pluginId;
+  const forceInstall = Boolean(args.force);
+  const templatePath = args.template || '';
+
+  if (!packageName || !configPath) {
+    throw new Error('Missing required args: --package, --config');
+  }
+
+  ensureConfigFile(configPath, templatePath);
+  mergeDefaultConfig(configPath);
 
   fs.mkdirSync(stateDir, { recursive: true });
   fs.mkdirSync(extensionsDir, { recursive: true });
 
+  const targetPath = path.join(extensionsDir, pluginDirName);
   const installEnv = {
     ...process.env,
     OPENCLAW_DIR_STATE: stateDir,
     OPENCLAW_DIR_EXTENSIONS: extensionsDir,
-    XDG_CONFIG_HOME: stateDir
+    XDG_CONFIG_HOME: stateDir,
+    OPENCLAW_EXTENSIONS_DIR: extensionsDir
   };
 
-  const existence = pluginDirectoryExists(homeClaw, pluginDirName, extensionsDir);
-  const needInstall = forceInstall || !existence.exists;
-
-  if (!needInstall) {
-    console.log(`[plugin-installer] ${pluginId} already exists at ${existence.path}, skip install.`);
-  } else {
+  if (forceInstall || !fs.existsSync(targetPath)) {
     console.log(`[plugin-installer] Installing ${packageName} ...`);
-    const installResult = installOpenclawPlugin(packageName, installEnv);
-    if (installResult.alreadyExists) {
+    const result = runOpenclawInstall(packageName, installEnv);
+    if (result.alreadyExists) {
       console.log(`[plugin-installer] ${pluginId} already exists, treat as idempotent success.`);
     }
+  } else {
+    console.log(`[plugin-installer] ${pluginId} already exists at ${targetPath}, skip install.`);
   }
 
-  const updated = loadConfig(configPath);
-  applyPluginConfig(updated, pluginId, disableEntries);
-  saveConfig(configPath, updated);
-
-  const targetPluginPath = path.join(extensionsDir, pluginDirName);
-  if (!fs.existsSync(targetPluginPath)) {
-    const actual = pluginDirectoryExists(homeClaw, pluginDirName, extensionsDir);
-    console.warn(`[plugin-installer] WARN: expected plugin under ${targetPluginPath}, actual: ${actual.path || 'not found'}`);
+  const finalPath = ensurePluginAtTarget({ homeClaw, stateDir, extensionsDir, pluginDirName });
+  if (!finalPath) {
+    console.warn(`[plugin-installer] WARN: unable to locate installed plugin ${pluginId}.`);
+  } else {
+    console.log(`[plugin-installer] plugin path: ${finalPath}`);
   }
 
-  console.log(`[plugin-installer] ${packageName} installed successfully.`);
+  applyInstallConfig(configPath, pluginId);
+  console.log(`[plugin-installer] ${packageName} install flow completed.`);
+}
+
+function disableCommand(args) {
+  const configPath = args.config;
+  const entryIds = parseCommaList(args.entry || args.entries);
+
+  if (!configPath || entryIds.length === 0) {
+    throw new Error('Missing required args: --config, --entry <id[,id2]>');
+  }
+
+  ensureConfigFile(configPath, args.template || '');
+  mergeDefaultConfig(configPath);
+  applyDisableConfig(configPath, entryIds);
+  console.log(`[plugin-installer] disabled entries: ${entryIds.join(', ')}`);
+}
+
+function initConfigCommand(args) {
+  const configPath = args.config;
+  if (!configPath) {
+    throw new Error('Missing required args: --config');
+  }
+
+  ensureConfigFile(configPath, args.template || '');
+  mergeDefaultConfig(configPath);
+  console.log(`[plugin-installer] config ready: ${configPath}`);
 }
 
 function printHelp() {
-  console.log(`Usage:\n  node openclaw-plugin-installer.js install --package <pkg> --id <plugin-id> [options]\n\nOptions:\n  --home <path>              OpenClaw home path (default: /opt/openclaw)\n  --config <path>            OpenClaw config path (required)\n  --state-dir <path>         OpenClaw state dir (default: dirname(--config))\n  --extensions-dir <path>    Plugin install dir (default: <state-dir>/extensions)\n  --plugin-dir <name>        Plugin directory name (default: --id value)\n  --disable-entry <ids>      Comma separated plugin entry ids to disable\n  --force                    Force install even if plugin dir exists\n`);
+  console.log(`Usage:
+  node openclaw-plugin-installer.js <command> [options]
+
+Commands:
+  init-config   Ensure config file exists and apply default base settings
+  install       Install plugin package and enable corresponding plugin entry
+  disable       Disable plugin entries in config
+
+Common options:
+  --config <path>            OpenClaw config path
+  --template <path>          Config template path (optional)
+
+Install options:
+  --package <pkg>            NPM package, e.g. @larksuite/openclaw-lark
+  --id <plugin-id>           Optional plugin id (default: package basename)
+  --home <path>              OpenClaw home (default: /opt/openclaw)
+  --state-dir <path>         State dir (default: dirname(--config))
+  --extensions-dir <path>    Extensions dir (default: <state-dir>/extensions)
+  --plugin-dir <name>        Plugin directory name (default: plugin id)
+  --force                    Force install even if target plugin dir exists
+
+Disable options:
+  --entry <id[,id2]>         Comma separated plugin entry ids to disable
+`);
 }
 
 function main() {
@@ -183,39 +318,30 @@ function main() {
     process.exit(command ? 0 : 1);
   }
 
-  if (command !== 'install') {
-    console.error(`[plugin-installer] Unsupported command: ${command}`);
-    printHelp();
-    process.exit(1);
+  if (command === 'init-config') {
+    initConfigCommand(args);
+    return;
   }
 
-  const packageName = args.package;
-  const pluginId = args.id;
-  const configPath = args.config;
-  const homeClaw = args.home || '/opt/openclaw';
-  const stateDir = path.resolve(args['state-dir'] || path.dirname(configPath || ''));
-  const extensionsDir = path.resolve(args['extensions-dir'] || path.join(stateDir, 'extensions'));
-  const pluginDirName = args['plugin-dir'] || pluginId;
-  const forceInstall = Boolean(args.force);
-  const disableEntries = parseCommaList(args['disable-entry']);
-
-  if (!packageName || !pluginId || !configPath) {
-    console.error('[plugin-installer] Missing required args: --package, --id, --config');
-    printHelp();
-    process.exit(1);
+  if (command === 'install') {
+    installCommand(args);
+    return;
   }
 
-  installPlugin({
-    homeClaw,
-    configPath,
-    packageName,
-    pluginId,
-    pluginDirName,
-    forceInstall,
-    stateDir,
-    extensionsDir,
-    disableEntries
-  });
+  if (command === 'disable') {
+    disableCommand(args);
+    return;
+  }
+
+  throw new Error(`Unsupported command: ${command}`);
 }
 
-main();
+try {
+  main();
+} catch (err) {
+  console.error(`[plugin-installer] ${err.message}`);
+  if (err.output) {
+    console.error(err.output);
+  }
+  process.exit(1);
+}
