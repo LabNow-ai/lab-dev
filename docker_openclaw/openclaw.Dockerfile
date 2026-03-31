@@ -7,7 +7,8 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
-ENV PNPM_STORE_PATH=/opt/node/pnpm-store
+ENV PNPM_STORE_DIR=/opt/node/pnpm-store
+ENV PNPM_NODE_LINKER=hoisted
 ENV PATH="${PNPM_HOME}:${PATH}"
 
 COPY work /opt/openclaw/
@@ -26,7 +27,6 @@ RUN set -eux && source /opt/utils/script-setup.sh \
 
 ENV HOME=/opt/openclaw/
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
-ENV OPENCLAW_HIDE_BANNER=1
 WORKDIR /opt/openclaw
 VOLUME ["/opt/openclaw/data"]
 EXPOSE 18789 18790

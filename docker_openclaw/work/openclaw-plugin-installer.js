@@ -182,8 +182,8 @@ function ensurePluginAtTarget(options) {
   }
 
   const candidates = [
-    path.join(homeClaw, 'extensions', pluginDirName),
     path.join(stateDir, 'extensions', pluginDirName),
+    path.join(homeClaw, 'extensions', pluginDirName),
   ];
 
   const actualPath = candidates.find((candidate) => fs.existsSync(candidate));
@@ -254,10 +254,8 @@ function installCommand(args) {
   const targetPath = path.join(extensionsDir, pluginDirName);
   const installEnv = {
     ...process.env,
-    OPENCLAW_DIR_STATE: stateDir,
-    OPENCLAW_DIR_EXTENSIONS: extensionsDir,
     XDG_CONFIG_HOME: stateDir,
-    OPENCLAW_EXTENSIONS_DIR: extensionsDir
+    OPENCLAW_DIR_STATE: stateDir,
   };
 
   if (forceInstall || !fs.existsSync(targetPath)) {

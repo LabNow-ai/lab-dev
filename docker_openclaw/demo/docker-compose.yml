@@ -29,7 +29,7 @@ services:
       - BROWSER=echo
     volumes:
       - /data/openclaw:/opt/openclaw/data
+    init: true
     stdin_open: true
     tty: true
-    init: true
     entrypoint: ["node", "openclaw.mjs"]
