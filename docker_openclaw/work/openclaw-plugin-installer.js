@@ -26,17 +26,6 @@ function buildDefaultConfig() {
         groupAllowFrom: []
       }
     },
-    plugins: {
-      allow: ['openclaw-lark'],
-      entries: {
-        feishu: {
-          enabled: false
-        },
-        'openclaw-lark': {
-          enabled: true
-        }
-      }
-    },
     gateway: {
       controlUi: {
         dangerouslyAllowHostHeaderOriginFallback: true,
@@ -167,38 +156,43 @@ function safeRemove(targetPath) {
   }
 }
 
-function ensureAliasLink(aliasPath, targetPath) {
-  if (!aliasPath || path.resolve(aliasPath) === path.resolve(targetPath)) return;
-  fs.mkdirSync(path.dirname(aliasPath), { recursive: true });
-  safeRemove(aliasPath);
-  fs.symlinkSync(targetPath, aliasPath, 'dir');
+function isSelfReferencingSymlink(targetPath) {
+  try {
+    const stat = fs.lstatSync(targetPath);
+    if (!stat.isSymbolicLink()) return false;
+    const linkValue = fs.readlinkSync(targetPath);
+    const resolved = path.resolve(path.dirname(targetPath), linkValue);
+    return resolved === path.resolve(targetPath);
+  } catch (_err) {
+    return false;
+  }
 }
 
 function ensurePluginAtTarget(options) {
   const { homeClaw, stateDir, extensionsDir, pluginDirName } = options;
   const targetPath = path.join(extensionsDir, pluginDirName);
-  const aliasPaths = [
-    path.join(homeClaw, '.openclaw', 'extensions', pluginDirName),
-    path.join('/opt/openclaw', '.openclaw', 'extensions', pluginDirName)
-  ];
+  const resolvedTargetPath = path.resolve(targetPath);
+
+  if (isSelfReferencingSymlink(targetPath)) {
+    safeRemove(targetPath);
+  }
 
   if (fs.existsSync(targetPath)) {
-    for (const aliasPath of aliasPaths) {
-      ensureAliasLink(aliasPath, targetPath);
-    }
     return targetPath;
   }
 
   const candidates = [
-    path.join(stateDir, '.openclaw', 'extensions', pluginDirName),
-    path.join(homeClaw, '.openclaw', 'extensions', pluginDirName),
-    path.join('/opt/openclaw', '.openclaw', 'extensions', pluginDirName),
-    path.join(homeClaw, 'extensions', pluginDirName)
+    path.join(homeClaw, 'extensions', pluginDirName),
+    path.join(stateDir, 'extensions', pluginDirName),
   ];
 
   const actualPath = candidates.find((candidate) => fs.existsSync(candidate));
   if (!actualPath) {
     return '';
+  }
+  const resolvedActualPath = path.resolve(actualPath);
+  if (resolvedActualPath === resolvedTargetPath) {
+    return targetPath;
   }
 
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -209,13 +203,6 @@ function ensurePluginAtTarget(options) {
     if (!err || err.code !== 'EXDEV') throw err;
     fs.cpSync(actualPath, targetPath, { recursive: true });
     safeRemove(actualPath);
-  }
-
-  fs.mkdirSync(path.dirname(actualPath), { recursive: true });
-  safeRemove(actualPath);
-  fs.symlinkSync(targetPath, actualPath, 'dir');
-  for (const aliasPath of aliasPaths) {
-    ensureAliasLink(aliasPath, targetPath);
   }
 
   return targetPath;
