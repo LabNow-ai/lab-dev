@@ -7,7 +7,8 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
-ENV PNPM_STORE_DIR=/opt/node/pnpm-store
+ENV PNPM_STORE_PATH=/opt/node/pnpm-store
+ENV PATH="${PNPM_HOME}:${PATH}"
 
 COPY work /opt/openclaw/
 
@@ -17,9 +18,9 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 && source /etc/profile.d/path-pnpm.sh \
  && export PNPM_HOME=/opt/node/pnpm \
- && export PNPM_STORE_DIR=/opt/node/pnpm-store \
+ && export PNPM_STORE_PATH=/opt/node/pnpm-store \
  && export PATH="${PNPM_HOME}:${PATH}" \
- && mkdir -p ${PNPM_HOME} ${PNPM_STORE_DIR} \
+ && mkdir -pv ${PNPM_HOME} ${PNPM_STORE_PATH} \
  && pnpm install -g openclaw@latest \
  && openclaw --version \
  ## Clean up and display components version information...
