@@ -1,14 +1,15 @@
 #!/bin/sh
 set -eu
 
-DIR_STATE="${OPENCLAW_DIR_STATE:-/opt/openclaw/data}"
-DIR_PLUGIN="${DIR_STATE}/extensions/openclaw-lark"
+HOME_CLAW=${HOME:-/opt/openclaw}
+DIR_STATE="${OPENCLAW_DIR_STATE:-$HOME_CLAW/data}"
+DIR_PLUGIN="${HOME_CLAW}/extensions/"
 PATH_CONFIG="${DIR_STATE}/openclaw.json"
-PATH_TEMPLATE="${OPENCLAW_CONFIG_TEMPLATE:-/opt/openclaw/openclaw.template.json}"
+PATH_TEMPLATE="${OPENCLAW_CONFIG_TEMPLATE:-$HOME_CLAW/openclaw.template.json}"
 
 
 ensure_config_file() {
-  mkdir -p "${DIR_STATE}"
+  mkdir -pv "${DIR_STATE}"
 
   if [ ! -s "${PATH_CONFIG}" ]; then
     if [ -f "${PATH_TEMPLATE}" ]; then
