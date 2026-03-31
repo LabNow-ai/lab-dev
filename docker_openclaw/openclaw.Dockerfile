@@ -20,7 +20,8 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 \
- && pnpm install -g openclaw@latest \
+ && pnpm config set enable-pre-post-scripts true \
+ && pnpm install -g openclaw@latest --ignore-scripts=false \
  && openclaw --version \
  ## Clean up and display components version information...
  && list_installed_packages && install__clean
