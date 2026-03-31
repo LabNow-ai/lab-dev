@@ -9,7 +9,9 @@ ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
 ENV PNPM_STORE_DIR=/opt/node/pnpm-store
 ENV HOME=/opt/openclaw/
-ENV XDG_CONFIG_HOME=/opt/openclaw/data/.config
+ENV XDG_CONFIG_HOME=/opt/openclaw/data
+
+ENV OPENCLAW_HIDE_BANNER=1
 
 COPY work /opt/openclaw/
 
@@ -25,6 +27,6 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  ## Clean up and display components version information...
  && list_installed_packages && install__clean
 
-
+VOLUME ["/opt/openclaw/data"]
 EXPOSE 18798
 CMD ["sh", "start-openclaw.sh", "gateway", "--allow-unconfigured", "--bind", "lan", "--port", "18789"]

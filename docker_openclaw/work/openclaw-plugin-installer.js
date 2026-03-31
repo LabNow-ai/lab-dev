@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -36,6 +36,14 @@ function parseArgs(argv) {
   return args;
 }
 
+function parseCommaList(value) {
+  if (!value || value === true) return [];
+  return String(value)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function ensureConfigShape(config) {
   if (!config.plugins) config.plugins = {};
   if (!Array.isArray(config.plugins.allow)) config.plugins.allow = [];
@@ -51,54 +59,66 @@ function saveConfig(configPath, config) {
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 }
 
-function pluginDirectoryExists(homeClaw, pluginDirName) {
-  const pluginPath = path.join(homeClaw, 'extensions', pluginDirName);
-  return fs.existsSync(pluginPath);
+function pluginDirectoryCandidates(homeClaw, pluginDirName, extensionsDir) {
+  const roots = new Set();
+  const normalizedHome = homeClaw && path.resolve(homeClaw);
+
+  if (extensionsDir) roots.add(path.resolve(extensionsDir));
+  if (normalizedHome) {
+    roots.add(path.join(normalizedHome, 'extensions'));
+    roots.add(path.join(normalizedHome, '.openclaw', 'extensions'));
+  }
+  roots.add(path.join('/opt/openclaw', '.openclaw', 'extensions'));
+
+  return Array.from(roots).map((root) => path.join(root, pluginDirName));
 }
 
-function installOpenclawPlugin(packageName) {
-  execFileSync('openclaw', ['plugins', 'install', packageName], {
-    stdio: 'inherit'
+function pluginDirectoryExists(homeClaw, pluginDirName, extensionsDir) {
+  const candidates = pluginDirectoryCandidates(homeClaw, pluginDirName, extensionsDir);
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return { exists: true, path: candidate };
+    }
+  }
+  return { exists: false, path: '' };
+}
+
+function installOpenclawPlugin(packageName, env) {
+  const result = spawnSync('openclaw', ['plugins', 'install', packageName], {
+    encoding: 'utf8',
+    env
   });
+
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+
+  if (result.status === 0) {
+    return { installed: true, alreadyExists: false };
+  }
+
+  const output = `${result.stdout || ''}\n${result.stderr || ''}`;
+  if (output.includes('plugin already exists')) {
+    return { installed: false, alreadyExists: true };
+  }
+
+  const err = new Error(`Command failed: openclaw plugins install ${packageName}`);
+  err.status = result.status;
+  err.output = output;
+  throw err;
 }
 
-function cleanupFeishuLarkRefs(config) {
-  ensureConfigShape(config);
-  config.plugins.allow = config.plugins.allow.filter((id) => id !== 'openclaw-lark');
-  delete config.plugins.entries['openclaw-lark'];
-
-  if (!config.plugins.entries.feishu) {
-    config.plugins.entries.feishu = { enabled: false };
-  } else {
-    config.plugins.entries.feishu.enabled = false;
-  }
-}
-
-function applyFeishuLarkConfig(config) {
-  if (!config.channels) config.channels = {};
-  if (!config.channels.feishu) {
-    config.channels.feishu = {
-      enabled: true,
-      appId: '',
-      appSecret: '',
-      domain: 'feishu',
-      connectionMode: 'websocket',
-      requireMention: true,
-      dmPolicy: 'pairing',
-      groupPolicy: 'open',
-      allowFrom: [],
-      groupAllowFrom: []
-    };
-  }
-
+function applyPluginConfig(config, pluginId, disableEntries) {
   ensureConfigShape(config);
 
-  if (!config.plugins.allow.includes('openclaw-lark')) {
-    config.plugins.allow.push('openclaw-lark');
+  if (!config.plugins.allow.includes(pluginId)) {
+    config.plugins.allow.push(pluginId);
   }
 
-  config.plugins.entries.feishu = { enabled: false };
-  config.plugins.entries['openclaw-lark'] = { enabled: true };
+  config.plugins.entries[pluginId] = { enabled: true };
+
+  for (const entryId of disableEntries) {
+    config.plugins.entries[entryId] = { enabled: false };
+  }
 }
 
 function installPlugin(options) {
@@ -109,36 +129,49 @@ function installPlugin(options) {
     pluginId,
     pluginDirName,
     forceInstall,
-    profile
+    stateDir,
+    extensionsDir,
+    disableEntries
   } = options;
 
-  const exists = pluginDirectoryExists(homeClaw, pluginDirName);
-  if (exists && !forceInstall) {
-    console.log(`[plugin-installer] ${pluginId} already exists at extensions/${pluginDirName}, skip install.`);
-    return;
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.mkdirSync(extensionsDir, { recursive: true });
+
+  const installEnv = {
+    ...process.env,
+    OPENCLAW_DIR_STATE: stateDir,
+    OPENCLAW_DIR_EXTENSIONS: extensionsDir,
+    XDG_CONFIG_HOME: stateDir
+  };
+
+  const existence = pluginDirectoryExists(homeClaw, pluginDirName, extensionsDir);
+  const needInstall = forceInstall || !existence.exists;
+
+  if (!needInstall) {
+    console.log(`[plugin-installer] ${pluginId} already exists at ${existence.path}, skip install.`);
+  } else {
+    console.log(`[plugin-installer] Installing ${packageName} ...`);
+    const installResult = installOpenclawPlugin(packageName, installEnv);
+    if (installResult.alreadyExists) {
+      console.log(`[plugin-installer] ${pluginId} already exists, treat as idempotent success.`);
+    }
   }
-
-  const config = loadConfig(configPath);
-
-  if (profile === 'feishu-lark') {
-    cleanupFeishuLarkRefs(config);
-    saveConfig(configPath, config);
-  }
-
-  console.log(`[plugin-installer] Installing ${packageName} ...`);
-  installOpenclawPlugin(packageName);
 
   const updated = loadConfig(configPath);
-  if (profile === 'feishu-lark') {
-    applyFeishuLarkConfig(updated);
-  }
+  applyPluginConfig(updated, pluginId, disableEntries);
   saveConfig(configPath, updated);
+
+  const targetPluginPath = path.join(extensionsDir, pluginDirName);
+  if (!fs.existsSync(targetPluginPath)) {
+    const actual = pluginDirectoryExists(homeClaw, pluginDirName, extensionsDir);
+    console.warn(`[plugin-installer] WARN: expected plugin under ${targetPluginPath}, actual: ${actual.path || 'not found'}`);
+  }
 
   console.log(`[plugin-installer] ${packageName} installed successfully.`);
 }
 
 function printHelp() {
-  console.log(`Usage:\n  node openclaw-plugin-installer.js install --package <pkg> --id <plugin-id> [options]\n\nOptions:\n  --home <path>           OpenClaw home path (default: /opt/openclaw)\n  --config <path>         OpenClaw config path (required)\n  --plugin-dir <name>     Plugin directory name under extensions/ (default: --id value)\n  --profile <name>        Optional profile (supported: feishu-lark)\n  --force                 Force install even if plugin dir exists\n`);
+  console.log(`Usage:\n  node openclaw-plugin-installer.js install --package <pkg> --id <plugin-id> [options]\n\nOptions:\n  --home <path>              OpenClaw home path (default: /opt/openclaw)\n  --config <path>            OpenClaw config path (required)\n  --state-dir <path>         OpenClaw state dir (default: dirname(--config))\n  --extensions-dir <path>    Plugin install dir (default: <state-dir>/extensions)\n  --plugin-dir <name>        Plugin directory name (default: --id value)\n  --disable-entry <ids>      Comma separated plugin entry ids to disable\n  --force                    Force install even if plugin dir exists\n`);
 }
 
 function main() {
@@ -160,9 +193,11 @@ function main() {
   const pluginId = args.id;
   const configPath = args.config;
   const homeClaw = args.home || '/opt/openclaw';
+  const stateDir = path.resolve(args['state-dir'] || path.dirname(configPath || ''));
+  const extensionsDir = path.resolve(args['extensions-dir'] || path.join(stateDir, 'extensions'));
   const pluginDirName = args['plugin-dir'] || pluginId;
   const forceInstall = Boolean(args.force);
-  const profile = args.profile || '';
+  const disableEntries = parseCommaList(args['disable-entry']);
 
   if (!packageName || !pluginId || !configPath) {
     console.error('[plugin-installer] Missing required args: --package, --id, --config');
@@ -177,7 +212,9 @@ function main() {
     pluginId,
     pluginDirName,
     forceInstall,
-    profile
+    stateDir,
+    extensionsDir,
+    disableEntries
   });
 }
 
