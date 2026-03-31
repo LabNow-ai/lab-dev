@@ -14,13 +14,11 @@ COPY work /opt/openclaw/
 
 RUN set -eux && source /opt/utils/script-setup.sh \
  && chmod +x  /opt/openclaw/start-openclaw.sh && ln -sf /opt/openclaw/start-openclaw.sh /usr/local/bin/ \
+ && mkdir -pv /opt/openclaw/data \
+ && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
- && setup_node_pnpm 10 && source /etc/profile.d/path-pnpm.sh \
- && export PNPM_HOME=/opt/node/pnpm \
- && export PNPM_STORE_PATH=/opt/node/pnpm-store \
- && export PATH="${PNPM_HOME}:${PATH}" \
- && mkdir -pv ${PNPM_HOME} ${PNPM_STORE_PATH} \
+ && setup_node_pnpm 10 \
  && pnpm install -g openclaw@latest \
  && openclaw --version \
  ## Clean up and display components version information...

@@ -9,6 +9,7 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
+      - PROFILE_LOCALIZE=aliyun-pub
     volumes:
       - /data/openclaw:/opt/openclaw/data
     ports:
@@ -24,6 +25,7 @@ services:
     restart: "no"
     environment:
       - TZ=Asia/Shanghai
+      - PROFILE_LOCALIZE=aliyun-pub
       - BROWSER=echo
     volumes:
       - /data/openclaw:/opt/openclaw/data

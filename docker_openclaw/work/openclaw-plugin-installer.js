@@ -5,19 +5,46 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const DEFAULT_CONFIG = {
-  agents: {
-    defaults: {
-      workspace: '/opt/openclaw/data/workspace'
+function buildDefaultConfig() {
+  return {
+    agents: {
+      defaults: {
+        workspace: '/opt/openclaw/data/workspace'
+      }
+    },
+    channels: {
+      feishu: {
+        enabled: true,
+        appId: '',
+        appSecret: '',
+        domain: 'feishu',
+        connectionMode: 'websocket',
+        requireMention: true,
+        dmPolicy: 'pairing',
+        groupPolicy: 'open',
+        allowFrom: [],
+        groupAllowFrom: []
+      }
+    },
+    plugins: {
+      allow: ['openclaw-lark'],
+      entries: {
+        feishu: {
+          enabled: false
+        },
+        'openclaw-lark': {
+          enabled: true
+        }
+      }
+    },
+    gateway: {
+      controlUi: {
+        dangerouslyAllowHostHeaderOriginFallback: true,
+        dangerouslyDisableDeviceAuth: true
+      }
     }
-  },
-  gateway: {
-    controlUi: {
-      dangerouslyAllowHostHeaderOriginFallback: true,
-      dangerouslyDisableDeviceAuth: true
-    }
-  }
-};
+  };
+}
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -77,18 +104,12 @@ function saveConfig(configPath, config) {
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 }
 
-function ensureConfigFile(configPath, templatePath) {
+function ensureConfigFile(configPath) {
   fs.mkdirSync(path.dirname(configPath), { recursive: true });
   if (fs.existsSync(configPath) && fs.statSync(configPath).size > 0) {
     return;
   }
-
-  if (templatePath && fs.existsSync(templatePath)) {
-    fs.copyFileSync(templatePath, configPath);
-    return;
-  }
-
-  saveConfig(configPath, DEFAULT_CONFIG);
+  saveConfig(configPath, buildDefaultConfig());
 }
 
 function mergeDefaultConfig(configPath) {
@@ -97,7 +118,7 @@ function mergeDefaultConfig(configPath) {
   if (!config.agents) config.agents = {};
   if (!config.agents.defaults) config.agents.defaults = {};
   if (!config.agents.defaults.workspace) {
-    config.agents.defaults.workspace = DEFAULT_CONFIG.agents.defaults.workspace;
+    config.agents.defaults.workspace = '/opt/openclaw/data/workspace';
   }
 
   if (!config.gateway) config.gateway = {};
@@ -146,11 +167,25 @@ function safeRemove(targetPath) {
   }
 }
 
+function ensureAliasLink(aliasPath, targetPath) {
+  if (!aliasPath || path.resolve(aliasPath) === path.resolve(targetPath)) return;
+  fs.mkdirSync(path.dirname(aliasPath), { recursive: true });
+  safeRemove(aliasPath);
+  fs.symlinkSync(targetPath, aliasPath, 'dir');
+}
+
 function ensurePluginAtTarget(options) {
   const { homeClaw, stateDir, extensionsDir, pluginDirName } = options;
   const targetPath = path.join(extensionsDir, pluginDirName);
+  const aliasPaths = [
+    path.join(homeClaw, '.openclaw', 'extensions', pluginDirName),
+    path.join('/opt/openclaw', '.openclaw', 'extensions', pluginDirName)
+  ];
 
   if (fs.existsSync(targetPath)) {
+    for (const aliasPath of aliasPaths) {
+      ensureAliasLink(aliasPath, targetPath);
+    }
     return targetPath;
   }
 
@@ -179,6 +214,9 @@ function ensurePluginAtTarget(options) {
   fs.mkdirSync(path.dirname(actualPath), { recursive: true });
   safeRemove(actualPath);
   fs.symlinkSync(targetPath, actualPath, 'dir');
+  for (const aliasPath of aliasPaths) {
+    ensureAliasLink(aliasPath, targetPath);
+  }
 
   return targetPath;
 }
@@ -215,13 +253,12 @@ function installCommand(args) {
   const pluginId = args.id || pluginIdFromPackage(packageName || '');
   const pluginDirName = args['plugin-dir'] || pluginId;
   const forceInstall = Boolean(args.force);
-  const templatePath = args.template || '';
 
   if (!packageName || !configPath) {
     throw new Error('Missing required args: --package, --config');
   }
 
-  ensureConfigFile(configPath, templatePath);
+  ensureConfigFile(configPath);
   mergeDefaultConfig(configPath);
 
   fs.mkdirSync(stateDir, { recursive: true });
@@ -265,7 +302,7 @@ function disableCommand(args) {
     throw new Error('Missing required args: --config, --entry <id[,id2]>');
   }
 
-  ensureConfigFile(configPath, args.template || '');
+  ensureConfigFile(configPath);
   mergeDefaultConfig(configPath);
   applyDisableConfig(configPath, entryIds);
   console.log(`[plugin-installer] disabled entries: ${entryIds.join(', ')}`);
@@ -277,7 +314,7 @@ function initConfigCommand(args) {
     throw new Error('Missing required args: --config');
   }
 
-  ensureConfigFile(configPath, args.template || '');
+  ensureConfigFile(configPath);
   mergeDefaultConfig(configPath);
   console.log(`[plugin-installer] config ready: ${configPath}`);
 }
@@ -293,7 +330,6 @@ Commands:
 
 Common options:
   --config <path>            OpenClaw config path
-  --template <path>          Config template path (optional)
 
 Install options:
   --package <pkg>            NPM package, e.g. @larksuite/openclaw-lark
