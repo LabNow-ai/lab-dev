@@ -25,7 +25,7 @@ RUN set -eux \
  && mv /opt/utils/docker-entrypoint.sh /opt/nocobase/ \
  && chmod +x /opt/nocobase/*.sh \
  && ls -alh \
- # Clean up and display components version information...
+ ## Clean up and display components version information...
  && find ./node_modules -type f \( -name "README.md" -o -name "License" \) -delete 2>/dev/null \
  && find ./node_modules -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "docs" -o -name "doc" \) -exec rm -rf {} + 2>/dev/null \
  && list_installed_packages && install__clean
