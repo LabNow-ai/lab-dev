@@ -21,7 +21,10 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 && source /etc/profile.d/path-pnpm.sh \
  && pnpm install -g openclaw@latest \
- && openclaw --version
+ && openclaw --version \
+ ## Clean up and display components version information...
+ && list_installed_packages && install__clean
 
 
+EXPOSE 18798
 CMD ["sh", "start-openclaw.sh", "gateway", "--allow-unconfigured", "--bind", "lan", "--port", "18789"]

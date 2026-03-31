@@ -25,11 +25,11 @@ RUN set -eux \
  && pip install --use-pep517 --no-build-isolation -e . \
  && mv /tmp/searxng/* /opt/searxng && ln -sf /opt/searxng/etc /etc/searxng \
  && ln -sf /opt/searxng /usr/local/ \
- # ----------------------------- Install supervisord
+ ## ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
- # ----------------------------- Install caddy
+ ## ----------------------------- Install caddy
  && source /opt/utils/script-setup-net.sh && setup_caddy \
- # Clean up and display components version information...
+ ## Clean up and display components version information...
  && fix_permission searxng /opt/searxng/ \
  && chmod +x /opt/searxng/*.sh \
  && chmod -R ugo+rws /var/log /var/run \
