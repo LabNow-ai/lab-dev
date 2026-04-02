@@ -36,7 +36,8 @@ install_plugin() {
     --store-dir "$PNPM_STORE" \
     --ignore-scripts=false \
     --prod \
-    --no-frozen-lockfile
+    --no-frozen-lockfile \
+    --config.unsafe-perm=true
 
   verify_plugin_manifest "$dest" || return 2
   echo "[OK] Plugin $plugin_id ready at $dest"
