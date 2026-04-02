@@ -6,7 +6,7 @@ OPENCLAW_PLUGINS_ROOT=${OPENCLAW_HOME:-"/opt/openclaw"}/plugins
 verify_plugin_manifest() {
   local dest="$1"
   echo "[INFO] Verifying plugin manifest in $dest ..."
-  if [[ ! -f "$dest/openclaw.plugin.json" ]]; then
+  if [ ! -f "$dest/openclaw.plugin.json" ]; then
     if ! node -e "const p=require('$dest/package.json'); process.exit(p.openclaw ? 0 : 1)" 2>/dev/null; then
       echo "[ERROR] $dest has neither openclaw.plugin.json nor openclaw field in package.json!" >&2
       return 1
@@ -15,7 +15,7 @@ verify_plugin_manifest() {
   echo "[OK] Manifest verified at $dest"
 }
 
-install_plugin() {  
+add_plugin() {  
   local npm_spec="$1"
   local plugin_id="$2"
   local dest="$OPENCLAW_PLUGINS_ROOT/$plugin_id"
@@ -30,16 +30,17 @@ install_plugin() {
   tar -xzf "/tmp/$tarball" --strip-components=1 -C "$dest"
   rm -f "/tmp/$tarball"
 
-  echo "[INFO] Patching package.json: allow build scripts ..."
-  node -e "
-    const fs = require('fs');
-    const globalPkgPath = require('child_process').execSync('pnpm root -g').toString().trim().replace(/\/node_modules\$/, '') + '/package.json';
-    const allowList = JSON.parse(fs.readFileSync(globalPkgPath, 'utf8'))?.pnpm?.onlyBuiltDependencies || [];
-    const pkgPath = '$dest/package.json';
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-    pkg.pnpm = { ...(pkg.pnpm || {}), onlyBuiltDependencies: allowList };
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-  "
+  if ! node -e "require('$dest/package.json').name" >/dev/null 2>&1; then
+    echo "[ERROR] package.json missing name field in $dest" >&2
+    return 1
+  fi
+  verify_plugin_manifest "$dest" || return 2
+}
+
+install_plugin(){
+  local npm_spec="$1"
+  local plugin_id="$2"
+  local dest="$OPENCLAW_PLUGINS_ROOT/$plugin_id"
 
   echo "[INFO] Installing deps (shared pnpm store) ..."
   pnpm install \
@@ -49,7 +50,6 @@ install_plugin() {
     --prod \
     --no-frozen-lockfile \
     --config.unsafe-perm=true
-
-  verify_plugin_manifest "$dest" || return 2
+  
   echo "[OK] Plugin $plugin_id ready at $dest"
 }
