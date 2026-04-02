@@ -36,11 +36,14 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && pnpm install --prod -g --ignore-scripts=false --store-dir "$PNPM_STORE" openclaw@latest \
  && openclaw --version
 
-RUN set -euo pipefail && source /opt/utils/script-utils.sh \
+RUN set -eux && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
  && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
  ## clean up
- && install__clean && ls -alh ~/
+ && install__clean \
+ && rm -rf ~/.* \
+ && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
+ && ls -alh ~/
 
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
 ENV OPENCLAW_HIDE_BANNER=1
