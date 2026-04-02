@@ -30,13 +30,15 @@ install_plugin() {
   tar -xzf "/tmp/$tarball" --strip-components=1 -C "$dest"
   rm -f "/tmp/$tarball"
 
-  echo "[INFO] Patching package.json: allow all direct deps to build ..."
+  echo "[INFO] Patching package.json: allow build scripts ..."
   node -e "
     const fs = require('fs');
-    const pkg = JSON.parse(fs.readFileSync('$dest/package.json', 'utf8'));
-    pkg.pnpm = pkg.pnpm || {};
-    pkg.pnpm.onlyBuiltDependencies = '*';
-    fs.writeFileSync('$dest/package.json', JSON.stringify(pkg, null, 2));
+    const globalPkgPath = require('child_process').execSync('pnpm root -g').toString().trim().replace(/\/node_modules\$/, '') + '/package.json';
+    const allowList = JSON.parse(fs.readFileSync(globalPkgPath, 'utf8'))?.pnpm?.onlyBuiltDependencies || [];
+    const pkgPath = '$dest/package.json';
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    pkg.pnpm = { ...(pkg.pnpm || {}), onlyBuiltDependencies: allowList };
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
   "
 
   echo "[INFO] Installing deps (shared pnpm store) ..."
