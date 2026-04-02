@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-PLUGINS_ROOT=/opt/openclaw/plugins
-PNPM_STORE=${PNPM_HOME:-"/opt/node/pnpm"}/store
+OPENCLAW_PLUGINS_ROOT=${OPENCLAW_HOME:-"/opt/openclaw"}/plugins
 
 verify_plugin_manifest() {
   local dest="$1"
@@ -15,11 +14,11 @@ verify_plugin_manifest() {
 }
 
 install_plugin() {
-  mkdir -pv "$PLUGINS_ROOT" "$PNPM_STORE"
+  mkdir -pv "$OPENCLAW_PLUGINS_ROOT" "$PNPM_STORE"
   local npm_spec="$1"
   local plugin_id="$2"
 
-  local dest="$PLUGINS_ROOT/$plugin_id"
+  local dest="$OPENCLAW_PLUGINS_ROOT/$plugin_id"
   mkdir -p "$dest"
 
   echo "[INFO] Packing $npm_spec ..."
@@ -34,7 +33,8 @@ install_plugin() {
   pnpm install \
     --dir "$dest" \
     --store-dir "$PNPM_STORE" \
-    --ignore-scripts \
+    --virtual-store-dir "$dest/node_modules/.pnpm" \
+    --ignore-scripts=false \
     --prod \
     --no-frozen-lockfile
 

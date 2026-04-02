@@ -17,6 +17,8 @@ bootstrap() {
 
   openclaw config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
   openclaw config set gateway.controlUi.dangerouslyDisableDeviceAuth true
+  openclaw config set gateway.auth.mode token
+  openclaw config set gateway.auth.token "${OPENCLAW_GATEWAY_TOKEN:-"openclaw"}"
 }
 
 /opt/utils/script-localize.sh "${PROFILE_LOCALIZE:-default}"

@@ -7,8 +7,9 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
-ENV NPM_CONFIG_NODE_LINKER=hoisted
-ENV PATH="${PNPM_HOME}:${PATH}"
+ENV PNPM_STORE=/opt/node/pnpm/store
+ENV OPENCLAW_HOME=/opt/openclaw
+ENV PATH="${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
 
 COPY work /opt/openclaw/
 
@@ -20,17 +21,14 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
- && pnpm install -g openclaw@latest --ignore-scripts=false \
- && openclaw --version \
- ## Clean up and display components version information...
- && list_installed_packages && install__clean
+ && pnpm install --prod -g openclaw@latest --ignore-scripts=false \
+ && ( pnpm store prune --store-dir "$PNPM_STORE" || true ) && rm -rf "$PNPM_STORE" && install__clean \
+ && openclaw --version
 
 RUN set -euo pipefail && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
  && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
- ## Clean up and display components version information...
- && pnpm store prune --store-dir "$PNPM_STORE" || true \
- && list_installed_packages && install__clean
+ && ( pnpm store prune --store-dir "$PNPM_STORE" || true ) && rm -rf "$PNPM_STORE" && install__clean
 
 ENV HOME=/opt/openclaw/
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
