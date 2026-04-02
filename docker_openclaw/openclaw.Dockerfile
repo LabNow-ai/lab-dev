@@ -9,6 +9,8 @@ ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
 ENV PNPM_STORE=/opt/node/pnpm/store
 ENV OPENCLAW_HOME=/opt/openclaw
+ENV OPENCLAW_PLUGINS_ROOT=${OPENCLAW_HOME}/plugins
+ENV OPENCLAW_CONFIG=${OPENCLAW_HOME}/.openclaw/openclaw.json
 ENV PATH="${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
 ENV HOME=/opt/openclaw
 
@@ -36,6 +38,7 @@ RUN set -eux && source /opt/utils/script-setup.sh \
 
 RUN set -eux && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
+ && cd $OPENCLAW_HOME \
  && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
  && printf '{"name":"openclaw-root","version":"1.0.0","private":true}\n' > package.json \
  && PNPM_VER="$(pnpm --version)" \
@@ -44,6 +47,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
        '. + {dependencies: {openclaw:"latest"}, packageManager: ("pnpm@" + $ver), pnpm: { onlyBuiltDependencies: $deps } }' package.json > package.tmp.json \
  && mv package.tmp.json package.json \
  && add_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
+ && pnpm install --prod \
  ## clean up
  && pnpm store prune --store-dir "$PNPM_STORE" && rm -rf "$PNPM_STORE" && install__clean \
  && rm -rf ~/.* \

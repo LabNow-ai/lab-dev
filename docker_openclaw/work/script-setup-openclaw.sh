@@ -1,7 +1,49 @@
 #!/usr/bin/env bash
 set -eu
 
-OPENCLAW_PLUGINS_ROOT=${OPENCLAW_HOME:-"/opt/openclaw"}/plugins
+init_config() {
+  if [ ! -f "$OPENCLAW_CONFIG" ]; then
+    mkdir -p "$(dirname "$OPENCLAW_CONFIG")"
+
+    jq -n \
+      --argjson plugin_paths "[\"$OPENCLAW_PLUGINS_ROOT\"]" \
+      --arg token "${OPENCLAW_GATEWAY_TOKEN:-openclaw}" \
+      '{
+        plugins: {
+          load: { paths: $plugin_paths },
+          entries: {}
+        },
+        gateway: {
+          controlUi: {
+            dangerouslyAllowHostHeaderOriginFallback: true,
+            dangerouslyDisableDeviceAuth: true
+          },
+          auth: {
+            mode: "token",
+            token: $token
+          }
+        }
+      }' > "$OPENCLAW_CONFIG"
+  fi
+}
+
+list_downloaded_plugins() {
+  local plugins=()
+
+  for plugin_dir in "$OPENCLAW_PLUGINS_ROOT"/*/; do
+    [[ -d "$plugin_dir" ]] || continue
+    local plugin
+    plugin=$(basename "$plugin_dir")
+
+    if verify_plugin_manifest "$OPENCLAW_PLUGINS_ROOT/$plugin"; then
+      plugins+=("$plugin")
+    else
+      echo "[WARN] Skipping $plugin: invalid or missing plugin manifest" >&2
+    fi
+  done
+
+  printf '%s\n' "${plugins[@]}" | jq -R . | jq -s .
+}
 
 verify_plugin_manifest() {
   local dest="$1"
@@ -22,34 +64,17 @@ add_plugin() {
 
   mkdir -pv "$dest" "$OPENCLAW_PLUGINS_ROOT" "$PNPM_STORE"
 
-  echo "[INFO] Packing $npm_spec ..."
-  local tarball
-  tarball=$(npm pack "$npm_spec" --pack-destination /tmp/ 2>/dev/null | tail -1)
-
-  echo "[INFO] Extracting to $dest ..."
-  tar -xzf "/tmp/$tarball" --strip-components=1 -C "$dest"
-  rm -f "/tmp/$tarball"
+  echo "[INFO] Adding $npm_spec ..."
+  pnpm add "$npm_spec" 
+    --dir "$dest" \
+    --prod \
+    --no-frozen-lockfile
 
   if ! node -e "require('$dest/package.json').name" >/dev/null 2>&1; then
     echo "[ERROR] package.json missing name field in $dest" >&2
     return 1
   fi
+
   verify_plugin_manifest "$dest" || return 2
-}
-
-install_plugin(){
-  local npm_spec="$1"
-  local plugin_id="$2"
-  local dest="$OPENCLAW_PLUGINS_ROOT/$plugin_id"
-
-  echo "[INFO] Installing deps (shared pnpm store) ..."
-  pnpm install \
-    --dir "$dest" \
-    --store-dir "$PNPM_STORE" \
-    --ignore-scripts=false \
-    --prod \
-    --no-frozen-lockfile \
-    --config.unsafe-perm=true
-  
-  echo "[OK] Plugin $plugin_id ready at $dest"
+  echo "[OK] Plugin $plugin_id installed via pnpm"
 }

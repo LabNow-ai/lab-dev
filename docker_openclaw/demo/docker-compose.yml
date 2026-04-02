@@ -4,7 +4,7 @@ services:
   openclaw-gateway:
     container_name: svc-openclaw-gateway
     hostname: svc-openclaw-gateway
-    image: "quay.io/labnow0dev/openclaw:latest"
+    image: "quay.io/labnow/openclaw:latest"
     pull_policy: if_not_present
     restart: unless-stopped
     environment:
@@ -16,5 +16,4 @@ services:
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
-    init: true
     # command: ["tail", "-f", "/dev/null"]
