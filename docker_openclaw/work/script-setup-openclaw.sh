@@ -27,6 +27,6 @@ install_plugin() {
     --ignore-scripts=false \
     --prod
 
-  verify_plugin_manifest "$dest" || exit 1
+  verify_plugin_manifest "$dest" || return 2
   echo "[OK] Plugin $plugin_id ready at $dest"
 }
