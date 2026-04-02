@@ -26,7 +26,7 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && list_installed_packages && install__clean
 
 RUN set -euo pipefail && source /opt/utils/script-utils.sh \
- && source /opt/utils/script-setup-openclaw.sh \
+ && source /opt/openclaw/script-setup-openclaw.sh \
  && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
  ## Clean up and display components version information...
  && pnpm store prune --store-dir "$PNPM_STORE" || true \
