@@ -1,23 +1,22 @@
 #!/bin/sh
 set -eu
 
-export OPENCLAW_HOME="${OPENCLAW_HOME:-/opt/openclaw}"
-export OPENCLAW_DIR_STATE="${OPENCLAW_DIR_STATE:-${XDG_CONFIG_HOME:-$OPENCLAW_HOME/data}}"
-export OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$OPENCLAW_DIR_STATE/openclaw.json}"
-
-export OPENCLAW_HIDE_BANNER=1
-
 bootstrap() {
-  mkdir -pv "${OPENCLAW_DIR_STATE}" "$(dirname "${OPENCLAW_CONFIG}")"
+  . /opt/openclaw/script-setup-openclaw.sh
+  
+  openclaw config set plugins.load.paths "[\"$PLUGINS_ROOT\"]"
 
-  local PATH_PLUGIN_INSTALLER="${OPENCLAW_PLUGIN_INSTALLER:-$OPENCLAW_HOME/openclaw-plugin-installer.js}"
-  local CLAW_EXEC="node ${PATH_PLUGIN_INSTALLER} --config ${OPENCLAW_CONFIG}"
+  for name in /opt/openclaw/plugins/*/; do
+    name=$(basename "$name")
+    if verify_plugin_manifest "$PLUGINS_ROOT/$name"; then
+      openclaw config set "plugins.entries.${name}.enabled" true
+    else
+      echo "[WARN] Skipping $name: invalid or missing plugin manifest" >&2
+    fi
+  done
 
-  $CLAW_EXEC init-config
-  openclaw config set skills.install.nodeManager pnpm
-
-  $CLAW_EXEC disable --entry "feishu"
-  $CLAW_EXEC install --package "@larksuite/openclaw-lark"
+  openclaw config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
+  openclaw config set gateway.controlUi.dangerouslyDisableDeviceAuth true
 }
 
 /opt/utils/script-localize.sh "${PROFILE_LOCALIZE:-default}"

@@ -4,7 +4,7 @@ services:
   openclaw-gateway:
     container_name: svc-openclaw-gateway
     hostname: svc-openclaw-gateway
-    image: "quay.io/labnow0dev/openclaw:latest"
+    image: "quay.io/labnow/openclaw:latest"
     pull_policy: if_not_present
     restart: unless-stopped
     environment:
@@ -16,20 +16,4 @@ services:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     init: true
-
-  openclaw-cli:
-    container_name: svc-openclaw-cli
-    hostname: svc-openclaw-cli
-    image: "quay.io/labnow0dev/openclaw:latest"
-    pull_policy: if_not_present
-    restart: "no"
-    environment:
-      - TZ=Asia/Shanghai
-      - PROFILE_LOCALIZE=aliyun-pub
-      - BROWSER=echo
-    volumes:
-      - /data/openclaw:/opt/openclaw/data
-    init: true
-    stdin_open: true
-    tty: true
-    entrypoint: ["node", "openclaw.mjs"]
+    # command: ["tail", "-f", "/dev/null"]

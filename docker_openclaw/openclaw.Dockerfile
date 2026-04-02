@@ -7,14 +7,13 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
-ENV PNPM_STORE_DIR=/opt/node/pnpm-store
-ENV PNPM_NODE_LINKER=hoisted
+ENV NPM_CONFIG_NODE_LINKER=hoisted
 ENV PATH="${PNPM_HOME}:${PATH}"
 
 COPY work /opt/openclaw/
 
 RUN set -eux && source /opt/utils/script-setup.sh \
- && chmod +x  /opt/openclaw/start-openclaw.sh && ln -sf /opt/openclaw/start-openclaw.sh /usr/local/bin/ \
+ && chmod +x  /opt/openclaw/*.sh && ln -sf /opt/openclaw/start-openclaw.sh /usr/local/bin/ \
  && mkdir -pv /opt/openclaw/data \
  && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
@@ -26,8 +25,16 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  ## Clean up and display components version information...
  && list_installed_packages && install__clean
 
+RUN set -euo pipefail && source /opt/utils/script-utils.sh \
+ && source /opt/utils/script-setup-openclaw.sh \
+ && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
+ ## Clean up and display components version information...
+ && pnpm store prune --store-dir "$PNPM_STORE" || true \
+ && list_installed_packages && install__clean
+
 ENV HOME=/opt/openclaw/
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
+ENV OPENCLAW_HIDE_BANNER=1
 WORKDIR /opt/openclaw
 VOLUME ["/opt/openclaw/data"]
 EXPOSE 18789 18790
