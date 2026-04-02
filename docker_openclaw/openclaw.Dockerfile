@@ -22,18 +22,12 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
- && NPMRC=$(pnpm config get globalconfig) \
- && echo 'onlyBuiltDependencies[]=@matrix-org/matrix-sdk-crypto-nodejs' >> "$NPMRC" \
- && echo 'onlyBuiltDependencies[]=koffi'                                >> "$NPMRC" \
- && echo 'onlyBuiltDependencies[]=openclaw'                             >> "$NPMRC" \
- && echo 'onlyBuiltDependencies[]=protobufjs'                           >> "$NPMRC" \
- && echo 'onlyBuiltDependencies[]=sharp'                                >> "$NPMRC" \
  && GLOBAL_DIR=$(pnpm root -g | sed 's|/node_modules$||') \
  && mkdir -pv "$GLOBAL_DIR" \
  && echo '{"dependencies":{},"pnpm":{"onlyBuiltDependencies":["@matrix-org/matrix-sdk-crypto-nodejs","koffi","openclaw","protobufjs","sharp"]}}' \
       | tee "$GLOBAL_DIR/package.json" \
  && pnpm config list \
- && pnpm install --prod -g --ignore-scripts=false --store-dir "$PNPM_STORE" openclaw@latest \
+ && pnpm install --prod -g --ignore-scripts=false --config.unsafe-perm=true --store-dir "$PNPM_STORE" openclaw@latest \
  && openclaw --version
 
 RUN set -eux && source /opt/utils/script-utils.sh \
@@ -50,4 +44,4 @@ ENV OPENCLAW_HIDE_BANNER=1
 WORKDIR /opt/openclaw
 VOLUME ["/opt/openclaw/data"]
 EXPOSE 18789 18790
-CMD ["sh", "start-openclaw.sh", "gateway", "--allow-unconfigured", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", "--port", "${OPENCLAW_GATEWAY_PORT:-18789}"]
+CMD ["start-openclaw.sh", "gateway", "--allow-unconfigured", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", "--port", "${OPENCLAW_GATEWAY_PORT:-18789}"]
