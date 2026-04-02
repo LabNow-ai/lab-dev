@@ -10,7 +10,7 @@ ENV PNPM_HOME=/opt/node/pnpm
 ENV PNPM_STORE=/opt/node/pnpm/store
 ENV OPENCLAW_HOME=/opt/openclaw
 ENV PATH="${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
-ENV HOME=/opt/openclaw/
+ENV HOME=/opt/openclaw
 
 COPY work /opt/openclaw/
 
@@ -36,12 +36,12 @@ RUN set -eux && source /opt/utils/script-setup.sh \
 
 RUN set -eux && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
- && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml; \
+ && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
  && printf '{"name":"openclaw-root","version":"1.0.0","private":true}\n' > package.json \
  && PNPM_VER="$(pnpm --version)" \
  && jq --arg ver "$PNPM_VER" \
-       --argjson deps '["koffi","sharp", "openclaw", "protobufjs", "@matrix-org/matrix-sdk-crypto-nodejs"]' \
-   '. + {dependencies: {openclaw:"latest"}, packageManager: ("pnpm@" + $ver),  pnpm: { onlyBuiltDependencies: $deps } }' package.json > package.tmp.json \
+       --argjson deps '["koffi","sharp","openclaw","protobufjs","@matrix-org/matrix-sdk-crypto-nodejs"]' \
+       '. + {dependencies: {openclaw:"latest"}, packageManager: ("pnpm@" + $ver), pnpm: { onlyBuiltDependencies: $deps } }' package.json > package.tmp.json \
  && mv package.tmp.json package.json \
  && add_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
  ## clean up
