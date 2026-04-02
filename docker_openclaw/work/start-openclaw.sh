@@ -4,11 +4,11 @@ set -eu
 bootstrap() {
   . /opt/openclaw/script-setup-openclaw.sh
   
-  openclaw config set plugins.load.paths "[\"$PLUGINS_ROOT\"]"
+  openclaw config set plugins.load.paths "[\"$OPENCLAW_PLUGINS_ROOT\"]"
 
   for name in /opt/openclaw/plugins/*/; do
     name=$(basename "$name")
-    if verify_plugin_manifest "$PLUGINS_ROOT/$name"; then
+    if verify_plugin_manifest "$OPENCLAW_PLUGINS_ROOT/$name"; then
       openclaw config set "plugins.entries.${name}.enabled" true
     else
       echo "[WARN] Skipping $name: invalid or missing plugin manifest" >&2

@@ -13,27 +13,17 @@ verify_plugin_manifest() {
   echo "[OK] Manifest verified at $dest"
 }
 
-install_plugin() {
-  mkdir -pv "$OPENCLAW_PLUGINS_ROOT" "$PNPM_STORE"
+install_plugin() {  
   local npm_spec="$1"
   local plugin_id="$2"
-
   local dest="$OPENCLAW_PLUGINS_ROOT/$plugin_id"
-  mkdir -p "$dest"
 
-  echo "[INFO] Packing $npm_spec ..."
-  local tarball
-  tarball=$(npm pack "$npm_spec" --pack-destination /tmp/ 2>/dev/null | tail -1)
-
-  echo "[INFO] Extracting to $dest ..."
-  tar -xzf "/tmp/$tarball" --strip-components=1 -C "$dest"
-  rm -f "/tmp/$tarball"
+  mkdir -pv "$dest" "$OPENCLAW_PLUGINS_ROOT" "$PNPM_STORE"
 
   echo "[INFO] Installing deps (shared pnpm store) ..."
-  pnpm install \
+  pnpm add $npm_spec \
     --dir "$dest" \
     --store-dir "$PNPM_STORE" \
-    --virtual-store-dir "$dest/node_modules/.pnpm" \
     --ignore-scripts=false \
     --prod \
     --no-frozen-lockfile
