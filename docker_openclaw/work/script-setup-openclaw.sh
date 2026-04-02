@@ -65,7 +65,7 @@ add_plugin() {
   mkdir -pv "$dest" "$OPENCLAW_PLUGINS_ROOT" "$PNPM_STORE"
 
   echo "[INFO] Adding $npm_spec ..."
-  pnpm add "$npm_spec" 
+  pnpm add "$npm_spec" \
     --dir "$dest" \
     --prod \
     --no-frozen-lockfile
