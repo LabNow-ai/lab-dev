@@ -28,9 +28,8 @@ RUN set -eux && source /opt/utils/script-setup.sh \
       | tee "$GLOBAL_DIR/package.json" \
  && pnpm config list \
  && pnpm install --prod -g --ignore-scripts=false --config.unsafe-perm=true --store-dir "$PNPM_STORE" openclaw@latest \
- && openclaw --version
-
-RUN set -eux && source /opt/utils/script-utils.sh \
+ && openclaw --version \
+ ## install plugins
  && source /opt/openclaw/script-setup-openclaw.sh \
  && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
  ## clean up
@@ -44,4 +43,7 @@ ENV OPENCLAW_HIDE_BANNER=1
 WORKDIR /opt/openclaw
 VOLUME ["/opt/openclaw/data"]
 EXPOSE 18789 18790
-CMD ["start-openclaw.sh", "gateway", "--allow-unconfigured", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", "--port", "${OPENCLAW_GATEWAY_PORT:-18789}"]
+
+CMD start-openclaw.sh gateway --allow-unconfigured \
+    --bind "${OPENCLAW_GATEWAY_BIND:-lan}" \
+    --port "${OPENCLAW_GATEWAY_PORT:-18789}"
