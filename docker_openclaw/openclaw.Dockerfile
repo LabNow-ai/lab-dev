@@ -28,6 +28,10 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && echo 'onlyBuiltDependencies[]=openclaw'                             >> "$NPMRC" \
  && echo 'onlyBuiltDependencies[]=protobufjs'                           >> "$NPMRC" \
  && echo 'onlyBuiltDependencies[]=sharp'                                >> "$NPMRC" \
+ && GLOBAL_DIR=$(pnpm root -g | sed 's|/node_modules$||') \
+ && mkdir -pv "$GLOBAL_DIR" \
+ && echo '{"dependencies":{},"pnpm":{"onlyBuiltDependencies":["@matrix-org/matrix-sdk-crypto-nodejs","koffi","openclaw","protobufjs","sharp"]}}' \
+      | tee "$GLOBAL_DIR/package.json" \
  && pnpm config list \
  && pnpm install --prod -g --ignore-scripts=false --store-dir "$PNPM_STORE" openclaw@latest \
  && openclaw --version
