@@ -10,6 +10,7 @@ ENV PNPM_HOME=/opt/node/pnpm
 ENV PNPM_STORE=/opt/node/pnpm/store
 ENV OPENCLAW_HOME=/opt/openclaw
 ENV PATH="${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
+ENV HOME=/opt/openclaw/
 
 COPY work /opt/openclaw/
 
@@ -35,7 +36,6 @@ RUN set -euo pipefail && source /opt/utils/script-utils.sh \
  ## clean up
  && install__clean
 
-ENV HOME=/opt/openclaw/
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
 ENV OPENCLAW_HIDE_BANNER=1
 WORKDIR /opt/openclaw
