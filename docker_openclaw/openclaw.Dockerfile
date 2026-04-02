@@ -21,14 +21,14 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
- && pnpm install --prod -g openclaw@latest --ignore-scripts=false \
- && ( pnpm store prune --store-dir "$PNPM_STORE" || true ) && rm -rf "$PNPM_STORE" && install__clean \
+ && pnpm install --prod -g --ignore-scripts=false --store-dir "$PNPM_STORE" openclaw@latest \
  && openclaw --version
 
 RUN set -euo pipefail && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
  && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
- && ( pnpm store prune --store-dir "$PNPM_STORE" || true ) && rm -rf "$PNPM_STORE" && install__clean
+ ## clean up
+ && install__clean
 
 ENV HOME=/opt/openclaw/
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
