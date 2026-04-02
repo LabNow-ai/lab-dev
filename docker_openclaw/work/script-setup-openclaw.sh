@@ -66,14 +66,12 @@ add_plugin() {
   mkdir -pv "$dest" "$OPENCLAW_PLUGINS_ROOT" "$PNPM_STORE"
 
   echo "[INFO] Adding $npm_spec ..."
-  pnpm add "$npm_spec" \
-    --dir "$dest" \
-    --prod
+  local tarball
+  tarball=$(npm pack "$npm_spec" --pack-destination /tmp/ 2>/dev/null | tail -1)
 
-  if ! node -e "require('$dest/package.json').name" >/dev/null 2>&1; then
-    echo "[ERROR] package.json missing name field in $dest" >&2
-    return 1
-  fi
+  echo "[INFO] Extracting to $dest ..."
+  tar -xzf "/tmp/$tarball" --strip-components=1 -C "$dest"
+  rm -f "/tmp/$tarball"
 
-  # verify_plugin_manifest "$dest" && echo "[OK] Plugin $plugin_id installed via pnpm" || return 2
+  verify_plugin_manifest "$dest" && echo "[OK] Plugin $plugin_id installed via pnpm" || return 2
 }
