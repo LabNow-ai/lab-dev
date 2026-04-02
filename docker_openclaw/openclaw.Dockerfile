@@ -22,11 +22,13 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
- && echo 'onlyBuiltDependencies[]=@matrix-org/matrix-sdk-crypto-nodejs' >> ~/.npmrc \
- && echo 'onlyBuiltDependencies[]=koffi'                                >> ~/.npmrc \
- && echo 'onlyBuiltDependencies[]=openclaw'                             >> ~/.npmrc \
- && echo 'onlyBuiltDependencies[]=protobufjs'                           >> ~/.npmrc \
- && echo 'onlyBuiltDependencies[]=sharp'                                >> ~/.npmrc \
+ && NPMRC=$(pnpm config get globalconfig) \
+ && echo 'onlyBuiltDependencies[]=@matrix-org/matrix-sdk-crypto-nodejs' >> "$NPMRC" \
+ && echo 'onlyBuiltDependencies[]=koffi'                                >> "$NPMRC" \
+ && echo 'onlyBuiltDependencies[]=openclaw'                             >> "$NPMRC" \
+ && echo 'onlyBuiltDependencies[]=protobufjs'                           >> "$NPMRC" \
+ && echo 'onlyBuiltDependencies[]=sharp'                                >> "$NPMRC" \
+ && pnpm config list \
  && pnpm install --prod -g --ignore-scripts=false --store-dir "$PNPM_STORE" openclaw@latest \
  && openclaw --version
 
@@ -34,7 +36,7 @@ RUN set -euo pipefail && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
  && install_plugin "@larksuite/openclaw-lark" "openclaw-lark" \
  ## clean up
- && install__clean
+ && install__clean && ls -alh ~/
 
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
 ENV OPENCLAW_HIDE_BANNER=1
