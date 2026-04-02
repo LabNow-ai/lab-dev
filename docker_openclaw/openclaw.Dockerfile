@@ -21,11 +21,11 @@ RUN set -eux && source /opt/utils/script-setup.sh \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
- && echo 'onlyBuiltDependencies[]=@matrix-org/matrix-sdk-crypto-nodejs' >> /root/.npmrc \
- && echo 'onlyBuiltDependencies[]=koffi' >> /root/.npmrc \
- && echo 'onlyBuiltDependencies[]=openclaw' >> /root/.npmrc \
- && echo 'onlyBuiltDependencies[]=protobufjs' >> /root/.npmrc \
- && echo 'onlyBuiltDependencies[]=sharp' >> /root/.npmrc \
+ && echo 'onlyBuiltDependencies[]=@matrix-org/matrix-sdk-crypto-nodejs' >> ~/.npmrc \
+ && echo 'onlyBuiltDependencies[]=koffi'                                >> ~/.npmrc \
+ && echo 'onlyBuiltDependencies[]=openclaw'                             >> ~/.npmrc \
+ && echo 'onlyBuiltDependencies[]=protobufjs'                           >> ~/.npmrc \
+ && echo 'onlyBuiltDependencies[]=sharp'                                >> ~/.npmrc \
  && pnpm install --prod -g --ignore-scripts=false --store-dir "$PNPM_STORE" openclaw@latest \
  && openclaw --version
 
