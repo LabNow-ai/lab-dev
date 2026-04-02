@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
+
 init_config() {
   if [ ! -f "$OPENCLAW_CONFIG" ]; then
     mkdir -p "$(dirname "$OPENCLAW_CONFIG")"
@@ -67,8 +68,7 @@ add_plugin() {
   echo "[INFO] Adding $npm_spec ..."
   pnpm add "$npm_spec" \
     --dir "$dest" \
-    --prod \
-    --no-frozen-lockfile
+    --prod
 
   if ! node -e "require('$dest/package.json').name" >/dev/null 2>&1; then
     echo "[ERROR] package.json missing name field in $dest" >&2

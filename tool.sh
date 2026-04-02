@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xu
+set -eux
 
 CI_PROJECT_NAME=${CI_PROJECT_NAME:-$GITHUB_REPOSITORY}
 CI_PROJECT_BRANCH=${GITHUB_HEAD_REF:-"main"}
