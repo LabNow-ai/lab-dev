@@ -1,25 +1,30 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -eu
 
-export OPENCLAW_HOME="${OPENCLAW_HOME:-/opt/openclaw}"
-export OPENCLAW_DIR_STATE="${OPENCLAW_DIR_STATE:-${XDG_CONFIG_HOME:-$OPENCLAW_HOME/data}}"
-export OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$OPENCLAW_DIR_STATE/openclaw.json}"
-
-export OPENCLAW_HIDE_BANNER=1
 
 bootstrap() {
-  mkdir -pv "${OPENCLAW_DIR_STATE}" "$(dirname "${OPENCLAW_CONFIG}")"
+  . /opt/openclaw/script-setup-openclaw.sh
 
-  local PATH_PLUGIN_INSTALLER="${OPENCLAW_PLUGIN_INSTALLER:-$OPENCLAW_HOME/openclaw-plugin-installer.js}"
-  local CLAW_EXEC="node ${PATH_PLUGIN_INSTALLER} --config ${OPENCLAW_CONFIG}"
+  init_config
 
-  $CLAW_EXEC init-config
-  openclaw config set skills.install.nodeManager pnpm
+  local plugins_json
+  plugins_json=$(list_downloaded_plugins)
+  plugins_json=${plugins_json:-"[]"}
 
-  $CLAW_EXEC disable --entry "feishu"
-  $CLAW_EXEC install --package "@larksuite/openclaw-lark"
+  jq \
+    --argjson plugins "$plugins_json" \
+    '
+    def build_entries:
+      reduce $plugins[] as $p ({}; .[$p] = {enabled: true});
+    .plugins.entries = build_entries
+    ' "$OPENCLAW_CONFIG" > "${OPENCLAW_CONFIG}.tmp" \
+    && mv "${OPENCLAW_CONFIG}.tmp" "$OPENCLAW_CONFIG"
+
+  echo "[OK] Plugins entries updated"
 }
 
 /opt/utils/script-localize.sh "${PROFILE_LOCALIZE:-default}"
-bootstrap
+[ ! -f "$OPENCLAW_CONFIG" ] && bootstrap
+
+echo "Starting openclaw with options: $@"
 exec openclaw "$@"

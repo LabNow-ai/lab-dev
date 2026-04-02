@@ -20,7 +20,7 @@ Discussion and contributions are welcome:
 
 ## Documentation & Tutorial
 
-[Wiki & Document](https://labnow.ai/) | [中文使用指引(含中国网络镜像)](https://labnow-ai.feishu.cn/wiki/wikcn0sBhMtb1KNRSUTettxWstc)
+[Wiki & Document](https://doc.labnow.ai/) | [中文使用指引(含中国网络镜像)](https://doc.labnow.ai/zh-CN/)
 
 ## Develop and Debug
 
