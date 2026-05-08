@@ -67,6 +67,19 @@ jobs:
             --build-arg "BASE_IMG=node" \
             --build-arg "ARG_PROFILE_JUPYTER=hub"
           push_image dev-hub
+    
+  job-dev-hub-traefik:
+    name: "dev-hub-traefik"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          source ./tool.sh
+          build_image dev-hub-traefik latest docker_devbox/hub.Dockerfile \
+            --build-arg "BASE_IMG=base" \
+            --build-arg "ARG_PROFILE_JUPYTER=hub" \
+            --build-arg "ARG_KEEP_NODEJS=false"
+          push_image dev-hub-traefik
 
   ## OpenResty as gateway
   job-openresty:
