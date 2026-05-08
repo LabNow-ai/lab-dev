@@ -24,7 +24,7 @@ RUN set -eux \
       echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup-net.sh && setup_traefik ; \
     else \
       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
-      curl -fsSL -o /usr/local/bin/start-configurable-http-proxy.sh https://raw.githubusercontent.com/jupyterhub/configurable-http-proxy/refs/heads/main/chp-docker-entrypoint \
+      curl -fsSL -o /usr/local/bin/start-configurable-http-proxy.sh https://raw.githubusercontent.com/jupyterhub/configurable-http-proxy/refs/heads/main/chp-docker-entrypoint ; \
  fi \
  ## network-tools https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/network-tools/Dockerfile
  && apt-get update && apt-get install -y --no-install-recommends \
