@@ -35,7 +35,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
       echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
     else \
-      echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
+      echo "Keep NodeJS as ARG_KEEP_NODEJS defined as: ${ARG_KEEP_NODEJS}" ; \
  fi \
  ## ----------------------------- If installing R IDEs: R_rstudio and R_rshiny
  && source /opt/utils/script-devbox-rstudio.sh \

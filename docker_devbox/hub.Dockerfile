@@ -18,14 +18,14 @@ RUN set -eux \
  ## Setup JupyterHub
  && source /opt/utils/script-devbox-jupyter.sh \
  && for profile in $(echo $ARG_PROFILE_JUPYTER | tr "," "\n") ; do ( setup_jupyter_${profile} ) ; done \
- ## If not keeping NodeJS, remove NoedJS to reduce image size, and install Traefik instead
+ ## If not keeping NodeJS, remove NodeJS to reduce image size, and install Traefik instead
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
        # Using Traefik to server as proxy, which is a modern HTTP reverse proxy and load balancer that makes deploying microservices easy.
        echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
        echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup-net.sh && setup_traefik ; \
     else \
        # Using NodeJS to install configurable-http-proxy, which is a dependency of JupyterHub, and also used as the default proxy for JupyterHub.
-       echo "Keep NodeJS as ARG_KEEP_NODEJS defiend as: ${ARG_KEEP_NODEJS}" ; \
+       echo "Keep NodeJS as ARG_KEEP_NODEJS defined as: ${ARG_KEEP_NODEJS}" ; \
        curl -fsSL -o /usr/local/bin/start-configurable-http-proxy.sh https://raw.githubusercontent.com/jupyterhub/configurable-http-proxy/refs/heads/main/chp-docker-entrypoint ; \
        which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 ) ; \
        # Notes: there is also an python version of configurable-http-proxy available but has limited compatibility.

@@ -26,5 +26,5 @@ bootstrap() {
 /opt/utils/script-localize.sh "${PROFILE_LOCALIZE:-default}"
 [ ! -f "$OPENCLAW_CONFIG" ] && bootstrap
 
-echo "Starting openclaw with options: $@"
+echo "Starting openclaw with options:" "$@"
 exec openclaw "$@"
