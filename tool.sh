@@ -47,6 +47,7 @@ push_image() {
     KEYWORD="${1:-second}";
     docker image prune --force && docker images | sort;
     IMAGES=$(docker images --format "{{.Repository}}\t{{.Tag}}\t{{.CreatedSince}}" | grep "${KEYWORD}" | awk '{print $1 ":" $2}') ;
+    [ -n "${IMAGES}" ] || { echo "!! No images matched keyword: ${KEYWORD}"; return 1; }
     echo "$DOCKER_REGISTRY_PASSWORD" | docker login "${REGISTRY_DST}" -u "$DOCKER_REGISTRY_USERNAME" --password-stdin ;
     for IMG in $(echo "${IMAGES}" | tr " " "\n") ;
     do
@@ -57,7 +58,7 @@ push_image() {
 }
 
 clear_images() {
-    KEYWORD=${1:-'days ago\|weeks ago\|months ago\|years ago'}; # if no keyword is provided, clear all images build days ago
+    KEYWORD=${1:-'days ago\|weeks ago\|months ago\|years ago'}; # if no keyword is provided, clear all images built days ago
     IMGS_1=$(docker images | grep "${KEYWORD}" | awk '{print $1 ":" $2}') ;
     IMGS_2=$(docker images | grep "${KEYWORD}" | awk '{print $3}') ;
 
