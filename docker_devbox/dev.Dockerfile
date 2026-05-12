@@ -43,7 +43,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  ## ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  ## ----------------------------- Install caddy
- && source /opt/utils/script-setup-net.sh && setup_caddy \
+ && source /opt/utils/script-setup-net.sh && setup_caddy 2.11.2 \
  ## Clean up and display components version information...
  && list_installed_packages && install__clean
 
