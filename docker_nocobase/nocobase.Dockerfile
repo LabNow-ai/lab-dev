@@ -18,7 +18,7 @@ RUN set -eux \
  ## ----------------------------- Install caddy
  ## && source /opt/utils/script-setup-net.sh && setup_caddy \
  ## ----------------------------- Install dependencies and build
- && source /opt/utils/script-setup.sh && setup_node_base 20 && source /etc/profile.d/path-*.sh \
+ && source /opt/utils/script-setup-core.sh && setup_node_base 20 && source /etc/profile.d/path-*.sh \
  && npm install -g yarn \
  && source /opt/utils/script-setup-nocobase.sh \
  && cd /opt && setup_nocobase_create_app \

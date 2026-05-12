@@ -16,13 +16,12 @@ ENV HOME=/opt/openclaw
 
 COPY work /opt/openclaw/
 
-RUN set -eux && source /opt/utils/script-setup.sh \
+RUN set -eux \
  && chmod +x  /opt/openclaw/*.sh && ln -sf /opt/openclaw/start-openclaw.sh /usr/local/bin/ \
- && mkdir -pv /opt/openclaw/data \
- && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
+ && mkdir -pv /opt/openclaw/data && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
- && setup_node_pnpm 10 \
+ && source /opt/utils/script-setup-core.sh && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
  && pnpm config set package-import-method hardlink \
  && pnpm config set node-linker isolated \
