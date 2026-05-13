@@ -4,7 +4,9 @@ setup_vector() {
     echo "Unsupported architecture for Vector: $(uname -m)" && return 1 ;
   }
 
-  VER_VECTOR=$(curl -sL -o /dev/null -w "%{url_effective}" https://github.com/vectordotdev/vector/releases/latest | grep -oP 'v\K[\d.]+') \
+  VER_VECTOR=$(curl -fsSL https://github.com/vectordotdev/vector/releases.atom \
+    | grep -oE 'https://github.com/vectordotdev/vector/releases/tag/[^"]+' \
+    | grep -vE '/(vdev-v|nightly)' | head -n1 | sed 's#.*/tag/v##') \
   && PKG_VECTOR="vector-${VER_VECTOR}-${ARCH}-unknown-linux-gnu.tar.gz" \
   && URL_VECTOR="https://github.com/vectordotdev/vector/releases/download/v${VER_VECTOR}/${PKG_VECTOR}" \
   && echo "Installing Vector v${VER_VECTOR} for arch ${ARCH} from: ${URL_VECTOR}" \

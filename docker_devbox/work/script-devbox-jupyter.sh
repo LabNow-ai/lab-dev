@@ -6,7 +6,7 @@ setup_jupyter_base() {
   
   type jupyter || return -1 ;
 
-  # commnad `jupyterhub-singleuser` is provided by jupterhub and will be used by dockerspawner
+  # command `jupyterhub-singleuser` is provided by jupterhub and will be used by dockerspawner
   type jupyterhub-singleuser || return -1;
 
   echo "@ Version of Jupyter Server: $(jupyter server --version)"
@@ -53,7 +53,7 @@ setup_jupyter_kernels() {
   && mv ~/.local/share/jupyter/kernels/gonb /opt/conda/share/jupyter/kernels/
 
   ## checked @ 2024-0614
-  # alternative approaches to install evxcr_jupyter:
+  # alternative approaches to install evcxr_jupyter:
   # && cargo install --locked evcxr_jupyter \
      which rustc \
   && echo "@ Install Jupyter Kernel for Rust: https://github.com/evcxr/evcxr/blob/main/evcxr_jupyter/README.md" \

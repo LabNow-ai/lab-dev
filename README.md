@@ -5,7 +5,7 @@
 [![Recent Code Update](https://img.shields.io/github/last-commit/LabNow-ai/lab-dev.svg)](https://github.com/LabNow-ai/lab-dev/stargazers)
 [![Visit Images on DockerHub](https://img.shields.io/badge/DockerHub-Images-green)](https://hub.docker.com/u/labnow)
 
-Please generously STAR★ our project or donate to us!  [![GitHub Starts](https://img.shields.io/github/stars/LabNow-ai/lab-dev.svg?label=Stars&style=social)](https://github.com/LabNow-ai/lab-dev/stargazers)
+Please generously STAR★ our project or donate to us!  [![GitHub Starts](https://img.shields.io/github/stars/LabNow-ai/lab-dev.svg?label=Stars)](https://github.com/LabNow-ai/lab-dev/stargazers)
 [![Donate-PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/haobibo)
 [![Donate-AliPay](https://img.shields.io/badge/Donate-Alipay-blue.svg)](https://raw.githubusercontent.com/wiki/haobibo/resources/img/Donate-AliPay.png)
 [![Donate-WeChat](https://img.shields.io/badge/Donate-WeChat-green.svg)](https://raw.githubusercontent.com/wiki/haobibo/resources/img/Donate-WeChat.png)

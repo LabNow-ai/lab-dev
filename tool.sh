@@ -37,14 +37,6 @@ build_image_no_tag() {
     echo "${IMG_PREFIX_DST}/${IMG}:${TAG}"
 }
 
-build_image_common() {
-    echo "$@" ;
-    IMG=$1; TAG=$2; FILE=$3; shift 3; VER=$(date +%Y.%m%d.%H%M)${TAG_SUFFIX}; WORKDIR="$(dirname $FILE)";
-    docker build --compress --force-rm=true -t "${IMG_PREFIX_DST}/${IMG}:${TAG}" -f "$FILE" --build-arg "BASE_NAMESPACE=${IMG_PREFIX_SRC}" "$@" "${WORKDIR}"
-    docker tag "${IMG_PREFIX_DST}/${IMG}:${TAG}" "${IMG_PREFIX_DST}/${IMG}:${VER}"
-    echo "${IMG_PREFIX_DST}/${IMG}:${TAG}"
-}
-
 alias_image() {
     IMG_1=$1; TAG_1=$2; IMG_2=$3; TAG_2=$4; shift 4; VER=$(date +%Y.%m%d.%H%M)${TAG_SUFFIX};
     docker tag "${IMG_PREFIX_DST}/${IMG_1}:${TAG_1}" "${IMG_PREFIX_DST}/${IMG_2}:${TAG_2}"
@@ -54,7 +46,8 @@ alias_image() {
 push_image() {
     KEYWORD="${1:-second}";
     docker image prune --force && docker images | sort;
-    IMAGES=$(docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedSince}}" | grep "${KEYWORD}" | awk '{print $1 ":" $2}') ;
+    IMAGES=$(docker images --format "{{.Repository}}\t{{.Tag}}\t{{.CreatedSince}}" | grep "${KEYWORD}" | awk '{print $1 ":" $2}') ;
+    [ -n "${IMAGES}" ] || { echo "!! No images matched keyword: ${KEYWORD}"; return 1; }
     echo "$DOCKER_REGISTRY_PASSWORD" | docker login "${REGISTRY_DST}" -u "$DOCKER_REGISTRY_USERNAME" --password-stdin ;
     for IMG in $(echo "${IMAGES}" | tr " " "\n") ;
     do
@@ -65,12 +58,12 @@ push_image() {
 }
 
 clear_images() {
-    KEYWORD=${1:-'days ago\|weeks ago\|months ago\|years ago'}; # if no keyword is provided, clear all images build days ago
+    KEYWORD=${1:-'days ago\|weeks ago\|months ago\|years ago'}; # if no keyword is provided, clear all images built days ago
     IMGS_1=$(docker images | grep "${KEYWORD}" | awk '{print $1 ":" $2}') ;
     IMGS_2=$(docker images | grep "${KEYWORD}" | awk '{print $3}') ;
 
     for IMG in $(echo "$IMGS_1 $IMGS_2" | tr " " "\n") ; do
-      docker rmi "${IMG}" || true; status=$?; echo "[${status}] image removed > ${IMG}";
+      docker rmi "${IMG}" ; status=$?; echo "[${status}] image removed > ${IMG}";
     done
     docker image prune --force && docker images ;
 }

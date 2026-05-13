@@ -28,7 +28,7 @@ RUN set -eux \
  ## ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  ## ----------------------------- Install caddy
- && source /opt/utils/script-setup-net.sh && setup_caddy \
+ && source /opt/utils/script-setup-net.sh && setup_caddy 2.11.2 \
  ## Clean up and display components version information...
  && fix_permission searxng /opt/searxng/ \
  && chmod +x /opt/searxng/*.sh \
