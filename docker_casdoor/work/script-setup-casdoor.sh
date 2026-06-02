@@ -1,7 +1,7 @@
 source /opt/utils/script-utils.sh
 
 setup_casdoor() {
-     export ARCH=$(dpkg --print-architecture)
+     export ARCH=$(uname -m | sed \ -e 's/x86_64/amd64/' \ -e 's/aarch64/arm64/' \ -e 's/armv7l/arm-7/') ;
 
   # ref: https://github.com/casdoor/casdoor/blob/master/Dockerfile
   # Download the latest release of casdoor
@@ -14,7 +14,7 @@ setup_casdoor() {
 
      echo "--> Building Backend..." \
   && cd /tmp/casdoor && echo "${VER_CASDOOR}" > /tmp/casdoor/version_info.txt \
-  && ./build.sh \
+  && CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -ldflags="-w -s -X 'github.com/casdoor/casdoor/util.Version=${VER_CASDOOR}'" -o "server_linux_${ARCH}" . \
   && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
   && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server ;
