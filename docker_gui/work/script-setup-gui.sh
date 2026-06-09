@@ -1,17 +1,21 @@
-source /opt/utils/script-utils.sh
+# ref: https://selkies-project.github.io/selkies/start/#quick-start
+# ref: https://github.com/linuxserver/docker-baseimage-selkies/blob/master/Dockerfile
 
-setup_selkies_dependencies() {
-  install_apt /opt/utils/install_list_selkies.apt ;
-}
+source /opt/utils/script-utils.sh
 
 setup_selkies_build_dependencies() {
   apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
     build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev python3-venv ;
 }
 
+cleanup_selkies_build_dependencies() {
+     apt-get purge -y --auto-remove \
+      build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev \
+      python3-venv \
+  && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
+}
+
 setup_selkies_from_release() {
-  # ref: https://selkies-project.github.io/selkies/start/#quick-start
-  # ref: https://github.com/linuxserver/docker-baseimage-selkies/blob/master/Dockerfile
   [ "$(dpkg --print-architecture)" = "amd64" ] || {
     echo "Unsupported architecture for Selkies portable distribution: $(dpkg --print-architecture)" && return 1 ;
   }
@@ -97,13 +101,6 @@ exec selkies "$@"
 EOF
   chmod +x /opt/selkies/selkies-gstreamer-run \
     && ln -sf /opt/selkies/selkies-gstreamer-run /usr/local/bin/selkies-gstreamer-run ;
-}
-
-cleanup_selkies_build_dependencies() {
-     apt-get purge -y --auto-remove \
-      build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev \
-      python3-venv \
-  && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
 }
 
 checkout_selkies_source() {

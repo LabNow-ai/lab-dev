@@ -2,23 +2,23 @@
 
 ARG BASE_NAMESPACE
 ARG BASE_IMG_BUILD="node"
-ARG BASE_IMG="node"
+ARG BASE_IMG="base"
 ARG ARG_SELKIES_INSTALL_METHOD=source
 ARG ARG_SELKIES_REF=main
 
 
 # Stage 1: build selkies from source
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} AS builder
 
 ARG ARG_SELKIES_INSTALL_METHOD=source
 ARG ARG_SELKIES_REF=main
 
 COPY work /opt/utils/
 
-RUN set -eux && source /opt/utils/script-utils.sh \
- && chmod +x /opt/utils/*.sh \
+RUN set -eux && chmod +x /opt/utils/*.sh \
+ && source /opt/utils/script-utils.sh \
  && source /opt/utils/script-setup-gui.sh \
- && setup_selkies_dependencies \
+ && install_apt /opt/utils/install_list_selkies.apt \
  && if [ "${ARG_SELKIES_INSTALL_METHOD}" = "release" ] ; then \
       setup_selkies_from_release ; \
     else \
@@ -37,9 +37,12 @@ LABEL maintainer="postmaster@labnow.ai"
 
 COPY --from=builder /opt/selkies /opt/selkies
 
-RUN set -eux && source /opt/utils/script-utils.sh \
+RUN set -eux && cd /opt/selkies \
+ && source /opt/utils/script-utils.sh \
  && install_apt /opt/selkies/install_list_selkies.apt \
- && cd /opt/selkies \
+ && apt install -y build-essential cmake pkg-config libx11-dev libxext-dev libxfixes-dev libjpeg-dev libx264-dev libyuv-dev libavcodec-dev libavutil-dev libva-dev \
+ && pip install --no-cache-dir --no-binary :all: pixelflux \
+ && apt purge -y   build-essential cmake pkg-config libx11-dev libxext-dev libxfixes-dev libjpeg-dev libx264-dev libyuv-dev libavcodec-dev libavutil-dev libva-dev \
  && pip install --no-cache-dir ./*.whl \
  && if [ -f /opt/selkies/lib/selkies_joystick_interposer.so ]; then \
       ln -sf /opt/selkies/lib/selkies_joystick_interposer.so /usr/lib/selkies_joystick_interposer.so ; \
@@ -64,4 +67,3 @@ WORKDIR /opt/selkies
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 ENTRYPOINT ["/opt/selkies/docker-entrypoint.sh"]
-CMD []

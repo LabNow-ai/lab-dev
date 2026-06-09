@@ -12,9 +12,12 @@ libxdamage1                  % X Damage extension to track screen content change
 libxfixes3                   % X Fixes extension for cursor and screen fixes
 libxv1                       % X Video extension library
 libxtst6                     % X Test extension for injecting input events
-libxext6                    % X11 extensions library
+libxext6                     % X11 extensions library
 libxkbcommon-dev             % XKB library development files (for building)
 libatomic1                   % Atomic operations library
+dbus-x11
+xserver-xorg-core
+
 
 % GStreamer - core, plugins base, and plugins
 gstreamer1.0-tools           % GStreamer command-line tools
@@ -39,4 +42,7 @@ libwayland-egl1              % Wayland EGL library
 xclip                        % Command line interface to X selections (clipboard)
 
 % PulseAudio
-libpulse0                    % PulseAudio client library
+pulseaudio libpulse0         % PulseAudio client library
+
+openbox                      % minimal window manager
+xsettingsd

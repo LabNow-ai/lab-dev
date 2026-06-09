@@ -1,4 +1,4 @@
-# docker_gui
+# GUI Linux
 
 这个镜像用于打包 Selkies-GStreamer，把容器内的 Linux GUI 会话通过浏览器访问。
 镜像只负责 GUI 串流层，默认关闭 Selkies 内置 Basic Auth，认证和鉴权建议放在上游网关、反向代理或平台侧处理。
