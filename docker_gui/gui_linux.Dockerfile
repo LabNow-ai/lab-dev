@@ -54,7 +54,7 @@ RUN set -eux && cd /opt/selkies \
     fi \
  && list_installed_packages && install__clean
 
-ENV PATH=/opt/selkies:${PATH}
+ENV PATH=/opt/selkies:/opt/conda/bin:${PATH}
 
 EXPOSE 8080
 WORKDIR /opt/selkies
