@@ -69,18 +69,22 @@ setup_selkies_python_from_source() {
 
 setup_selkies_addons_from_source() {
   local src_dir="${1:-/tmp/selkies-src}"
+  local lib_dir="/opt/selkies/lib"
+
+  mkdir -p "${lib_dir}"
 
   if [ -f "${src_dir}/addons/js-interposer/joystick_interposer.c" ]; then
        echo "--> Building Selkies joystick interposer..." \
-    && gcc -shared -fPIC -ldl -o /usr/lib/selkies_joystick_interposer.so \
-         "${src_dir}/addons/js-interposer/joystick_interposer.c" ;
+    && gcc -shared -fPIC -ldl -o "${lib_dir}/selkies_joystick_interposer.so" \
+         "${src_dir}/addons/js-interposer/joystick_interposer.c" \
+    && ln -sf "${lib_dir}/selkies_joystick_interposer.so" /usr/lib/selkies_joystick_interposer.so ;
   fi
 
   if [ -f "${src_dir}/addons/fake-udev/Makefile" ]; then
        echo "--> Building Selkies fake udev..." \
     && make -C "${src_dir}/addons/fake-udev" \
-    && mkdir -pv /opt/lib \
-    && mv "${src_dir}/addons/fake-udev/libudev.so.1.0.0-fake" /opt/lib/ ;
+    && mv "${src_dir}/addons/fake-udev/libudev.so.1.0.0-fake" "${lib_dir}/" \
+    && ln -sf "${lib_dir}/libudev.so.1.0.0-fake" /opt/lib/libudev.so.1.0.0-fake ;
   fi
 }
 

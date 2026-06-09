@@ -41,6 +41,13 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  && install_apt /opt/selkies/install_list_selkies.apt \
  && cd /opt/selkies \
  && pip install --no-cache-dir ./*.whl \
+ && if [ -f /opt/selkies/lib/selkies_joystick_interposer.so ]; then \
+      ln -sf /opt/selkies/lib/selkies_joystick_interposer.so /usr/lib/selkies_joystick_interposer.so ; \
+    fi \
+ && if [ -f /opt/selkies/lib/libudev.so.1.0.0-fake ]; then \
+      mkdir -p /opt/lib \
+      && ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /opt/lib/libudev.so.1.0.0-fake ; \
+    fi \
  && list_installed_packages \
  && install__clean
 
