@@ -5,7 +5,8 @@ setup_selkies_dependencies() {
 }
 
 setup_selkies_build_dependencies() {
-  install_apt /opt/utils/install_list_selkies_build.apt ;
+  apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
+    build-essential cmake g++ gcc git make pkg-config python3-dev python3-venv ;
 }
 
 setup_selkies_from_release() {
@@ -97,26 +98,35 @@ cleanup_selkies_build_dependencies() {
   && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
 }
 
+checkout_selkies_source() {
+  local ref="${1:-main}"
+  local src_dir="${2:-/tmp/selkies-src}"
+  local repo="https://github.com/selkies-project/selkies.git"
+
+  if git ls-remote --exit-code --heads --tags "${repo}" "${ref}" >/dev/null 2>&1; then
+    git clone --depth 1 --branch "${ref}" "${repo}" "${src_dir}" ;
+  else
+    git clone --filter=blob:none --no-checkout "${repo}" "${src_dir}" \
+      && git -C "${src_dir}" fetch --depth 1 origin "${ref}" \
+      && git -C "${src_dir}" checkout FETCH_HEAD ;
+  fi
+}
+
 setup_selkies_from_source() {
   # ref: https://github.com/linuxserver/docker-baseimage-selkies/blob/master/Dockerfile
-  local tag="${VER_SELKIES:-}"
+  local ref="${VER_SELKIES_REF:-${VER_SELKIES:-main}}"
   local src_dir="/tmp/selkies-src"
 
-     [ -n "${tag}" ] || tag="$(curl -fsSL "https://api.github.com/repos/selkies-project/selkies/releases/latest" | jq -r '.tag_name')" \
-  && echo "Cloning Selkies source at ${tag}" \
+     echo "Cloning Selkies source at ${ref}" \
   && rm -rf /opt/selkies "${src_dir}" \
   && mkdir -pv /opt/selkies/share \
-  && git clone --depth 1 --branch "${tag}" https://github.com/selkies-project/selkies.git "${src_dir}" \
+  && checkout_selkies_source "${ref}" "${src_dir}" \
   && setup_selkies_web_from_source "${src_dir}" /opt/selkies/share/selkies-web \
   && setup_selkies_python_from_source "${src_dir}" \
   && setup_selkies_addons_from_source "${src_dir}" \
   && setup_selkies_runtime_wrapper \
-  && echo "${tag}" > /opt/selkies/version_info.txt \
+  && git -C "${src_dir}" rev-parse HEAD > /opt/selkies/version_info.txt \
   && cleanup_selkies_build_dependencies ;
 
   [ -x /opt/selkies/selkies-gstreamer-run ] && echo "@ Version of Selkies-GStreamer $(cat /opt/selkies/version_info.txt)" || return 1 ;
-}
-
-setup_selkies() {
-  setup_selkies_from_source ;
 }

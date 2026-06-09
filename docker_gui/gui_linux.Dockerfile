@@ -3,10 +3,12 @@
 ARG BASE_NAMESPACE
 ARG BASE_IMG="node"
 ARG ARG_SELKIES_INSTALL_METHOD=source
+ARG ARG_SELKIES_REF=main
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 ARG ARG_SELKIES_INSTALL_METHOD=source
+ARG ARG_SELKIES_REF=main
 
 LABEL maintainer="postmaster@labnow.ai"
 
@@ -20,6 +22,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  && if [ "${ARG_SELKIES_INSTALL_METHOD}" = "release" ] ; then \
       setup_selkies_from_release ; \
     else \
+      export VER_SELKIES_REF="${ARG_SELKIES_REF}" ; \
       setup_selkies_build_dependencies && setup_selkies_from_source ; \
     fi \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
