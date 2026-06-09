@@ -45,11 +45,11 @@ RUN set -eux && source /opt/utils/script-utils.sh \
       ln -sf /opt/selkies/lib/selkies_joystick_interposer.so /usr/lib/selkies_joystick_interposer.so ; \
     fi \
  && if [ -f /opt/selkies/lib/libudev.so.1.0.0-fake ]; then \
-      mkdir -p /opt/lib \
-      && ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /opt/lib/libudev.so.1.0.0-fake ; \
+         ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /usr/lib/libudev.so.1.0.0-fake \
+      && ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /usr/lib/libudev.so.1 \
+      && ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /usr/lib/libudev.so ; \
     fi \
- && list_installed_packages \
- && install__clean
+ && list_installed_packages && install__clean
 
 ENV PATH=/opt/selkies:${PATH}
 

@@ -76,15 +76,13 @@ setup_selkies_addons_from_source() {
   if [ -f "${src_dir}/addons/js-interposer/joystick_interposer.c" ]; then
        echo "--> Building Selkies joystick interposer..." \
     && gcc -shared -fPIC -ldl -o "${lib_dir}/selkies_joystick_interposer.so" \
-         "${src_dir}/addons/js-interposer/joystick_interposer.c" \
-    && ln -sf "${lib_dir}/selkies_joystick_interposer.so" /usr/lib/selkies_joystick_interposer.so ;
+         "${src_dir}/addons/js-interposer/joystick_interposer.c" ;
   fi
 
   if [ -f "${src_dir}/addons/fake-udev/Makefile" ]; then
        echo "--> Building Selkies fake udev..." \
     && make -C "${src_dir}/addons/fake-udev" \
-    && mv "${src_dir}/addons/fake-udev/libudev.so.1.0.0-fake" "${lib_dir}/" \
-    && ln -sf "${lib_dir}/libudev.so.1.0.0-fake" /opt/lib/libudev.so.1.0.0-fake ;
+    && mv "${src_dir}/addons/fake-udev/libudev.so.1.0.0-fake" "${lib_dir}/" ;
   fi
 }
 
