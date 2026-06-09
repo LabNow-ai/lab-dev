@@ -59,8 +59,8 @@ setup_selkies_python_from_source() {
      echo "--> Building Selkies Python package..." \
   && mkdir -p "${dist_dir}" \
   && cd "${src_dir}" \
-  && pip install --no-cache-dir --upgrade pip setuptools wheel \
-  && python3 setup.py sdist bdist_wheel -d "${dist_dir}" \
+  && pip install --no-cache-dir --upgrade pip setuptools wheel build \
+  && python3 -m build --outdir "${dist_dir}" \
   && cp -r "${dist_dir}"/*.whl /opt/selkies/ \
   && echo "--> Installing Selkies Python package..." \
   && pip install --no-cache-dir "${dist_dir}"/*.whl \

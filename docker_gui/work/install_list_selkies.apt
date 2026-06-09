@@ -1,37 +1,42 @@
-jq              % 解析 GitHub API 返回的 JSON，读取 Selkies release 或元数据。
-tar             % 解包 Selkies 下载包和构建产物。
-gzip            % 处理 gzip 压缩文件流，配合 tar/curl 下载包使用。
-ca-certificates % 提供 TLS 证书链，确保 curl 能安全访问 GitHub 和外部服务。
-curl            % 下载 Selkies release、GitHub API 数据以及运行期需要的远程资源。
-libatomic1      % Node.js 运行时依赖，避免清理阶段触发 npm 时缺少 libatomic.so.1。
-gstreamer1.0-alsa           % GStreamer ALSA 音频输入输出插件，支持本地音频管线。
-gstreamer1.0-gl             % GStreamer GL 渲染相关插件，支撑浏览器画面渲染链路。
-gstreamer1.0-libav          % 提供 FFmpeg 编解码支持，补齐常见媒体格式能力。
-gstreamer1.0-plugins-bad    % 一组额外 GStreamer 插件，Selkies 某些媒体功能会用到。
-gstreamer1.0-plugins-base   % GStreamer 基础插件集，提供最基本的音视频管线能力。
-gstreamer1.0-plugins-good   % 稳定常用的 GStreamer 插件，支撑编码、传输和处理。
-gstreamer1.0-plugins-ugly   % 提供部分专有或受限编码器插件，补齐可用编码选项。
-gstreamer1.0-pulseaudio     % GStreamer PulseAudio 插件，支持音频采集和播放。
-gstreamer1.0-tools          % GStreamer 命令行工具，便于调试和检查运行时管线。
-gstreamer1.0-x              % GStreamer X11 相关插件，支持 X11 显示和窗口采集链路。
-libpulse0                   % PulseAudio 客户端库，Selkies 音频子系统运行时需要。
-python3-gi                  % Python 的 GObject Introspection 绑定，Selkies Python 代码会调用。
-python3-gst-1.0             % Python 的 GStreamer 绑定，Selkies Python 层需要操作 GStreamer。
-wayland-protocols           % Wayland 协议定义，支持 Wayland/X11 混合桌面环境。
-libwayland-dev              % Wayland 开发头文件，供构建或运行时绑定加载使用。
-libwayland-egl1             % Wayland EGL 运行库，支撑图形渲染和显示输出。
-x11-utils                   % X11 基础工具，便于检查和驱动 X 会话。
-x11-xkb-utils               % XKB 键盘布局工具，支持键盘输入和布局处理。
-x11-xserver-utils           % X11 服务器辅助工具，支持屏幕配置和输入管理。
-xserver-xorg-core           % X.Org 核心服务器，Selkies 需要它提供虚拟 X 显示。
-libx11-xcb1                 % X11 与 XCB 桥接库，支持 X 客户端和底层事件通信。
-libxcb-dri3-0               % XCB DRI3 扩展库，图形加速和显示管线常会用到。
-libxkbcommon0               % 键盘布局与按键映射运行库，支持输入事件转换。
-libxdamage1                 % XDamage 扩展库，帮助检测和推送屏幕内容变化。
-libxfixes3                  % XFixes 扩展库，支持光标和屏幕修补相关功能。
-libxv1                      % XVideo 运行库，供旧式视频/X11 输出链路使用。
-libxtst6                    % XTest 运行库，支持注入键鼠事件，Selkies 输入控制会用到。
-libxext6                    % X11 扩展库集合，提供多种必需的 X 扩展支持。
-xvfb                        % 
-xclip                       % 
-x11-xserver-utils           % 虚拟 X 服务器，在容器里提供无头显示环境。
+% X11 and display server
+xvfb                         % Virtual X server that runs in memory without a display
+x11-xserver-utils            % X11 server utilities including xrandr
+x11-utils                    % X11 utilities
+x11-xkb-utils                % X11 XKB utilities for keyboard handling
+
+% X11 libraries
+libx11-xcb1                  % X11 XCB interoperability library
+libxcb-dri3-0                % XCB DRI3 extension for graphics acceleration
+libxkbcommon0                % Keyboard layout and key mapping library
+libxdamage1                  % X Damage extension to track screen content changes
+libxfixes3                   % X Fixes extension for cursor and screen fixes
+libxv1                       % X Video extension library
+libxtst6                     % X Test extension for injecting input events
+libxext6                    % X11 extensions library
+libxkbcommon-dev             % XKB library development files (for building)
+libatomic1                   % Atomic operations library
+
+% GStreamer - core, plugins base, and plugins
+gstreamer1.0-tools           % GStreamer command-line tools
+gstreamer1.0-plugins-base    % GStreamer base plugins set
+gstreamer1.0-plugins-good    % GStreamer good and reliable plugins set
+gstreamer1.0-plugins-bad     % GStreamer bad but useful plugins set
+gstreamer1.0-plugins-ugly    % GStreamer ugly plugins set with patent-encumbered codecs
+gstreamer1.0-libav           % GStreamer libav/FFmpeg plugin
+gstreamer1.0-alsa            % GStreamer ALSA plugin for audio
+gstreamer1.0-pulseaudio      % GStreamer PulseAudio plugin
+gstreamer1.0-gl              % GStreamer GL plugin for graphics
+
+% Python GObject introspection
+python3-gi                   % Python GObject introspection bindings
+python3-gst-1.0              % Python GStreamer bindings
+
+% Wayland support
+wayland-protocols            % Wayland protocols
+libwayland-egl1              % Wayland EGL library
+
+% Clipboard support
+xclip                        % Command line interface to X selections (clipboard)
+
+% PulseAudio
+libpulse0                    % PulseAudio client library
