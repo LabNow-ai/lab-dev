@@ -81,14 +81,16 @@ docker run --rm -p 8080:8080 labnow/gui:selkies --encoder=vp8enc --enable_resize
 外部 TURN 示例：
 
 ```bash
-docker run --rm -p 8080:8080 \
-  -e SELKIES_TURN_HOST=turn.example.com \
-  -e SELKIES_TURN_PORT=443 \
+docker run --rm -it -p 8080:8080 \  
+  quay.io/labnow0dev/gui-linux bash
+
+# optional env:
   -e SELKIES_TURN_PROTOCOL=tcp \
   -e SELKIES_TURN_TLS=true \
+  -e SELKIES_TURN_HOST=turn.example.com \
+  -e SELKIES_TURN_PORT=443 \
   -e SELKIES_TURN_USERNAME="$TURN_USERNAME" \
   -e SELKIES_TURN_PASSWORD="$TURN_PASSWORD" \
-  labnow/gui:selkies
 ```
 
 日志中出现 `Listening on http://0.0.0.0:8080` 表示 HTTP 服务已经启动。若随后反复出现 session 建立、ICE candidate 交换、peer cleanup，通常应优先检查 TURN、网络模式或 UDP/TCP candidate 可达性。
