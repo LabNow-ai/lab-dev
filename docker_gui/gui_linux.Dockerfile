@@ -2,8 +2,11 @@
 
 ARG BASE_NAMESPACE
 ARG BASE_IMG="node"
+ARG ARG_SELKIES_INSTALL_METHOD=source
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
+
+ARG ARG_SELKIES_INSTALL_METHOD=source
 
 LABEL maintainer="postmaster@labnow.ai"
 
@@ -12,7 +15,13 @@ COPY work /opt/utils/
 RUN set -eux && source /opt/utils/script-utils.sh \
  && chmod +x /opt/utils/*.sh \
  ## ----------------------------- Install selkies
- && source /opt/utils/script-setup-gui.sh && setup_selkies_dependencies && setup_selkies \
+ && source /opt/utils/script-setup-gui.sh \
+ && setup_selkies_dependencies \
+ && if [ "${ARG_SELKIES_INSTALL_METHOD}" = "release" ] ; then \
+      setup_selkies_from_release ; \
+    else \
+      setup_selkies_build_dependencies && setup_selkies_from_source ; \
+    fi \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
  && chmod +x /opt/selkies/docker-entrypoint.sh \
  ## Clean up and display components version information...

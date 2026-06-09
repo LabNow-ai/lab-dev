@@ -12,6 +12,7 @@ if [ "$#" -eq 0 ]; then
   set -- \
     --addr="${SELKIES_ADDR:-0.0.0.0}" \
     --port="${SELKIES_PORT:-8080}" \
+    --web_root="${SELKIES_WEB_ROOT:-/opt/selkies/share/selkies-web}" \
     --enable_https="${SELKIES_ENABLE_HTTPS:-false}" \
     --https_cert="${SELKIES_HTTPS_CERT:-/etc/ssl/certs/ssl-cert-snakeoil.pem}" \
     --https_key="${SELKIES_HTTPS_KEY:-/etc/ssl/private/ssl-cert-snakeoil.key}" \

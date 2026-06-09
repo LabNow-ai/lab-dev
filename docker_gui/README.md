@@ -15,7 +15,16 @@ docker build -f docker_gui/gui_linux.Dockerfile -t labnow/gui:selkies docker_gui
 - 已包含 Node.js 最新 LTS。
 - 已包含 Python >= 3.13。
 
-构建过程会安装 Selkies portable 版本所需的系统依赖，下载 Selkies 最新 release，并安装到 `/opt/selkies`。
+构建过程会安装 Selkies 运行期系统依赖，克隆 Selkies 最新 release 对应的源码，并安装到 `/opt/selkies`。
+默认使用源码构建方式，只保留运行期需要的 Python venv、web dashboard 产物和少量 addon 产物，构建依赖会在同一层内清理。
+
+如需回退到官方 portable release 包，可以使用：
+
+```bash
+docker build -f docker_gui/gui_linux.Dockerfile \
+  --build-arg ARG_SELKIES_INSTALL_METHOD=release \
+  -t labnow/gui:selkies-release docker_gui
+```
 
 ## 启动
 
