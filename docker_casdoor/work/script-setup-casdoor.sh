@@ -13,8 +13,8 @@ setup_casdoor() {
   && mkdir -pv /opt/casdoor/web/build /opt/casdoor/conf
 
      echo "--> Building Backend..." \
-  && cd /tmp/casdoor && echo "${VER_CASDOOR}" > /tmp/casdoor/version_info.txt \
-  && CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -ldflags="-w -s -X 'github.com/casdoor/casdoor/util.Version=${VER_CASDOOR}'" -o "server_linux_${ARCH}" . \
+  && cd /tmp/casdoor && echo "v${VER_CASDOOR}" > /tmp/casdoor/version_info.txt \
+  && CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -ldflags="-w -s -X 'github.com/casdoor/casdoor/util.Version=v${VER_CASDOOR}'" -o "server_linux_${ARCH}" . \
   && mv "./server_linux_${ARCH}" ./swagger ./docker-entrypoint.sh ./version_info.txt /opt/casdoor/ \
   && cat ./conf/app.conf | sort > /opt/casdoor/conf/app.conf \
   && ln -sf "/opt/casdoor/server_linux_${ARCH}" /opt/casdoor/server ;
