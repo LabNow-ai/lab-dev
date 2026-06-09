@@ -28,7 +28,9 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
  && chmod +x /opt/selkies/docker-entrypoint.sh \
  ## Clean up and display components version information...
- && list_installed_packages && install__clean
+ && cd /opt/selkies \
+ && list_installed_packages \
+ && install__clean
 
 ENV PATH=/opt/selkies:${PATH}
 
