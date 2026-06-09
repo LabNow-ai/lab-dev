@@ -6,7 +6,7 @@ setup_selkies_dependencies() {
 
 setup_selkies_build_dependencies() {
   apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
-    build-essential cmake g++ gcc git make pkg-config python3-dev python3-venv ;
+    build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev python3-venv ;
 }
 
 setup_selkies_from_release() {
@@ -93,7 +93,7 @@ EOF
 
 cleanup_selkies_build_dependencies() {
      apt-get purge -y --auto-remove \
-      build-essential cmake g++ gcc git make pkg-config python3-dev \
+      build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev \
       python3-venv \
   && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
 }
