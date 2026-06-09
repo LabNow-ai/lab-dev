@@ -1,0 +1,40 @@
+% ==============================================================================
+% Selkies Docker Image APT Package Dependencies
+% ==============================================================================
+
+% 1. X11 Virtual Display & Core Services
+xvfb xserver-xorg-core dbus-x11              % Headless virtual display server, core Xorg framework, and DBus for IPC.
+x11-xserver-utils x11-utils x11-xkb-utils    % Core X11 utilities for resolution scaling, window management, and key mapping.
+
+% 2. Desktop Environment & Window Management
+openbox xsettingsd xclip                     % Lightweight window manager, X11 daemon config, and remote clipboard support.
+
+% 3. Screen Capture & Remote Input Libraries
+libx11-xcb1 libxcb-dri3-0 libxext6           % XCB interoperability and DRI3 hardware graphics acceleration.
+libxdamage1 libxfixes3 libxv1                % Screen damage tracking and cursor fixes for low-latency capture.
+libxtst6                                     % X Test extension for injecting remote WebRTC mouse and keyboard events.
+
+% 4. Keyboard Layout & Input Mapping
+libxkbcommon0 libxkbcommon-dev               % Keyboard layout processing and keycode translation for remote input.
+
+% 5. Wayland Compatibility Layer
+wayland-protocols libwayland-egl1            % Wayland display protocols and EGL hardware-accelerated rendering contexts.
+
+% 6. Audio Server Infrastructure
+pulseaudio libpulse0                         % Virtual audio daemon and client library to intercept container audio streams.
+
+% 7. GStreamer Multimedia Pipeline Core
+gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-gl % GStreamer CLI, base plugins, and OpenGL support for hardware rendering.
+gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav % Comprehensive plugins (including FFmpeg/H.264) for video stream encoding.
+
+% 8. GStreamer Audio Bridging
+gstreamer1.0-alsa gstreamer1.0-pulseaudio    % Audio I/O plugins routing PulseAudio streams into the WebRTC pipeline.
+
+% 9. Video Frame Pre-processing
+libyuv0                                      % Essential YUV video scaling and color space conversion before encoding.
+
+% 10. Control Plane & Language Bindings
+python3-gi python3-gst-1.0                   % Python bindings for GObject and GStreamer to orchestrate media pipelines.
+
+% 11. System Level Essentials
+libatomic1                                   % Atomic operations for thread-safe C/C++ audio/video processing.
