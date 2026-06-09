@@ -9,10 +9,10 @@
 
 ```shell
 docker run -d \
-    --name=app-clash \
+    --name=svc-clash \
     -p 7890:7890 -p 9090:9090 \
-    -e PROXY_PROVIDER="https://subs.zeabur.app/clash" \
-    labnow/app-clash
+    -e PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml" \
+    labnow/clash
 ```
 
 After the container starts, visit this page to manage proxy: http://localhost:9090/ui/ui-zashboard/

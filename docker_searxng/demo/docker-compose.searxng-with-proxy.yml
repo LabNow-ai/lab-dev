@@ -33,7 +33,7 @@ services:
         max-file: "1"
 
   svc-clash:
-    image: docker.io/labnow/app-clash
+    image: docker.io/labnow/clash
     container_name: svc-clash
     hostname: svc-clash
     restart: unless-stopped

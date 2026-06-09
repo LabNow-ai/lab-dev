@@ -21,7 +21,7 @@ setup_selkies() {
   && chmod +x /opt/selkies/selkies-gstreamer* \
   && ln -sf /opt/selkies/selkies-gstreamer-run /usr/local/bin/selkies-gstreamer-run \
   && echo "${VER_SELKIES}" > /opt/selkies/version_info.txt \
-  && rm -rf /tmp/selkies-install ;
+  && rm -rf /tmp/selkies-install /opt/selkies/docs ;
 
   [ -x /opt/selkies/selkies-gstreamer-run ] && echo "@ Version of Selkies-GStreamer $(cat /opt/selkies/version_info.txt)" || return 1 ;
 }

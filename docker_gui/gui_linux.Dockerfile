@@ -14,7 +14,6 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  ## ----------------------------- Install selkies
  && source /opt/utils/script-setup-gui.sh && setup_selkies_dependencies && setup_selkies \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
- && rm -rf /opt/utils/entrypoint \
  && chmod +x /opt/selkies/docker-entrypoint.sh \
  ## Clean up and display components version information...
  && list_installed_packages && install__clean
@@ -32,3 +31,4 @@ WORKDIR /opt/selkies
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 ENTRYPOINT ["/opt/selkies/docker-entrypoint.sh"]
+CMD []

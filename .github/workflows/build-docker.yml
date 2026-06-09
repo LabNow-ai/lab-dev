@@ -30,12 +30,12 @@ env:
 jobs:
   ## Clash
   job-clash:
-    name: "app-clash"
+    name: "clash"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - run: |
-          source ./tool.sh && build_image app-clash latest docker_clash/clash.Dockerfile && push_image clash
+          source ./tool.sh && build_image clash latest docker_clash/clash.Dockerfile && push_image clash
 
   ## Selkies
   job-gui-linux:

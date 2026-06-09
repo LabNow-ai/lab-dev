@@ -26,5 +26,5 @@ RUN set -eux \
  && echo 'export PATH=${PATH}:/opt/clash' >> /etc/profile.d/path-clash.sh \
  && ln -sf /opt/clash/clash /usr/local/bin/
 
-ENV PROXY_PROVIDER="https://subs.zeabur.app/clash"
+ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml"
 CMD ["/opt/clash/start-clash.sh"]
