@@ -1,48 +1,40 @@
-% X11 and display server
-xvfb                         % Virtual X server that runs in memory without a display
-x11-xserver-utils            % X11 server utilities including xrandr
-x11-utils                    % X11 utilities
-x11-xkb-utils                % X11 XKB utilities for keyboard handling
+% ==============================================================================
+% Selkies Docker Image APT Package Dependencies
+% ==============================================================================
 
-% X11 libraries
-libx11-xcb1                  % X11 XCB interoperability library
-libxcb-dri3-0                % XCB DRI3 extension for graphics acceleration
-libxkbcommon0                % Keyboard layout and key mapping library
-libxdamage1                  % X Damage extension to track screen content changes
-libxfixes3                   % X Fixes extension for cursor and screen fixes
-libxv1                       % X Video extension library
-libxtst6                     % X Test extension for injecting input events
-libxext6                     % X11 extensions library
-libxkbcommon-dev             % XKB library development files (for building)
-libatomic1                   % Atomic operations library
-dbus-x11
-xserver-xorg-core
+% 1. X11 Virtual Display & Core Services
+xvfb xserver-xorg-core dbus-x11              % Headless virtual display server, core Xorg framework, and DBus for IPC.
+x11-xserver-utils x11-utils x11-xkb-utils    % Core X11 utilities for resolution scaling, window management, and key mapping.
 
+% 2. Desktop Environment & Window Management
+openbox xsettingsd xclip                     % Lightweight window manager, X11 daemon config, and remote clipboard support.
 
-% GStreamer - core, plugins base, and plugins
-gstreamer1.0-tools           % GStreamer command-line tools
-gstreamer1.0-plugins-base    % GStreamer base plugins set
-gstreamer1.0-plugins-good    % GStreamer good and reliable plugins set
-gstreamer1.0-plugins-bad     % GStreamer bad but useful plugins set
-gstreamer1.0-plugins-ugly    % GStreamer ugly plugins set with patent-encumbered codecs
-gstreamer1.0-libav           % GStreamer libav/FFmpeg plugin
-gstreamer1.0-alsa            % GStreamer ALSA plugin for audio
-gstreamer1.0-pulseaudio      % GStreamer PulseAudio plugin
-gstreamer1.0-gl              % GStreamer GL plugin for graphics
+% 3. Screen Capture & Remote Input Libraries
+libx11-xcb1 libxcb-dri3-0 libxext6           % XCB interoperability and DRI3 hardware graphics acceleration.
+libxdamage1 libxfixes3 libxv1                % Screen damage tracking and cursor fixes for low-latency capture.
+libxtst6                                     % X Test extension for injecting remote WebRTC mouse and keyboard events.
 
-% Python GObject introspection
-python3-gi                   % Python GObject introspection bindings
-python3-gst-1.0              % Python GStreamer bindings
+% 4. Keyboard Layout & Input Mapping
+libxkbcommon0 libxkbcommon-dev               % Keyboard layout processing and keycode translation for remote input.
 
-% Wayland support
-wayland-protocols            % Wayland protocols
-libwayland-egl1              % Wayland EGL library
+% 5. Wayland Compatibility Layer
+wayland-protocols libwayland-egl1            % Wayland display protocols and EGL hardware-accelerated rendering contexts.
 
-% Clipboard support
-xclip                        % Command line interface to X selections (clipboard)
+% 6. Audio Server Infrastructure
+pulseaudio libpulse0                         % Virtual audio daemon and client library to intercept container audio streams.
 
-% PulseAudio
-pulseaudio libpulse0         % PulseAudio client library
+% 7. GStreamer Multimedia Pipeline Core
+gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-gl % GStreamer CLI, base plugins, and OpenGL support for hardware rendering.
+gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav % Comprehensive plugins (including FFmpeg/H.264) for video stream encoding.
 
-openbox                      % minimal window manager
-xsettingsd
+% 8. GStreamer Audio Bridging
+gstreamer1.0-alsa gstreamer1.0-pulseaudio    % Audio I/O plugins routing PulseAudio streams into the WebRTC pipeline.
+
+% 9. Video Frame Pre-processing
+libyuv0                                      % Essential YUV video scaling and color space conversion before encoding.
+
+% 10. Control Plane & Language Bindings
+python3-gi python3-gst-1.0                   % Python bindings for GObject and GStreamer to orchestrate media pipelines.
+
+% 11. System Level Essentials
+libatomic1                                   % Atomic operations for thread-safe C/C++ audio/video processing.
