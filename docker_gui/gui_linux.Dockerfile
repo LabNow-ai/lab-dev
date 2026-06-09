@@ -1,22 +1,22 @@
 # Distributed under the terms of the Modified BSD License.
 
 ARG BASE_NAMESPACE
+ARG BASE_IMG_BUILD="node"
 ARG BASE_IMG="node"
 ARG ARG_SELKIES_INSTALL_METHOD=source
 ARG ARG_SELKIES_REF=main
 
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
+
+# Stage 1: build selkies from source
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} as builder
 
 ARG ARG_SELKIES_INSTALL_METHOD=source
 ARG ARG_SELKIES_REF=main
-
-LABEL maintainer="postmaster@labnow.ai"
 
 COPY work /opt/utils/
 
 RUN set -eux && source /opt/utils/script-utils.sh \
  && chmod +x /opt/utils/*.sh \
- ## ----------------------------- Install selkies
  && source /opt/utils/script-setup-gui.sh \
  && setup_selkies_dependencies \
  && if [ "${ARG_SELKIES_INSTALL_METHOD}" = "release" ] ; then \
@@ -26,9 +26,21 @@ RUN set -eux && source /opt/utils/script-utils.sh \
       setup_selkies_build_dependencies && setup_selkies_from_source ; \
     fi \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
- && chmod +x /opt/selkies/docker-entrypoint.sh \
- ## Clean up and display components version information...
+ && mv /opt/utils/install_list_selkies.apt /opt/selkies/ \
+ && chmod +x /opt/selkies/docker-entrypoint.sh
+
+
+# Stage 2: runtime image
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
+
+LABEL maintainer="postmaster@labnow.ai"
+
+COPY --from=builder /opt/selkies /opt/selkies
+
+RUN set -eux && source /opt/utils/script-utils.sh \
+ && install_apt /opt/selkies/install_list_selkies.apt \
  && cd /opt/selkies \
+ && pip install --no-cache-dir ./*.whl \
  && list_installed_packages \
  && install__clean
 

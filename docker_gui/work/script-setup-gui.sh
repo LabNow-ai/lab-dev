@@ -54,11 +54,17 @@ setup_selkies_web_from_source() {
 
 setup_selkies_python_from_source() {
   local src_dir="${1:-/tmp/selkies-src}"
+  local dist_dir="/tmp/selkies-dist"
 
-     echo "--> Installing Selkies Python package..." \
-  && python3 -m venv --system-site-packages /opt/selkies/venv \
-  && /opt/selkies/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
-  && /opt/selkies/venv/bin/pip install --no-cache-dir "${src_dir}" ;
+     echo "--> Building Selkies Python package..." \
+  && mkdir -p "${dist_dir}" \
+  && cd "${src_dir}" \
+  && pip install --no-cache-dir --upgrade pip setuptools wheel \
+  && python3 setup.py sdist bdist_wheel -d "${dist_dir}" \
+  && cp -r "${dist_dir}"/*.whl /opt/selkies/ \
+  && echo "--> Installing Selkies Python package..." \
+  && pip install --no-cache-dir "${dist_dir}"/*.whl \
+  && rm -rf "${dist_dir}" ;
 }
 
 setup_selkies_addons_from_source() {
@@ -82,10 +88,10 @@ setup_selkies_runtime_wrapper() {
   cat > /opt/selkies/selkies-gstreamer-run <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-if [ -x /opt/selkies/venv/bin/selkies-gstreamer ]; then
-  exec /opt/selkies/venv/bin/selkies-gstreamer "$@"
+if command -v selkies-gstreamer &>/dev/null; then
+  exec selkies-gstreamer "$@"
 fi
-exec /opt/selkies/venv/bin/selkies "$@"
+exec selkies "$@"
 EOF
   chmod +x /opt/selkies/selkies-gstreamer-run \
     && ln -sf /opt/selkies/selkies-gstreamer-run /usr/local/bin/selkies-gstreamer-run ;
@@ -126,7 +132,7 @@ setup_selkies_from_source() {
   && setup_selkies_addons_from_source "${src_dir}" \
   && setup_selkies_runtime_wrapper \
   && git -C "${src_dir}" rev-parse HEAD > /opt/selkies/version_info.txt \
-  && cleanup_selkies_build_dependencies ;
+  && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
 
   [ -x /opt/selkies/selkies-gstreamer-run ] && echo "@ Version of Selkies-GStreamer $(cat /opt/selkies/version_info.txt)" || return 1 ;
 }
