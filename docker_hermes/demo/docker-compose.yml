@@ -1,0 +1,34 @@
+name: "svc-hermes"
+
+services:
+  hermes-gateway:
+    container_name: svc-hermes-gateway
+    hostname: svc-hermes-gateway
+    image: "quay.io/labnow/hermes:latest"
+    pull_policy: if_not_present
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+      - HERMES_UID=10000
+      - HERMES_GID=10000
+    volumes:
+      - /data/hermes:/opt/data
+    # command: ["tail", "-f", "/dev/null"]
+
+  hermes-dashboard:
+    container_name: svc-hermes-dashboard
+    hostname: svc-hermes-dashboard
+    image: "quay.io/labnow/hermes:latest"
+    pull_policy: if_not_present
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - hermes-gateway
+    environment:
+      - TZ=Asia/Shanghai
+      - HERMES_UID=10000
+      - HERMES_GID=10000
+    volumes:
+      - /data/hermes:/opt/data
+    command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
