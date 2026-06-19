@@ -3,9 +3,6 @@
 ARG BASE_NAMESPACE
 ARG BASE_IMG="node"
 
-ARG HERMES_GIT_REF=main
-ARG HERMES_REPO_URL=https://github.com/nousresearch/hermes-agent.git
-
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 LABEL maintainer="postmaster@labnow.ai"
@@ -17,7 +14,6 @@ ENV HERMES_HOME=/opt/data
 ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
 ENV HERMES_TUI_DIR=/opt/hermes/ui-tui
 
-
 ENV PATH="${PNPM_HOME}:${HERMES_HOME}/bin:${PATH}"
 ENV HOME=/opt/hermes
 
@@ -27,7 +23,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 COPY work /opt/utils/
 
 RUN set -eux \
- && git clone --depth 1 --branch "${HERMES_GIT_REF}" "${HERMES_REPO_URL}" . \
+ && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
  && mv /opt/utils/start-hermes.sh /opt/hermes/ && chmod +x /opt/hermes/start-hermes.sh \
  && ln -sf /opt/hermes/start-hermes.sh /usr/local/bin/ \
  ## Install Node dependencies
