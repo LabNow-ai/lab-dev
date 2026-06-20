@@ -2,7 +2,7 @@
 set -eu
 
 # Setup data directory
-HERMES_HOME="${HERMES_HOME:-/opt/data}"
+HERMES_HOME="${HERMES_HOME:-/root/workspace}"
 mkdir -p "$HERMES_HOME"
 
 for sub in cron sessions logs hooks memories skills skins plans workspace home pairing platforms/pairing logs/gateways; do
@@ -27,7 +27,7 @@ fi
 
 # Run schema migration
 if [ -f "$HERMES_HOME/config.yaml" ]; then
-    "/opt/hermes/.venv/bin/python" "/opt/hermes/scripts/docker_config_migrate.py" || true
+    python3 -m scripts.docker_config_migrate || true
 fi
 
 # Seed bootstrap auth.json and gateway_state.json
@@ -42,7 +42,7 @@ fi
 
 # Sync bundled skills
 if [ -d "/opt/hermes/skills" ]; then
-    "/opt/hermes/.venv/bin/python" "/opt/hermes/tools/skills_sync.py" || true
+    python3 -m tools.skills_sync || true
 fi
 
 # Find agent-browser Playwright binary and set env
@@ -55,8 +55,8 @@ if [ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ] && [ -n "${PLAYWRIGHT_BROWSERS_PA
 fi
 
 # Configure environments for command invocation
-export HOME=/opt/data
-cd /opt/data
+export HOME=/root/workspace
+cd /root/workspace
 
 # If arguments are passed, route them
 if [ $# -gt 0 ]; then

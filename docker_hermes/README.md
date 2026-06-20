@@ -2,6 +2,12 @@
 
 This directory contains the Dockerfile for building the [Hermes Agent](https://github.com/nousresearch/hermes-agent) Docker image.
 
+## Optimization Features
+
+- **Multi-stage Build**: Significantly reduces image size by separating the build environment from the runtime environment.
+- **Persistent Storage**: All user data, configurations, and logs are stored in `/root/workspace`.
+- **Runtime Environment**: Uses the base Python environment instead of a virtual environment for simplicity and efficiency.
+
 ## Quick Start
 
 ### Build Image
@@ -20,49 +26,33 @@ docker compose up -d
 ### Run Manually
 
 ```bash
-# Run gateway
+# Run with persistent volume
 docker run -d \
-  --name hermes-gateway \
-  --hostname hermes-gateway \
-  --network host \
-  -v /data/hermes:/opt/data \
-  -e HERMES_UID=10000 \
-  -e HERMES_GID=10000 \
-  quay.io/labnow/hermes:latest \
-  gateway run
-
-# Run dashboard (separate container)
-docker run -d \
-  --name hermes-dashboard \
-  --hostname hermes-dashboard \
-  --network host \
-  -v /data/hermes:/opt/data \
-  -e HERMES_UID=10000 \
-  -e HERMES_GID=10000 \
-  quay.io/labnow/hermes:latest \
-  dashboard --host 127.0.0.1 --no-open
+  --name hermes \
+  --hostname hermes \
+  -p 8000:8000 \
+  -v /path/to/your/data:/root/workspace \
+  hermes-agent:latest
 ```
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| HERMES_UID | 10000 | UID for the hermes user |
-| HERMES_GID | 10000 | GID for the hermes user |
-| HERMES_HOME | /opt/data | Home directory for hermes data |
-| PLAYWRIGHT_BROWSERS_PATH | /opt/hermes/.playwright | Path for Playwright browsers |
+| HERMES_HOME | `/root/workspace` | Home directory for hermes data |
+| HOME | `/root/workspace` | System HOME environment variable |
+| PLAYWRIGHT_BROWSERS_PATH | `/opt/hermes/.playwright` | Path for Playwright browsers |
 
 ## Volumes
 
-- `/opt/data` - Persistent data directory for hermes configuration, memories, and skills
+- `/root/workspace` - Persistent data directory for hermes configuration, memories, and skills. This should be mapped to a host directory for data persistence.
 
 ## Build Arguments
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| HERMES_GIT_REF | main | Git branch/tag to clone |
-| HERMES_REPO_URL | https://github.com/nousresearch/hermes-agent.git | Git repository URL |
-| HERMES_GIT_SHA | (empty) | Git commit SHA for build info |
+| BASE_NAMESPACE | (empty) | Namespace for the base image |
+| BASE_IMG | `node` | Base image name (expected to have Node and Python) |
 
 ## Documentation
 
