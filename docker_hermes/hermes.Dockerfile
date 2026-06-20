@@ -27,7 +27,7 @@ RUN set -eux \
  && ln -sf /opt/hermes/start-hermes.sh /usr/local/bin/ \
  ## Install Node dependencies
  && export npm_config_install_links=false \
- && npm install --prefer-offline --no-audit \
+ && npm install --include=dev --prefer-offline --no-audit \
  && npx playwright install --with-deps chromium --only-shell \
  && npm cache clean --force \
  ## Frontend build
