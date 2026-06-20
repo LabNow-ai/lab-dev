@@ -149,6 +149,16 @@ jobs:
           source ./tool.sh
           build_image openclaw latest docker_openclaw/openclaw.Dockerfile && push_image openclaw
 
+  ## Hermes Agent
+  job-hermes:
+    name: "hermes"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          source ./tool.sh
+          build_image hermes latest docker_hermes/hermes.Dockerfile && push_image hermes
+
   ## DevBox - base
   job-base-dev:
     name: "developer,base-dev"
@@ -217,6 +227,7 @@ jobs:
         "job-base-dev",
         "job-nocobase",
         "job-openclaw",
+        "job-hermes",
         "job-logent",
         "job-storebox",
         "job-searxng",

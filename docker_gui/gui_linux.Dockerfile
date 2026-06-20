@@ -27,7 +27,10 @@ RUN set -eux && chmod +x /opt/utils/*.sh \
     fi \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
  && mv /opt/utils/install_list_selkies.apt /opt/selkies/ \
- && chmod +x /opt/selkies/docker-entrypoint.sh
+ && chmod +x /opt/selkies/docker-entrypoint.sh \
+ ## Build pixelflux wheel into /opt/selkies
+ && apt install -y build-essential cmake pkg-config libx11-dev libxext-dev libxfixes-dev libjpeg-dev libx264-dev libyuv-dev libavcodec-dev libavutil-dev libva-dev \
+ && cd / && pip wheel --no-cache-dir --no-binary :all: pixelflux -w /opt/selkies
 
 
 # Stage 2: runtime image
@@ -40,9 +43,6 @@ COPY --from=builder /opt/selkies /opt/selkies
 RUN set -eux && cd /opt/selkies \
  && source /opt/utils/script-utils.sh \
  && install_apt /opt/selkies/install_list_selkies.apt \
- && apt install -y build-essential cmake pkg-config libx11-dev libxext-dev libxfixes-dev libjpeg-dev libx264-dev libyuv-dev libavcodec-dev libavutil-dev libva-dev \
- && pip install --no-cache-dir --no-binary :all: pixelflux \
- && apt purge -y   build-essential cmake pkg-config libx11-dev libxext-dev libxfixes-dev libjpeg-dev libx264-dev libyuv-dev libavcodec-dev libavutil-dev libva-dev \
  && pip install --no-cache-dir ./*.whl \
  && if [ -f /opt/selkies/lib/selkies_joystick_interposer.so ]; then \
       ln -sf /opt/selkies/lib/selkies_joystick_interposer.so /usr/lib/selkies_joystick_interposer.so ; \
@@ -52,6 +52,7 @@ RUN set -eux && cd /opt/selkies \
       && ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /usr/lib/libudev.so.1 \
       && ln -sf /opt/selkies/lib/libudev.so.1.0.0-fake /usr/lib/libudev.so ; \
     fi \
+ && rm -f /opt/selkies/*.whl \
  && list_installed_packages && install__clean
 
 ENV PATH=/opt/selkies:/opt/conda/bin:${PATH}

@@ -40,10 +40,6 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  ## ----------------------------- If installing R IDEs: R_rstudio and R_rshiny
  && source /opt/utils/script-devbox-rstudio.sh \
  && for profile in $(echo $ARG_PROFILE_R | tr "," "\n") ; do ( setup_R_${profile} ) ; done \
- ## ----------------------------- Install supervisord
- && source /opt/utils/script-setup-sys.sh && setup_supervisord \
- ## ----------------------------- Install caddy
- && source /opt/utils/script-setup-net.sh && setup_caddy 2.11.2 \
  ## Clean up and display components version information...
  && list_installed_packages && install__clean
 

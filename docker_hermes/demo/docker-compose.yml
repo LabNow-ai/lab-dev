@@ -1,0 +1,16 @@
+name: "svc-hermes"
+
+services:
+  hermes:
+    container_name: svc-hermes
+    hostname: svc-hermes
+    image: "quay.io/labnow/hermes:latest"
+    pull_policy: if_not_present
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+      - HERMES_DASHBOARD=true  # Set to true to start the dashboard alongside the gateway
+    volumes:
+      - /data/hermes:/opt/data
+
