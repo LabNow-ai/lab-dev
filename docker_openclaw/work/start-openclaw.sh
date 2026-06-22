@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -eu
 
-
 bootstrap() {
   . /opt/openclaw/script-setup-openclaw.sh
 
@@ -26,5 +25,19 @@ bootstrap() {
 /opt/utils/script-localize.sh "${PROFILE_LOCALIZE:-default}"
 [ ! -f "$OPENCLAW_CONFIG" ] && bootstrap
 
-echo "Starting openclaw with options:" "$@"
-exec openclaw "$@"
+# If arguments are passed, route them
+if [ $# -gt 0 ]; then
+    # If the first argument is an executable in PATH, execute it directly (e.g. bash, sh, sleep)
+    if command -v "$1" >/dev/null 2>&1; then
+        exec "$@"
+    fi
+    # Pass to openclaw CLI with default bind/port
+    exec openclaw "$@" \
+        --bind "${OPENCLAW_GATEWAY_BIND:-lan}" \
+        --port "${OPENCLAW_GATEWAY_PORT:-18789}"
+fi
+
+# No arguments: default gateway start
+exec openclaw gateway --allow-unconfigured \
+    --bind "${OPENCLAW_GATEWAY_BIND:-lan}" \
+    --port "${OPENCLAW_GATEWAY_PORT:-18789}"

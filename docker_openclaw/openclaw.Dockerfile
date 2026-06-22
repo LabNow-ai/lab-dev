@@ -59,6 +59,4 @@ WORKDIR /opt/openclaw
 VOLUME ["/opt/openclaw/data", "/opt/node/pnpm/store"]
 EXPOSE 18789 18790
 
-CMD start-openclaw.sh gateway --allow-unconfigured \
-    --bind "${OPENCLAW_GATEWAY_BIND:-lan}" \
-    --port "${OPENCLAW_GATEWAY_PORT:-18789}"
+CMD ["start-openclaw.sh", "gateway", "--allow-unconfigured"]
