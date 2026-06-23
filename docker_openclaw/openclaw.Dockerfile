@@ -29,11 +29,12 @@ RUN set -eux \
  && GLOBAL_DIR=$(pnpm root -g | sed 's|/node_modules$||') \
  && mkdir -pv "$GLOBAL_DIR" \
  && echo '{"dependencies":{},"pnpm":{"onlyBuiltDependencies":["@matrix-org/matrix-sdk-crypto-nodejs","koffi","openclaw","protobufjs","sharp"]}}' \
-      | tee "$GLOBAL_DIR/package.json" \
+       | tee "$GLOBAL_DIR/package.json" \
  && pnpm config list \
  && pnpm install --prod -g --ignore-scripts=false --config.unsafe-perm=true --store-dir "$PNPM_STORE" openclaw@latest \
  && pnpm store prune --store-dir "$PNPM_STORE" && rm -rf "$PNPM_STORE" && install__clean \
- && openclaw --version
+ && openclaw --version \
+ && (type supervisord || (source /opt/utils/script-setup-sys.sh && setup_supervisord && echo "Supervisord installed"))
 
 RUN set -eux && source /opt/utils/script-utils.sh \
  && source /opt/openclaw/script-setup-openclaw.sh \
@@ -59,4 +60,11 @@ WORKDIR /opt/openclaw
 VOLUME ["/opt/openclaw/data", "/opt/node/pnpm/store"]
 EXPOSE 18789 18790
 
-CMD ["start-openclaw.sh", "gateway", "--allow-unconfigured"]
+# Create supervisord configuration for openclaw
+RUN set -eux \
+ && mkdir -pv /etc/supervisord \
+ && printf '[supervisord]\nidentifier=openclaw\nautostart=false\nnodaemon=false\npidfile=/var/run/supervisord.pid\nlogfile=/dev/stdout\nloglevel=warning\n\n[program-default]\nstdout_logfile=/dev/stdout\nstderr_logfile=/dev/stderr\nautostart=false\nautorestart=true\nstdout_logfile_maxbytes=10MB\nstdout_logfile_backups=10\nredirect_stderr=true\nstartretries=3\n\n[program:openclaw]\ncommand=/usr/local/bin/start-openclaw.sh gateway --allow-unconfigured\nautostart=true\n' > /etc/supervisord/supervisord.conf \
+ && printf '#!/bin/bash\nexec supervisord -c /etc/supervisord/supervisord.conf\n' > /usr/local/bin/start-supervisord.sh \
+ && chmod +x /usr/local/bin/start-supervisord.sh
+
+CMD ["start-supervisord.sh"]
