@@ -21,7 +21,7 @@ RUN set -eux \
  && mkdir -pv /opt/openclaw/data && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
- && source /opt/utils/script-setup-core.sh && setup_node_pnpm 10 \
+ && . /opt/utils/script-setup-core.sh && setup_node_pnpm 10 \
  && pnpm config set enable-pre-post-scripts true \
  && pnpm config set package-import-method hardlink \
  && pnpm config set node-linker isolated \
@@ -34,10 +34,10 @@ RUN set -eux \
  && pnpm install --prod -g --ignore-scripts=false --config.unsafe-perm=true --store-dir "$PNPM_STORE" openclaw@latest \
  && pnpm store prune --store-dir "$PNPM_STORE" && rm -rf "$PNPM_STORE" && install__clean \
  && openclaw --version \
- && (type supervisord || (source /opt/utils/script-setup-sys.sh && setup_supervisord && echo "Supervisord installed"))
+ && (type supervisord || (. /opt/utils/script-setup-sys.sh && setup_supervisord && echo "Supervisord installed"))
 
-RUN set -eux && source /opt/utils/script-utils.sh \
- && source /opt/openclaw/script-setup-openclaw.sh \
+RUN set -eux && . /opt/utils/script-utils.sh \
+ && . /opt/openclaw/script-setup-openclaw.sh \
  && cd $OPENCLAW_HOME \
  && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
  && printf '{"name":"openclaw-root","version":"1.0.0","private":true}\n' > package.json \
@@ -52,6 +52,7 @@ RUN set -eux && source /opt/utils/script-utils.sh \
  && pnpm store prune --store-dir "$PNPM_STORE" && rm -rf "$PNPM_STORE" && install__clean \
  && rm -rf ~/.* \
  && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
+ && ln -sfn /opt/openclaw /root/openclaw \
  && ls -alh ~/
 
 ENV XDG_CONFIG_HOME=/opt/openclaw/data
