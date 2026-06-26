@@ -2,7 +2,7 @@
 set -eu
 
 bootstrap() {
-  . /opt/openclaw/script-setup-openclaw.sh
+  . /root/openclaw/script-setup-openclaw.sh
 
   init_config
 

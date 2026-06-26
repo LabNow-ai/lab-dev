@@ -8,17 +8,17 @@ LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV PNPM_HOME=/opt/node/pnpm
 ENV PNPM_STORE=/opt/node/pnpm/store
-ENV OPENCLAW_HOME=/opt/openclaw
+ENV OPENCLAW_HOME=/root/openclaw
 ENV OPENCLAW_PLUGINS_ROOT=${OPENCLAW_HOME}/plugins
 ENV OPENCLAW_CONFIG=${OPENCLAW_HOME}/.openclaw/openclaw.json
 ENV PATH="${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
-ENV HOME=/opt/openclaw
+ENV HOME=/root
 
-COPY work /opt/openclaw/
+COPY work /root/openclaw/
 
 RUN set -eux \
- && chmod +x  /opt/openclaw/*.sh && ln -sf /opt/openclaw/start-openclaw.sh /usr/local/bin/ \
- && mkdir -pv /opt/openclaw/data && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
+ && chmod +x  /root/openclaw/*.sh && ln -sf /root/openclaw/start-openclaw.sh /usr/local/bin/ \
+ && mkdir -pv /root/openclaw/data && ln -sfn /root/openclaw/data /root/openclaw/.openclaw \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && . /opt/utils/script-setup-core.sh && setup_node_pnpm 10 \
@@ -37,7 +37,7 @@ RUN set -eux \
  && (type supervisord || (. /opt/utils/script-setup-sys.sh && setup_supervisord && echo "Supervisord installed"))
 
 RUN set -eux && . /opt/utils/script-utils.sh \
- && . /opt/openclaw/script-setup-openclaw.sh \
+ && . /root/openclaw/script-setup-openclaw.sh \
  && cd $OPENCLAW_HOME \
  && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
  && printf '{"name":"openclaw-root","version":"1.0.0","private":true}\n' > package.json \
@@ -51,14 +51,13 @@ RUN set -eux && . /opt/utils/script-utils.sh \
  ## clean up
  && pnpm store prune --store-dir "$PNPM_STORE" && rm -rf "$PNPM_STORE" && install__clean \
  && rm -rf ~/.* \
- && ln -sfn /opt/openclaw/data /opt/openclaw/.openclaw \
- && ln -sfn /opt/openclaw /root/openclaw \
+ && ln -sfn /root/openclaw/data /root/openclaw/.openclaw \
  && ls -alh ~/
 
-ENV XDG_CONFIG_HOME=/opt/openclaw/data
+ENV XDG_CONFIG_HOME=/root/openclaw/data
 ENV OPENCLAW_HIDE_BANNER=1
-WORKDIR /opt/openclaw
-VOLUME ["/opt/openclaw/data", "/opt/node/pnpm/store"]
+WORKDIR /root/openclaw
+VOLUME ["/root/openclaw/data", "/opt/node/pnpm/store"]
 EXPOSE 18789 18790
 
 # Create supervisord configuration for openclaw
