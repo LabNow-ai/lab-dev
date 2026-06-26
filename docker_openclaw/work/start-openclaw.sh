@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eu
 
+mkdir -p /root/openclaw/data
+ln -sfn /root/openclaw/data /root/openclaw/.openclaw
+
 bootstrap() {
   . /root/openclaw/script-setup-openclaw.sh
 
