@@ -67,4 +67,6 @@ RUN set -eux \
  && printf '#!/bin/bash\nexec supervisord -c /etc/supervisord/supervisord.conf\n' > /usr/local/bin/start-supervisord.sh \
  && chmod +x /usr/local/bin/start-supervisord.sh
 
+RUN ln -sfn /root/openclaw /opt/openclaw
+
 CMD ["start-supervisord.sh"]
