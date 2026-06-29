@@ -3,8 +3,8 @@ set -eu
 
 
 init_config() {
-  if [ ! -f "$OPENCLAW_CONFIG" ]; then
-    mkdir -p "$(dirname "$OPENCLAW_CONFIG")"
+  if [ ! -f "$OPENCLAW_CONFIG_PATH" ]; then
+    mkdir -p "$(dirname "$OPENCLAW_CONFIG_PATH")"
 
     jq -n \
       --argjson plugin_paths "[\"$OPENCLAW_PLUGINS_ROOT\"]" \
@@ -24,7 +24,7 @@ init_config() {
             token: $token
           }
         }
-      }' > "$OPENCLAW_CONFIG"
+      }' > "$OPENCLAW_CONFIG_PATH"
   fi
 }
 

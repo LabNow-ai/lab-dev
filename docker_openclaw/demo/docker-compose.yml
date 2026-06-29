@@ -12,7 +12,7 @@ services:
       - PROFILE_LOCALIZE=aliyun-pub
       - OPENCLAW_GATEWAY_TOKEN=openclaw
     volumes:
-      - /root/openclaw/data:/root/openclaw/data
+      - ${HOME}/openclaw:/root/.openclaw/data
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"

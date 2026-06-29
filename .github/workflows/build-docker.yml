@@ -73,9 +73,7 @@ jobs:
       - uses: actions/checkout@v6
       - run: |
           source ./tool.sh
-          build_image dev-hub latest docker_devbox/hub.Dockerfile \
-            --build-arg "BASE_IMG=node" \
-            --build-arg "ARG_PROFILE_JUPYTER=hub"
+          build_image dev-hub latest docker_devbox/hub.Dockerfile --build-arg "BASE_IMG=node" --build-arg "ARG_PROFILE_JUPYTER=hub"
           push_image dev-hub
     
   job-dev-hub-traefik:
@@ -85,10 +83,7 @@ jobs:
       - uses: actions/checkout@v6
       - run: |
           source ./tool.sh
-          build_image dev-hub-traefik latest docker_devbox/hub.Dockerfile \
-            --build-arg "BASE_IMG=base" \
-            --build-arg "ARG_PROFILE_JUPYTER=hub" \
-            --build-arg "ARG_KEEP_NODEJS=false"
+          build_image dev-hub-traefik latest docker_devbox/hub.Dockerfile --build-arg "BASE_IMG=base" --build-arg "ARG_PROFILE_JUPYTER=hub" --build-arg "ARG_KEEP_NODEJS=false"
           push_image dev-hub-traefik
 
   ## OpenResty as gateway

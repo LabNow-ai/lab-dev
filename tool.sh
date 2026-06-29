@@ -1,6 +1,11 @@
 #!/bin/bash
 set -eux
 
+# If not executed in GitHub Action, run script in project root, and export the following 3 variables manually:
+# export REGISTRY_SRC='quay.io'            # For BASE_NAMESPACE of images: where to pull base images from, docker.io or other source registry URL.
+# export REGISTRY_DST='quay.io'            # For tags of built images: where to push images to, docker.io or other destination registry URL.
+# export CI_PROJECT_NAME='LabNow/lab-dev'
+
 CI_PROJECT_NAME=${CI_PROJECT_NAME:-$GITHUB_REPOSITORY}
 CI_PROJECT_BRANCH=${GITHUB_HEAD_REF:-"main"}
 CI_PROJECT_SPACE=$(echo "${CI_PROJECT_BRANCH}" | cut -f1 -d'/')
@@ -91,4 +96,4 @@ setup_github_actions() {
     jq '.experimental=true | ."data-root"="/mnt/docker"' /etc/docker/daemon.json > /tmp/daemon.json && sudo mv /tmp/daemon.json /etc/docker/ ;
     ( sudo service docker restart || true ) && cat /etc/docker/daemon.json && docker info ;
 }
-[ "$GITHUB_ACTIONS" = "true" ] && echo "Running in GitHub Actions and Setup Env: $(setup_github_actions)"
+[ ${GITHUB_ACTIONS:-"false"} = "true" ] && echo "Running in GitHub Actions and Setup Env: $(setup_github_actions)" || echo "Not running in GitHub Action." ;
