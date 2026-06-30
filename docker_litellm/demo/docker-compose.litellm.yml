@@ -1,0 +1,19 @@
+services:
+  svc-litellm:
+    container_name: svc-litellm
+    image: quay.io/labnow/litellm:latest
+    restart: unless-stopped
+    # networks: ["net-litellm"]
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./data:/root/workspace
+    # environment:
+    #   - LITELLM_MASTER_KEY=sk-1234
+    #   - OPENAI_API_KEY=your-openai-key
+    #   - GEMINI_API_KEY=your-gemini-key
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
