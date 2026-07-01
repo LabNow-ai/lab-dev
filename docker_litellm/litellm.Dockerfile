@@ -1,10 +1,11 @@
 # Distributed under the terms of the Modified BSD License.
 
 ARG BASE_NAMESPACE
-ARG BASE_IMG="node"
+ARG BASE_IMG_BUILD="node"
+ARG BASE_IMG="base"
 
 # --- Building Stage ---
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG} AS builder
+FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} AS builder
 
 LABEL maintainer="postmaster@labnow.ai"
 
@@ -12,19 +13,15 @@ LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=development
 WORKDIR /build
 
-# Clone source
-RUN git clone --depth 1 --branch main https://github.com/BerriAI/litellm.git .
-
-# Build UI (Dashboard)
+# Clone source, Build UI (Dashboard) & Build Python wheel in one RUN layer
 RUN set -eux \
+ && git clone --depth 1 --branch main https://github.com/BerriAI/litellm.git . \
  && cd ui/litellm-dashboard \
  && npm install \
  && npm run build \
- && mkdir -p ../../litellm/proxy/_experimental/out \
- && cp -r out/* ../../litellm/proxy/_experimental/out/
-
-# Build Python wheel
-RUN set -eux \
+ && mkdir -pv ../../litellm/proxy/_experimental/out \
+ && cp -r out/* ../../litellm/proxy/_experimental/out/ \
+ && cd /build \
  && python3 -m pip install --upgrade pip build \
  && python3 -m build --wheel --outdir dist
 
@@ -34,28 +31,24 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 LABEL maintainer="postmaster@labnow.ai"
 
 # Production environment
-ENV NODE_ENV=production
-ENV LITELLM_HOME=/root/workspace
+ENV HOME_LITELLM=/opt/litellm
 ENV PATH="/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
-ENV HOME=/root/workspace
 
-WORKDIR /root/workspace
+WORKDIR ${HOME_LITELLM}
 
-# Copy utilities and tools
+# Copy utilities, tools and build artifacts
 COPY work /opt/utils/
-RUN chmod +x /opt/utils/*.sh && cp /opt/utils/start-litellm.sh /usr/local/bin/start-litellm.sh
-
-# Copy build artifacts from builder
 COPY --from=builder /build/dist/*.whl /tmp/
 
-# Install Runtime dependencies
+# Install Runtime dependencies and configure tools
 RUN set -eux \
+ && chmod +x /opt/utils/*.sh \
+ && ln -sf /opt/utils/start-litellm.sh /usr/local/bin/start-litellm.sh \
  && pip install --no-cache-dir /tmp/*.whl \
  && pip install --no-cache-dir 'litellm[proxy]' \
  ## Install supervisord (Go version) if needed or use simple entrypoint
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
- && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_litellm.apt \
- && install__clean \
+ && source /opt/utils/script-utils.sh && install__clean \
  && rm -rf /tmp/*.whl
 
 # Data persistence
