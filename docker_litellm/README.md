@@ -1,47 +1,37 @@
-# LiteLLM Docker Image
+# LiteLLM Proxy
 
-This directory contains the Dockerfile for building the [LiteLLM](https://github.com/BerriAI/litellm) Docker image, following the LabNow optimized multi-stage build pattern.
+`litellm` is a lightweight proxy server to call 100+ LLM APIs using the OpenAI format, with a built-in UI dashboard.
 
-## Optimization Features
+---
 
-- **Multi-stage Build**: Separates the UI compilation and Python packaging from the runtime environment to keep the final image slim.
-- **Persistent Storage**: Uses `/root/workspace` for all configurations and data.
-- **Ready to Use**: Includes the LiteLLM Proxy with the Admin UI pre-compiled.
+## 1. Port Configuration
 
-## Quick Start
+- **`4000` (HTTP)**: Serves the OpenAI-compatible REST API endpoints and the admin control panel dashboard interface.
 
-### Build Image
+---
 
+## 2. Data Persistence & Configurations
+
+LiteLLM looks for `config.yaml` in its home directory at startup:
+
+- **`/opt/litellm`**: Sourced workspace directory (configured via `HOME_LITELLM`). This is where `config.yaml` is written and read.
+- **`/root/workspace`**: Additional shared data directories volume.
+
+### Custom Home Directory
+You can override the home location using the environment variable:
+- `HOME_LITELLM`: Paths to store the active configs (e.g. `/root/workspace`).
+
+---
+
+## 3. Quickstart Example
+
+Run LiteLLM Proxy with mapped configuration folder:
 ```bash
-docker build -f litellm.Dockerfile -t litellm-labnow:latest .
-```
-
-### Run Manually
-
-```bash
-# Run with persistent volume
 docker run -d \
-  --name litellm \
+  --name svc-litellm \
   -p 4000:4000 \
-  -v /path/to/your/config:/root/workspace \
-  litellm-labnow:latest
+  -v /path/to/your/config:/opt/litellm \
+  labnow/litellm:latest
 ```
 
-By default, it will look for a `config.yaml` in the workspace. If not found, a basic one will be created.
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| LITELLM_HOME | `/root/workspace` | Home directory for LiteLLM data |
-| HOME | `/root/workspace` | System HOME environment variable |
-
-## Volumes
-
-- `/root/workspace` - Persistent directory for `config.yaml` and other LiteLLM data.
-
-## Documentation
-
-For more information about LiteLLM, see:
-- [Official Documentation](https://docs.litellm.ai/)
-- [GitHub Repository](https://github.com/BerriAI/litellm)
+By default, it will look for a `config.yaml` in the directory. If not found, a basic template targeting `gpt-3.5-turbo` is auto-generated.
