@@ -1,61 +1,44 @@
-# Hermes Agent Docker Image
+# Hermes Agent
 
-This directory contains the Dockerfile for building the [Hermes Agent](https://github.com/nousresearch/hermes-agent) Docker image.
+`hermes` is a containerized agentic assistant platform based on the [Hermes Agent](https://github.com/nousresearch/hermes-agent) project, built using Node.js and Python runtime stacks.
 
-## Optimization Features
+---
 
-- **Multi-stage Build**: Significantly reduces image size by separating the build environment from the runtime environment.
-- **Persistent Storage**: All user data, configurations, and logs are stored in `/root/workspace`.
-- **Runtime Environment**: Uses the base Python environment instead of a virtual environment for simplicity and efficiency.
+## 1. Port Configuration
 
-## Quick Start
+The Hermes Agent container hosts services on the following port:
+- **`9119` (HTTP Dashboard)**: Web-based interface to manage agent sessions, skills, configurations, and plans.
 
-### Build Image
+### Environment variables configuration:
+- `HERMES_DASHBOARD`: Set to `true` or `1` to autostart the dashboard server via Supervisord (defaults to `false` if not set).
+- `HERMES_DASHBOARD_HOST`: Interface to bind the dashboard server to (defaults to `0.0.0.0`).
+- `HERMES_DASHBOARD_PORT`: Port to host the dashboard server on (defaults to `9119`).
+- `HERMES_DASHBOARD_INSECURE`: Set to `true` or `1` to run the dashboard in insecure mode (`--insecure`).
 
+---
+
+## 2. Data Persistence
+
+The agent stores its memory, dynamic configurations, keys, and session databases under:
+
+- **`/root/workspace`**: Sourced home directory for all agent states.
+
+### Subdirectories initialized under workspace:
+- `sessions/` / `memories/` - Database and session storage.
+- `skills/` / `plans/` - Executable custom agent skills and running plans.
+- `config.yaml` / `.env` - Main configuration profile files.
+
+---
+
+## 3. Quickstart Example
+
+Run Hermes Agent with persistent volume and dashboard auto-started:
 ```bash
-docker build -f hermes.Dockerfile -t hermes-agent:latest .
-```
-
-### Run with Docker Compose
-
-```bash
-cd demo
-docker compose up -d
-```
-
-### Run Manually
-
-```bash
-# Run with persistent volume
 docker run -d \
-  --name hermes \
+  --name svc-hermes \
   --hostname hermes \
-  -p 8000:8000 \
+  -p 9119:9119 \
   -v /path/to/your/data:/root/workspace \
-  hermes-agent:latest
+  -e HERMES_DASHBOARD=true \
+  labnow/hermes:latest
 ```
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| HERMES_HOME | `/root/workspace` | Home directory for hermes data |
-| HOME | `/root/workspace` | System HOME environment variable |
-| PLAYWRIGHT_BROWSERS_PATH | `/opt/hermes/.playwright` | Path for Playwright browsers |
-
-## Volumes
-
-- `/root/workspace` - Persistent data directory for hermes configuration, memories, and skills. This should be mapped to a host directory for data persistence.
-
-## Build Arguments
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| BASE_NAMESPACE | (empty) | Namespace for the base image |
-| BASE_IMG | `node` | Base image name (expected to have Node and Python) |
-
-## Documentation
-
-For more information about Hermes Agent, see:
-- [Official Documentation](https://hermes-agent.nousresearch.com/docs/)
-- [GitHub Repository](https://github.com/nousresearch/hermes-agent)
