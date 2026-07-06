@@ -9,7 +9,7 @@ init_config() {
     local auth_mode="${OPENCLAW_GATEWAY_AUTH_MODE:-none}"
     local token="${OPENCLAW_GATEWAY_TOKEN:-openclaw}"
     local trusted_proxies="${OPENCLAW_GATEWAY_TRUSTED_PROXIES:-[\"127.0.0.1\", \"10.0.0.0/8\", \"172.16.0.0/12\", \"192.168.0.0/16\"]}"
-    local user_header="${OPENCLAW_GATEWAY_USER_HEADER:-x-auth-request-email}"
+    local user_header="${OPENCLAW_GATEWAY_USER_HEADER:-X-Auth-Request-User}"
 
     jq -n \
       --argjson plugin_paths "[\"$OPENCLAW_PLUGINS_ROOT\"]" \

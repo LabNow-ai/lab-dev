@@ -36,6 +36,34 @@ if [ -f "$OPENCLAW_CONFIG_PATH" ]; then
     fi
 fi
 
+# Dynamic auth configuration based on environment variables
+if [ -f "$OPENCLAW_CONFIG_PATH" ]; then
+    use_trusted_proxy="${OPENCLAW_USE_TRUSTED_PROXY_AUTH:-${OEPNCLAW_USE_TRUSTED_PROXY_AUTH:-false}}"
+    gateway_token="${OPENCLAW_GATEWAY_TOKEN:-openclaw}"
+
+    if [ "$use_trusted_proxy" = "true" ]; then
+        jq '
+        .gateway.auth.mode = "trusted-proxy"
+        | .gateway.trustedProxies = ["172.17.0.1", "192.168.0.0/16"]
+        | .gateway.auth.trustedProxy.userHeader = "X-Auth-Request-User"
+        | .gateway.auth.trustedProxy.requiredHeaders = ["X-Forwarded-Proto", "X-Forwarded-Host"]
+        | del(.gateway.auth.token, .gateway.auth.password)
+        ' "$OPENCLAW_CONFIG_PATH" > "${OPENCLAW_CONFIG_PATH}.tmp" \
+            && mv "${OPENCLAW_CONFIG_PATH}.tmp" "$OPENCLAW_CONFIG_PATH"
+        echo "[OK] Switched gateway auth to trusted-proxy, configured userHeader: X-Auth-Request-User"
+    else
+        jq \
+            --arg token "$gateway_token" \
+            '
+            .gateway.auth.mode = "token"
+            | .gateway.auth.token = $token
+            | del(.gateway.auth.trustedProxy, .gateway.auth.password)
+            ' "$OPENCLAW_CONFIG_PATH" > "${OPENCLAW_CONFIG_PATH}.tmp" \
+            && mv "${OPENCLAW_CONFIG_PATH}.tmp" "$OPENCLAW_CONFIG_PATH"
+        echo "[OK] Switched gateway auth to token mode, set token from environment"
+    fi
+fi
+
 # Launch gateway by default when no arguments are passed
 if [ $# -eq 0 ]; then
     set -- gateway
