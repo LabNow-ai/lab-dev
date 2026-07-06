@@ -53,19 +53,23 @@ list_downloaded_plugins() {
     fi
   done
 
-  printf '%s\n' "${plugins[@]}" | jq -R . | jq -s .
+  if [ ${#plugins[@]} -eq 0 ]; then
+    echo "[]"
+  else
+    printf '%s\n' "${plugins[@]}" | jq -R . | jq -s .
+  fi
 }
 
 verify_plugin_manifest() {
   local dest="$1"
-  echo "[INFO] Verifying plugin manifest in $dest ..."
+  echo "[INFO] Verifying plugin manifest in $dest ..." >&2
   if [ ! -f "$dest/openclaw.plugin.json" ]; then
     if ! node -e "const p=require('$dest/package.json'); process.exit(p.openclaw ? 0 : 1)" 2>/dev/null; then
       echo "[ERROR] $dest has neither openclaw.plugin.json nor openclaw field in package.json!" >&2
       return 1
     fi
   fi
-  echo "[OK] Manifest verified at $dest"
+  echo "[OK] Manifest verified at $dest" >&2
 }
 
 add_plugin() {  
