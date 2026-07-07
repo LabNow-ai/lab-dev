@@ -25,6 +25,45 @@ if [ -f "$HERMES_HOME/.env" ]; then
     chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
 fi
 
+# Keep old examples that mounted /opt/data working while standardizing on HERMES_HOME.
+if [ ! -e /opt/data ]; then
+    ln -s "$HERMES_HOME" /opt/data 2>/dev/null || true
+fi
+
+# The base image Python version can change. Discover bundled static assets instead
+# of requiring users to pass HERMES_WEB_DIST/HERMES_TUI_DIR manually.
+detect_hermes_path() {
+    local child=$1
+    python3 - "$child" <<'PY' 2>/dev/null || true
+import pathlib
+import sys
+
+child = sys.argv[1]
+try:
+    import hermes_cli
+except Exception:
+    raise SystemExit(0)
+
+path = pathlib.Path(hermes_cli.__file__).resolve().parent / child
+if path.exists():
+    print(path)
+PY
+}
+
+if [ -z "${HERMES_WEB_DIST:-}" ] || [ ! -d "${HERMES_WEB_DIST:-}" ]; then
+    detected_web_dist="$(detect_hermes_path web_dist)"
+    if [ -n "$detected_web_dist" ]; then
+        export HERMES_WEB_DIST="$detected_web_dist"
+    fi
+fi
+
+if [ -z "${HERMES_TUI_DIR:-}" ] || [ ! -d "${HERMES_TUI_DIR:-}" ]; then
+    detected_tui_dir="$(detect_hermes_path tui_dist)"
+    if [ -n "$detected_tui_dir" ]; then
+        export HERMES_TUI_DIR="$detected_tui_dir"
+    fi
+fi
+
 # Run schema migration
 if [ -f "$HERMES_HOME/config.yaml" ]; then
     python3 -m scripts.docker_config_migrate || true

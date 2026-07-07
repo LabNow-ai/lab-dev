@@ -52,6 +52,7 @@ COPY --from=builder /build/dist/*.whl /tmp/
 
 # Install Runtime dependencies
 RUN set -eux \
+ && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && pip install --no-cache-dir /tmp/*.whl \
  && npx playwright install --with-deps chromium --only-shell \
  ## Install supervisord (Go version)

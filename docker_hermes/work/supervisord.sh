@@ -5,6 +5,7 @@ set -eu
 # Set up dashboard parameters
 dash_host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
 dash_port="${HERMES_DASHBOARD_PORT:-9119}"
+hermes_home="${HERMES_HOME:-/root/workspace}"
 
 insecure=""
 case "${HERMES_DASHBOARD_INSECURE:-}" in
@@ -25,8 +26,8 @@ logfile=/var/log/supervisord.log
 pidfile=/var/run/supervisord.pid
 
 [program:gateway]
-command=exec hermes gateway run --replace
-directory=/opt/data
+command=hermes gateway run --replace
+directory=${hermes_home}
 autostart=true
 autorestart=true
 stdout_logfile=/dev/stdout
@@ -35,8 +36,8 @@ stdout_logfile_maxbytes=0
 stderr_logfile_maxbytes=0
 
 [program:dashboard]
-command=exec hermes dashboard --host ${dash_host} --port ${dash_port} --no-open ${insecure}
-directory=/opt/data
+command=hermes dashboard --host ${dash_host} --port ${dash_port} --no-open ${insecure}
+directory=${hermes_home}
 autostart=${dashboard_autostart}
 autorestart=true
 stdout_logfile=/dev/stdout
