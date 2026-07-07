@@ -62,10 +62,7 @@ update_config() {
         | if $use_proxy == "true" then
             .gateway.auth.mode = "trusted-proxy"
             | .gateway.auth.trustedProxy.userHeader = "x-auth-request-user"
-            | .gateway.auth.trustedProxy.requiredHeaders = [
-                "x-forwarded-proto",
-                "x-forwarded-host"
-              ]
+            | .gateway.auth.trustedProxy.requiredHeaders = []
             | .gateway.auth.trustedProxy.allowLoopback = true
             | del(.gateway.auth.token, .gateway.auth.password)
           else

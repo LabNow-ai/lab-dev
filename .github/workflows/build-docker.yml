@@ -217,7 +217,7 @@ jobs:
           alias_image cuda-dev latest full-cuda latest && push_image dev
 
   ## Sync all images in this build (listed by "names") to mirror registry.
-  sync_images:
+  job-sync-images:
     needs:
       [
         "job-cuda-dev",
