@@ -39,15 +39,10 @@ update_config() {
     plugins_json="$(list_downloaded_plugins)"
     plugins_json="${plugins_json:-[]}"
 
-    use_trusted_proxy="${OPENCLAW_USE_TRUSTED_PROXY_AUTH:-${OEPNCLAW_USE_TRUSTED_PROXY_AUTH:-false}}"
+    use_trusted_proxy="${OPENCLAW_USE_TRUSTED_PROXY_AUTH:-$( [ -n "${URL_PREFIX:-}" ] && echo true || echo false )}"
     gateway_token="${OPENCLAW_GATEWAY_TOKEN:-openclaw}"
 
-    if [ "$use_trusted_proxy" = "true" ]; then
-        default_proxies='["127.0.0.1","172.17.0.1","192.168.0.0/16"]'
-    else
-        default_proxies='["127.0.0.1","10.0.0.0/8","172.16.0.0/12","192.168.0.0/16"]'
-    fi
-
+    default_proxies='["0.0.0.0/0","::/0"]'
     trusted_proxies="${OPENCLAW_GATEWAY_TRUSTED_PROXIES:-$default_proxies}"
 
     tmp="$(mktemp "${OPENCLAW_CONFIG_PATH}.XXXXXX")"
