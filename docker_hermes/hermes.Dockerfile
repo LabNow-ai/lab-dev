@@ -61,7 +61,10 @@ RUN set -eux \
  && install__clean \
  && rm -rf /tmp/*.whl
 
-# Data persistence
-VOLUME /root/workspace
+# Data persistence is owned by the runtime orchestrator. Compose and external
+# workspace wrappers must provide the explicit `/root/workspace` mount.
 
-CMD ["start-hermes.sh"]
+# Standalone containers keep the historical gateway+dashboard behavior. The
+# labnow-open wrapper calls start-hermes.sh with explicit gateway/dashboard
+# modes and therefore does not use this CMD.
+CMD ["start-hermes.sh", "all"]

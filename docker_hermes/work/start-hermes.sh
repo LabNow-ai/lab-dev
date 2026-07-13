@@ -97,16 +97,44 @@ fi
 export HOME=/root/workspace
 cd /root/workspace
 
-# If arguments are passed, route them
-if [ $# -gt 0 ]; then
-    # If the first argument is an executable in PATH, execute it directly (e.g. bash, sh, sleep)
-    if command -v "$1" >/dev/null 2>&1; then
-        exec "$@"
-    else
-        # Otherwise, pass to hermes CLI
-        exec hermes "$@"
-    fi
+# Explicit service modes allow an outer supervisor (for example labnow-open) to
+# manage Hermes processes directly instead of starting a nested supervisor.
+if [ $# -eq 0 ]; then
+    # The standalone image overrides CMD to use `all`; a direct invocation uses
+    # the single foreground gateway mode, matching the OpenClaw entry contract.
+    set -- gateway
 fi
 
-# No arguments: start supervisord to run both gateway and dashboard (if requested)
-exec /opt/utils/supervisord.sh
+case "$1" in
+    all)
+        if [ $# -ne 1 ]; then
+            echo "[start-hermes] the all mode does not accept extra arguments" >&2
+            exit 2
+        fi
+        exec /opt/utils/supervisord.sh
+        ;;
+    gateway)
+        shift
+        if [ $# -eq 0 ]; then
+            set -- run --replace
+        fi
+        exec hermes gateway "$@"
+        ;;
+    dashboard)
+        shift
+        if [ $# -eq 0 ]; then
+            set -- \
+                --host "${HERMES_DASHBOARD_HOST:-0.0.0.0}" \
+                --port "${HERMES_DASHBOARD_PORT:-9119}" \
+                --no-open
+        fi
+        exec hermes dashboard "$@"
+        ;;
+esac
+
+# Preserve the generic compatibility behavior for shell commands and direct
+# Hermes CLI invocations used during one-off debugging.
+if command -v "$1" >/dev/null 2>&1; then
+    exec "$@"
+fi
+exec hermes "$@"

@@ -28,6 +28,7 @@ echo "--------> DOCKER_TAG_SUFFIX=${TAG_SUFFIX}"
 
 
 build_image() {
+    [ -n "${IMG_PREFIX_SRC:-}" ] || { echo "ERROR: tool.sh must be sourced before building; BASE_NAMESPACE is not initialized" >&2; return 1; }
     echo "$@" ;
     IMG=$1; TAG=$2; FILE=$3; shift 3; VER=$(date +%Y.%m%d.%H%M)${TAG_SUFFIX}; WORKDIR="$(dirname $FILE)";
     docker build --compress --force-rm=true -t "${IMG_PREFIX_DST}/${IMG}:${TAG}" -f "$FILE" --build-arg "BASE_NAMESPACE=${IMG_PREFIX_SRC}" "$@" "${WORKDIR}"
@@ -36,6 +37,7 @@ build_image() {
 }
 
 build_image_no_tag() {
+    [ -n "${IMG_PREFIX_SRC:-}" ] || { echo "ERROR: tool.sh must be sourced before building; BASE_NAMESPACE is not initialized" >&2; return 1; }
     echo "$@" ;
     IMG=$1; TAG=$2; FILE=$3; shift 3; WORKDIR="$(dirname $FILE)";
     docker build --compress --force-rm=true -t "${IMG_PREFIX_DST}/${IMG}:${TAG}" -f "$FILE" --build-arg "BASE_NAMESPACE=${IMG_PREFIX_SRC}" "$@" "${WORKDIR}"

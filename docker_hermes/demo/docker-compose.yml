@@ -7,6 +7,8 @@ services:
     image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
     pull_policy: if_not_present
     restart: unless-stopped
+    # Keep standalone Compose behavior explicit even if the image CMD changes.
+    command: ["start-hermes.sh", "all"]
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       HERMES_HOME: /root/workspace

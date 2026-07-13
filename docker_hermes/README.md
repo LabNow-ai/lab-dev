@@ -26,7 +26,9 @@ The Hermes Agent container hosts services on the following port:
 
 The agent stores its memory, dynamic configurations, keys, and session databases under:
 
-- **`/root/workspace`**: Sourced home directory for all agent states.
+- **`/root/workspace`**: Sourced home directory for all agent states. The image
+  does not declare an anonymous Docker volume; Compose or an external workspace
+  wrapper must provide this mount explicitly.
 
 ### Subdirectories initialized under workspace:
 - `sessions/` / `memories/` - Database and session storage.
@@ -45,8 +47,8 @@ then start it through the service compose file.
 From the repository root:
 
 ```bash
-export REGISTRY_SRC=docker.io
-export REGISTRY_DST=docker.io
+export REGISTRY_SRC=quay.io
+export REGISTRY_DST=quay.io
 export CI_PROJECT_NAME=LabNow/lab-dev
 source ./tool.sh
 build_image_no_tag hermes local docker_hermes/hermes.Dockerfile
@@ -63,14 +65,46 @@ cp docker_hermes/.env.example docker_hermes/demo/.env
 For a locally built image, set:
 
 ```env
-HERMES_IMAGE=labnow/hermes:local
+HERMES_IMAGE=quay.io/labnow/hermes:local
 ```
+
+The Compose file explicitly runs `start-hermes.sh all` for standalone mode.
+This keeps Gateway and Dashboard under the image's standalone supervisord while
+allowing external workspace wrappers to call `gateway` and `dashboard` directly.
 
 Then start:
 
 ```bash
 docker compose --env-file docker_hermes/demo/.env -f docker_hermes/demo/docker-compose.yml up -d
 ```
+
+### 镜像构建命名空间
+
+Hermes 的 Dockerfile 依赖 `BASE_NAMESPACE` 选择内部基础镜像。必须通过仓库根目录 `tool.sh` 构建，不要直接执行裸 `docker build`。
+
+```bash
+export REGISTRY_SRC=quay.io
+export REGISTRY_DST=quay.io
+export CI_PROJECT_NAME=LabNow/lab-dev
+source ./tool.sh
+build_image_no_tag hermes local docker_hermes/hermes.Dockerfile
+```
+
+构建时会传入 `BASE_NAMESPACE=quay.io/labnow`，因此 `BASE_IMG=node` 解析为 `quay.io/labnow/node`。如果使用 `REGISTRY_SRC=docker.io`，则解析为 `docker.io/labnow/node`。直接执行 `docker build` 会退回官方 `node:latest`，可能缺少仓库内部基础镜像提供的 Python/pip/Conda 依赖。
+
+当前仓库默认输出镜像仓库为 `quay.io/labnow/`，由 `REGISTRY_DST=quay.io` 控制；本地构建示例输出 `quay.io/labnow/hermes:local`。该配置只改变本地镜像标签，不会自动推送远端仓库。除非明确指定，不要改用其他 Registry。
+
+### 启动模式
+
+`start-hermes.sh` 支持三种模式：
+
+```text
+start-hermes.sh gateway       # 前台启动 Gateway
+start-hermes.sh dashboard     # 前台启动 Dashboard
+start-hermes.sh all           # 独立容器模式，由内部 supervisord 管理两者
+```
+
+独立镜像的默认 CMD 是 `start-hermes.sh all`，保持 Gateway 和 Dashboard 同时启动。外部 workspace wrapper 应使用 `gateway` 和 `dashboard` 显式模式，避免嵌套启动第二套 supervisord。
 
 Open the dashboard at:
 

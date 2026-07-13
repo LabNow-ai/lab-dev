@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Generate /etc/supervisord.conf dynamically and run supervisord
+# Generate /etc/supervisord.conf dynamically and run supervisord.
+# This is the standalone `start-hermes.sh all` compatibility path. Workspace
+# wrappers should manage gateway/dashboard directly through their own supervisor.
 set -eu
 
 # Set up dashboard parameters
