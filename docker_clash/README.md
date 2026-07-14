@@ -170,3 +170,10 @@ services:
 ```
 
 With this configuration, `my-app` will automatically have its internet traffic transparently proxied through `svc-proxy-clash` without any explicit proxy settings within the `my-app` container itself.
+
+## Reference
+
+- mihomo core: https://github.com/MetaCubeX/mihomo/tree/Alpha
+- webui zashboard: https://github.com/Zephyruso/zashboard
+- webui matacubexd: https://github.com/MetaCubeX/metacubexd
+- webui verge / client: https://clash-verge-rev.github.io
