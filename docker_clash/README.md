@@ -153,7 +153,6 @@ services:
       NET_PROXY_SUBNET: 172.30.0.0/24
     volumes:
       - ./work:/opt/clash/config
-    ports: []
 
   my-app:
     image: my-awesome-app-image
@@ -171,3 +170,21 @@ With this configuration, `my-app` will automatically have its internet traffic t
 - webui zashboard: https://github.com/Zephyruso/zashboard
 - webui matacubexd: https://github.com/MetaCubeX/metacubexd
 - webui verge / client: https://clash-verge-rev.github.io
+
+
+## Port Configuration
+
+Clash listens on the following service ports:
+- **`7890` (HTTP/SOCKS5 Mixed Proxy)**: Main proxy endpoint for client systems and routing tools.
+- **`9090` (External Controller REST API)**: Used by external dashboards to communicate with the proxy.
+- **`1053` (DNS Server)**: Listens for DNS queries if DNS resolution redirection is enabled.
+
+## 2. Data Persistence & Configurations
+
+Configurations and cache files can be persisted by mapping the configuration folder:
+
+- **`/opt/clash/config`**: Directory housing the configuration file.
+
+### Environment variables configuration:
+- `PROXY_PROVIDER`: Subscription URL or YAML document URL to source proxy nodes from.
+- `CLASH_CONFIG_PATH`: Custom path to target the config file (defaults to `/opt/clash/config/config.yaml`).
