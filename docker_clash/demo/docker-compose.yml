@@ -11,7 +11,7 @@ networks:
 
 services:
   svc-proxy-clash:
-    image: quay.io/labnow/clash:latest # This image will be built with the modified Dockerfile
+    image: quay.io/labnow/clash:latest
     container_name: svc-clash
     hostname: svc-clash
     restart: unless-stopped
