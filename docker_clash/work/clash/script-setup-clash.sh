@@ -13,8 +13,8 @@ setup_clash() {
   && opt=$(eval echo $opt) \
   && cmd="go build -tags with_gvisor -trimpath -o /opt/clash/clash -ldflags '${opt}'" \
   && eval $cmd
-  
-  
+
+
      type /opt/clash/clash && echo "@ Version of Clash $(clash -v)" || return -1;
 
      mkdir -pv /opt/clash/config \

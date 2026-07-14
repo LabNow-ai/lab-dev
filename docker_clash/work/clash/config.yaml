@@ -114,9 +114,9 @@ dns:
     - 0.0.0.0/32
 
 tun:
-  enable: false
-  stack: gvisor
-  device: Mihomo
+  enable: true
+  stack: system
+  device: tun
   auto-route: true
   strict-route: false
   auto-detect-interface: true

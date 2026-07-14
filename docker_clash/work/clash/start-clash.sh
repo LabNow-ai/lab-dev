@@ -7,4 +7,52 @@ echo "Setting PROXY_PROVIDER to: ${PROXY_PROVIDER}!"
 sed -i -e "s|PROXY_PROVIDER|${PROXY_PROVIDER}|g" "${CLASH_CONFIG_PATH:-"/opt/clash/config/config.yaml"}"
 
 export SAFE_PATHS="$DIR"
-exec /opt/clash/clash -d config $@
+
+# Start Clash in the background
+exec /opt/clash/clash -d config $@ &
+CLASH_PID=$!
+
+# Wait for Clash to start and open its ports
+sleep 5
+
+# Get the subnet of the 'net-proxy' Docker network
+# We support specifying it via NET_PROXY_SUBNET environment variable.
+# If not provided, we try using docker command (if available inside the container).
+# If docker is not available, we fallback to the default subnet '172.30.0.0/24'.
+if [ -z "${NET_PROXY_SUBNET:-}" ]; then
+    if command -v docker >/dev/null 2>&1; then
+        NET_PROXY_SUBNET=$(docker network inspect net-proxy --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || echo "")
+    fi
+fi
+
+if [ -z "${NET_PROXY_SUBNET:-}" ]; then
+    NET_PROXY_SUBNET="172.30.0.0/24"
+    echo "Warning: NET_PROXY_SUBNET environment variable not set, and docker command/socket not available. Falling back to default: $NET_PROXY_SUBNET"
+else
+    echo "Using transparent proxy subnet: $NET_PROXY_SUBNET"
+fi
+
+# Enable IPv4 forwarding
+sysctl -w net.ipv4.ip_forward=1 || true
+
+# Clean up existing clash_tproxy table if it exists
+nft delete table ip clash_tproxy 2>/dev/null || true
+
+# Add nftables rules for transparent proxying
+nft -f - << EOF
+table ip clash_tproxy {
+    chain prerouting {
+        type filter hook prerouting priority 0;
+        # Ignore traffic from Clash itself
+        ip saddr 127.0.0.1 return
+        # Redirect traffic from net-proxy to Clash's transparent proxy port (7890)
+        ip saddr $NET_PROXY_SUBNET tcp dport { 80, 443 } tproxy to :7890 accept
+        ip saddr $NET_PROXY_SUBNET udp dport { 53, 80, 443 } tproxy to :7890 accept
+    }
+}
+EOF
+
+echo "Clash transparent proxy setup complete for subnet: $NET_PROXY_SUBNET"
+
+# Keep the entrypoint running to keep the container alive
+wait $CLASH_PID

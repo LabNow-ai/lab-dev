@@ -4,7 +4,7 @@ setup_openresty() {
   # ref: https://github.com/openresty/docker-openresty/blob/master/jammy/Dockerfile
   # URL_OR="https://openresty.org/download/openresty-${VER_OR}.tar.gz"
 
-  VER_OR_MAJOR="1.27"
+  VER_OR_MAJOR="1.31"
 
     install_apt /opt/utils/install_list_openresty.apt \
  && VER_OR=$(curl -sL https://github.com/openresty/openresty/releases.atom | grep "releases/tag" | grep $VER_OR_MAJOR | head -1 | grep -Po '(\d[\d|.]+)') \
