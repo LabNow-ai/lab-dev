@@ -69,8 +69,6 @@ services:
       - NET_RAW
     devices:
       - /dev/net/tun:/dev/net/tun
-    sysctls:
-      net.ipv4.ip_forward: 1
     environment:
       TZ: Asia/Shanghai
       PROFILE_LOCALIZE: aliyun-pub
@@ -81,9 +79,9 @@ services:
 **Explanation of key configurations:**
 
 *   `network_mode: host`: This is crucial. It places the Clash container directly on the host's network stack, enabling it to create TUN interfaces and configure `nftables` rules on the host.
-*   `cap_add: - NET_ADMIN - NET_RAW`: These capabilities grant the container the necessary permissions to modify network interfaces and `nftables` rules.
-*   `devices: - /dev/net/tun:/dev/net/tun`: Provides access to the TUN device, which Clash might use internally, though the primary transparent proxying relies on `nftables`.
-*   `sysctls: net.ipv4.ip_forward: 1`: Enables IP forwarding on the host, essential for routing traffic between networks.
+*   `cap_add: ["NET_ADMIN", "NET_RAW"]`: These capabilities grant the container the necessary permissions to modify network interfaces and `nftables` rules.
+*   `devices: ["/dev/net/tun:/dev/net/tun"]`: Provides access to the TUN device, which Clash might use internally, though the primary transparent proxying relies on `nftables`.
+*   **IP Forwarding**: Routing traffic between networks requires IP forwarding to be enabled on the host system. Since the container runs in the host network namespace (`network_mode: host`), we cannot configure namespace `sysctls` inside the compose file. Instead, ensure IP forwarding is enabled directly on the host (e.g., `sysctl -w net.ipv4.ip_forward=1`). In most environments, the Docker daemon automatically enables IP forwarding on startup to support container routing.
 *   `ports: []`: No explicit port mapping is needed because the container is on the host network and `nftables` redirects traffic directly.
 *   `net-proxy`: A custom bridge network with a defined subnet (`172.30.0.0/24`) for application containers to join.
 
@@ -148,8 +146,6 @@ services:
       - NET_RAW
     devices:
       - /dev/net/tun:/dev/net/tun
-    sysctls:
-      net.ipv4.ip_forward: 1
     environment:
       TZ: Asia/Shanghai
       PROFILE_LOCALIZE: aliyun-pub
