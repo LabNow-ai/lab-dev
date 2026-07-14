@@ -1,14 +1,8 @@
 # Docker Clash Transparent Proxy Gateway
 
-This project provides a Dockerized Clash instance configured as a transparent proxy gateway.
-The goal is to allow other application containers to automatically route their internet traffic through Clash, based on Clash's rules (e.g., DOMAIN, GEOIP, IP-CIDR), without needing to set `HTTP_PROXY` or `SOCKS_PROXY` environment variables or modify application code. 
-This is achieved by leveraging Docker's host network and `nftables` for transparent proxying.
+This project provides a Dockerized Clash instance configured as a transparent proxy gateway. By leveraging Docker's host network and `nftables` TPROXY, it routes internet traffic of designated application containers through Clash without needing proxy environment variables or code changes.
 
 ## Architecture Overview
-
-The recommended architecture employs a **Docker Gateway + TPROXY** model.
-The `svc-proxy-clash` container acts as the exit gateway for a dedicated Docker network named `net-proxy`.
-Application containers that need to be proxied simply join this `net-proxy` network.
 
 ```
                                Internet
@@ -26,106 +20,22 @@ Application containers that need to be proxied simply join this `net-proxy` netw
      OpenClaw                  Playwright               AI Gateway
      (net-proxy)               (net-proxy)             (net-proxy)
 
-─────────────────────────────────────────────────────────────────
+ ─────────────────────────────────────────────────────────────────
 
- PostgreSQL          Redis           MinIO          Elasticsearch
- (default)          (default)       (default)         (default)
+  PostgreSQL          Redis           MinIO          Elasticsearch
+  (default)          (default)       (default)         (default)
 ```
 
-Key aspects of this architecture:
+*   **Gateway Mode**: The `svc-proxy-clash` container runs in `host` network mode to intercept and route traffic on the `net-proxy` subnet.
+*   **Zero Configuration**: App containers only need to join `net-proxy` to receive proxy routing automatically (no `HTTP_PROXY` variables needed).
+*   **Selective Proxying**: Clash routes traffic (Proxy or Direct) based on rules. Internal services (databases, Redis) on the default network remain unaffected.
 
-*   `svc-proxy-clash` is the exit gateway for the `net-proxy` network.
-*   All containers requiring proxying only need to join `net-proxy`.
-*   Containers do not need `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` configurations.
-*   Clash determines which traffic to proxy and which to direct based on its internal rules.
-*   Internal services (e.g., databases, Redis) can continue using Docker Compose's default network, unaffected.
+## Quick Start
 
-## Clash Service Configuration
-
-The `svc-proxy-clash` service is configured to run in `host` network mode, allowing it to directly manipulate host-level network rules. It also requires specific capabilities and `sysctls` for `nftables` and transparent proxying.
-
-Here's the recommended `docker-compose.yml` for the Clash service:
+Create a `docker-compose.yml` to run the Clash gateway alongside your application services:
 
 ```yaml
 name: "${PROFILE_ENV:-X}-proxy-clash"
-
-
-networks:
-  net-proxy:
-    driver: bridge
-    ipam:
-      config:
-      - subnet: 172.30.0.0/24
-
-services:
-  svc-proxy-clash:
-    image: quay.io/labnow/clash:latest
-    container_name: svc-clash
-    hostname: svc-clash
-    restart: unless-stopped
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    environment:
-      TZ: Asia/Shanghai
-      PROFILE_LOCALIZE: aliyun-pub
-      PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
-
-```
-
-**Explanation of key configurations:**
-
-*   `network_mode: host`: This is crucial. It places the Clash container directly on the host's network stack, enabling it to create TUN interfaces and configure `nftables` rules on the host.
-*   `cap_add: ["NET_ADMIN", "NET_RAW"]`: These capabilities grant the container the necessary permissions to modify network interfaces and `nftables` rules.
-*   `devices: ["/dev/net/tun:/dev/net/tun"]`: Provides access to the TUN device, which Clash might use internally, though the primary transparent proxying relies on `nftables`.
-*   **IP Forwarding**: Routing traffic between networks requires IP forwarding to be enabled on the host system. Since the container runs in the host network namespace (`network_mode: host`), we cannot configure namespace `sysctls` inside the compose file. Instead, ensure IP forwarding is enabled directly on the host (e.g., `sysctl -w net.ipv4.ip_forward=1`). In most environments, the Docker daemon automatically enables IP forwarding on startup to support container routing.
-*   `ports: []`: No explicit port mapping is needed because the container is on the host network and `nftables` redirects traffic directly.
-*   `net-proxy`: A custom bridge network with a defined subnet (`172.30.0.0/24`) for application containers to join.
-
-## Application Container Configuration
-
-Application containers that need to use the transparent proxy become extremely simple. They only need to join the `net-proxy` network.
-
-```yaml
-services:
-  your-app-service:
-    image: your-app-image
-    networks:
-      - net-proxy
-```
-
-**No `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` environment variables are required.** The transparent proxying is handled at the network level by `nftables` rules on the host.
-
-## Host-level Transparent Proxying (nftables)
-
-The core of the transparent proxy functionality is handled by `nftables` rules on the host system. These rules intercept traffic originating from the `net-proxy` subnet and redirect it to Clash's transparent proxy port (7890).
-
-This setup is automated by the `entrypoint.sh` script within the `svc-proxy-clash` container. When the Clash container starts, the `entrypoint.sh` script performs the following steps:
-
-1.  Starts the Clash process in the background.
-2.  Detects the subnet of the `net-proxy` Docker network (resolves from `NET_PROXY_SUBNET` environment variable, trying `docker network inspect` as fallback if docker socket is available, and defaulting to `172.30.0.0/24`).
-3.  Enables IPv4 forwarding on the host.
-4.  Installs `nftables` rules to redirect TCP traffic on ports 80 and 443, and UDP traffic on ports 53, 80, and 443, originating from the `net-proxy` subnet to Clash's transparent proxy port (7890).
-
-This ensures that traffic from containers on `net-proxy` is transparently routed through Clash, allowing Clash to apply its rules (e.g., `Google → Proxy`, `GitHub → DIRECT`, `Domestic → DIRECT`).
-
-## Benefits
-
-*   **Simplicity for Applications**: No need to configure proxy settings in individual application containers.
-*   **Transparent Routing**: Traffic is automatically routed through Clash based on its rules.
-*   **Centralized Control**: All proxy logic is managed within the Clash configuration.
-*   **Flexibility**: Easily switch between proxy and direct connections based on Clash rules.
-
-## Usage Example
-
-To use this setup, you would typically have a `docker-compose.yml` file that includes both the `svc-proxy-clash` service and your application services:
-
-```yaml
-name: my-transparent-proxy-stack
-
 
 networks:
   net-proxy:
@@ -135,8 +45,9 @@ networks:
         - subnet: 172.30.0.0/24
 
 services:
+  # Clash Transparent Proxy Gateway
   svc-proxy-clash:
-    image: quay.io/labnow/clash:latest # Ensure this image is built with the provided Dockerfile modifications
+    image: quay.io/labnow/clash:latest
     container_name: svc-clash
     hostname: svc-clash
     restart: unless-stopped
@@ -154,37 +65,51 @@ services:
     volumes:
       - ./work:/opt/clash/config
 
+  # Example Application Container
   my-app:
-    image: my-awesome-app-image
-    container_name: my-awesome-app
+    image: curlimages/curl:latest
+    container_name: my-app
     networks:
       - net-proxy
-    # Your application's other configurations
+    depends_on:
+      - svc-proxy-clash
+    command: curl -fsSL https://ipinfo.io
 ```
 
-With this configuration, `my-app` will automatically have its internet traffic transparently proxied through `svc-proxy-clash` without any explicit proxy settings within the `my-app` container itself.
+### Configuration Prerequisites
+*   **IP Forwarding**: Ensure IP forwarding is enabled on the host:
+    ```bash
+    sudo sysctl -w net.ipv4.ip_forward=1
+    ```
+*   **Capabilities**: `cap_add: [NET_ADMIN, NET_RAW]` allows Clash to configure the firewall rules.
 
-## Reference
+## How It Works
 
-- mihomo core: https://github.com/MetaCubeX/mihomo/tree/Alpha
-- webui zashboard: https://github.com/Zephyruso/zashboard
-- webui matacubexd: https://github.com/MetaCubeX/metacubexd
-- webui verge / client: https://clash-verge-rev.github.io
+The transparent proxying is automated inside the Clash container's entrypoint script ([start-clash.sh](./work/clash/start-clash.sh)):
+1. **Startup**: Launches Clash core in the background.
+2. **Subnet Detection**: Targets the subnet defined by `NET_PROXY_SUBNET` (defaults to `172.30.0.0/24`).
+3. **nftables Interception**: Installs `nftables` rules on the host to intercept traffic from the subnet:
+    *   **TCP**: Redirects ports `80`, `443`
+    *   **UDP**: Redirects ports `53`, `80`, `443`
+    These ports are transparently forwarded to Clash's proxy port (`7890`).
 
+## Configuration & Port Reference
 
-## Port Configuration
+### Listening Ports (Host Network)
+*   **`7890`**: Mixed HTTP/SOCKS5 Proxy & TPROXY destination port.
+*   **`9090`**: External Controller REST API (for web dashboards).
+*   **`1053`**: DNS Server (if DNS redirection is enabled).
 
-Clash listens on the following service ports:
-- **`7890` (HTTP/SOCKS5 Mixed Proxy)**: Main proxy endpoint for client systems and routing tools.
-- **`9090` (External Controller REST API)**: Used by external dashboards to communicate with the proxy.
-- **`1053` (DNS Server)**: Listens for DNS queries if DNS resolution redirection is enabled.
+### Environment Variables
+*   `PROXY_PROVIDER`: Subscription URL or YAML document URL to source proxy nodes from.
+*   `NET_PROXY_SUBNET`: Subnet of the network to proxy (defaults to `172.30.0.0/24`).
+*   `CLASH_CONFIG_PATH`: Path to the config file (defaults to `/opt/clash/config/config.yaml`).
 
-## 2. Data Persistence & Configurations
+### Data Persistence
+*   Mount your custom configurations/cache directory to `/opt/clash/config`.
 
-Configurations and cache files can be persisted by mapping the configuration folder:
-
-- **`/opt/clash/config`**: Directory housing the configuration file.
-
-### Environment variables configuration:
-- `PROXY_PROVIDER`: Subscription URL or YAML document URL to source proxy nodes from.
-- `CLASH_CONFIG_PATH`: Custom path to target the config file (defaults to `/opt/clash/config/config.yaml`).
+### Web Dashboard UIs
+*   [mihomo core](https://github.com/MetaCubeX/mihomo/tree/Alpha)
+*   [Zashboard (Recommended WebUI)](https://github.com/Zephyruso/zashboard)
+*   [Metacubexd WebUI](https://github.com/MetaCubeX/metacubexd)
+*   [Clash Verge Rev Client](https://clash-verge-rev.github.io)
