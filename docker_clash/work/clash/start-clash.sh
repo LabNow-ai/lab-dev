@@ -35,8 +35,8 @@ fi
 # Enable IPv4 forwarding
 sysctl -w net.ipv4.ip_forward=1 || true
 
-# Flush existing nftables rules (optional, for clean slate)
-nft flush ruleset
+# Clean up existing clash_tproxy table if it exists
+nft delete table ip clash_tproxy 2>/dev/null || true
 
 # Add nftables rules for transparent proxying
 nft -f - << EOF
