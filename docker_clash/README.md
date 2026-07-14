@@ -75,9 +75,6 @@ services:
       TZ: Asia/Shanghai
       PROFILE_LOCALIZE: aliyun-pub
       PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
-    volumes:
-      - ./work:/opt/clash/config
-    ports: []   # host mode does not require explicit port mapping
 
 ```
 
@@ -111,7 +108,7 @@ The core of the transparent proxy functionality is handled by `nftables` rules o
 This setup is automated by the `entrypoint.sh` script within the `svc-proxy-clash` container. When the Clash container starts, the `entrypoint.sh` script performs the following steps:
 
 1.  Starts the Clash process in the background.
-2.  Detects the subnet of the `net-proxy` Docker network.
+2.  Detects the subnet of the `net-proxy` Docker network (resolves from `NET_PROXY_SUBNET` environment variable, trying `docker network inspect` as fallback if docker socket is available, and defaulting to `172.30.0.0/24`).
 3.  Enables IPv4 forwarding on the host.
 4.  Installs `nftables` rules to redirect TCP traffic on ports 80 and 443, and UDP traffic on ports 53, 80, and 443, originating from the `net-proxy` subnet to Clash's transparent proxy port (7890).
 
@@ -157,6 +154,7 @@ services:
       TZ: Asia/Shanghai
       PROFILE_LOCALIZE: aliyun-pub
       PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
+      NET_PROXY_SUBNET: 172.30.0.0/24
     volumes:
       - ./work:/opt/clash/config
     ports: []

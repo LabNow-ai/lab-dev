@@ -27,6 +27,4 @@ services:
       TZ: Asia/Shanghai
       PROFILE_LOCALIZE: aliyun-pub
       PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
-    volumes:
-      - ./work:/opt/clash/config
-    ports: []   # host mode does not require port mapping
+      NET_PROXY_SUBNET: 172.30.0.0/24

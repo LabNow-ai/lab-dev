@@ -16,11 +16,20 @@ CLASH_PID=$!
 sleep 5
 
 # Get the subnet of the 'net-proxy' Docker network
-NET_PROXY_SUBNET=$(docker network inspect net-proxy --format '{{(index .IPAM.Config 0).Subnet}}')
+# We support specifying it via NET_PROXY_SUBNET environment variable.
+# If not provided, we try using docker command (if available inside the container).
+# If docker is not available, we fallback to the default subnet '172.30.0.0/24'.
+if [ -z "${NET_PROXY_SUBNET:-}" ]; then
+    if command -v docker >/dev/null 2>&1; then
+        NET_PROXY_SUBNET=$(docker network inspect net-proxy --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || echo "")
+    fi
+fi
 
-if [ -z "$NET_PROXY_SUBNET" ]; then
-    echo "Error: 'net-proxy' Docker network not found or subnet not configured."
-    exit 1
+if [ -z "${NET_PROXY_SUBNET:-}" ]; then
+    NET_PROXY_SUBNET="172.30.0.0/24"
+    echo "Warning: NET_PROXY_SUBNET environment variable not set, and docker command/socket not available. Falling back to default: $NET_PROXY_SUBNET"
+else
+    echo "Using transparent proxy subnet: $NET_PROXY_SUBNET"
 fi
 
 # Enable IPv4 forwarding
