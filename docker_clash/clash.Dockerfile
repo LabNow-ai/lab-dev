@@ -21,10 +21,14 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 COPY --from=builder /opt/clash /opt/clash
 WORKDIR /opt/clash
+RUN apt-get update && apt-get install -y nftables && rm -rf /var/lib/apt/lists/*
 RUN set -eux \
  && chmod +x /opt/clash/*.sh \
  && echo 'export PATH=${PATH}:/opt/clash' >> /etc/profile.d/path-clash.sh \
  && ln -sf /opt/clash/clash /usr/local/bin/
+COPY work/clash/entrypoint.sh /opt/clash/entrypoint.sh
+RUN chmod +x /opt/clash/entrypoint.sh
 
 ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml"
-CMD ["/opt/clash/start-clash.sh"]
+ENTRYPOINT ["/opt/clash/entrypoint.sh"]
+
