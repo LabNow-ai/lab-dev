@@ -30,5 +30,4 @@ COPY work/clash/entrypoint.sh /opt/clash/entrypoint.sh
 RUN chmod +x /opt/clash/entrypoint.sh
 
 ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml"
-ENTRYPOINT ["/opt/clash/entrypoint.sh"]
-
+ENTRYPOINT ["/opt/clash/start-clash.sh"]
