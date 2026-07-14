@@ -1,10 +1,14 @@
 # Docker Clash Transparent Proxy Gateway
 
-This project provides a Dockerized Clash instance configured as a transparent proxy gateway. The goal is to allow other application containers to automatically route their internet traffic through Clash, based on Clash's rules (e.g., DOMAIN, GEOIP, IP-CIDR), without needing to set `HTTP_PROXY` or `SOCKS_PROXY` environment variables or modify application code. This is achieved by leveraging Docker's host network and `nftables` for transparent proxying.
+This project provides a Dockerized Clash instance configured as a transparent proxy gateway.
+The goal is to allow other application containers to automatically route their internet traffic through Clash, based on Clash's rules (e.g., DOMAIN, GEOIP, IP-CIDR), without needing to set `HTTP_PROXY` or `SOCKS_PROXY` environment variables or modify application code. 
+This is achieved by leveraging Docker's host network and `nftables` for transparent proxying.
 
 ## Architecture Overview
 
-The recommended architecture employs a **Docker Gateway + TPROXY** model. The `svc-proxy-clash` container acts as the exit gateway for a dedicated Docker network named `net-proxy`. Application containers that need to be proxied simply join this `net-proxy` network.
+The recommended architecture employs a **Docker Gateway + TPROXY** model.
+The `svc-proxy-clash` container acts as the exit gateway for a dedicated Docker network named `net-proxy`.
+Application containers that need to be proxied simply join this `net-proxy` network.
 
 ```
                                Internet
@@ -45,55 +49,36 @@ Here's the recommended `docker-compose.yml` for the Clash service:
 ```yaml
 name: "${PROFILE_ENV:-X}-proxy-clash"
 
+
+networks:
+  net-proxy:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.30.0.0/24
+
 services:
-
   svc-proxy-clash:
-
-    image: quay.io/labnow/clash:latest # Or your custom built image
-
+    image: quay.io/labnow/clash:latest
     container_name: svc-clash
-
     hostname: svc-clash
-
     restart: unless-stopped
-
     network_mode: host
-
     cap_add:
       - NET_ADMIN
       - NET_RAW
-
     devices:
       - /dev/net/tun:/dev/net/tun
-
     sysctls:
       net.ipv4.ip_forward: 1
-
     environment:
-
       TZ: Asia/Shanghai
-
       PROFILE_LOCALIZE: aliyun-pub
-
       PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
-
     volumes:
-
       - ./work:/opt/clash/config
-
     ports: []   # host mode does not require explicit port mapping
 
-networks:
-
-  net-proxy:
-
-    driver: bridge
-
-    ipam:
-
-      config:
-
-      - subnet: 172.30.0.0/24
 ```
 
 **Explanation of key configurations:**
@@ -111,13 +96,9 @@ Application containers that need to use the transparent proxy become extremely s
 
 ```yaml
 services:
-
   your-app-service:
-
     image: your-app-image
-
     networks:
-
       - net-proxy
 ```
 
@@ -148,12 +129,17 @@ This ensures that traffic from containers on `net-proxy` is transparently routed
 To use this setup, you would typically have a `docker-compose.yml` file that includes both the `svc-proxy-clash` service and your application services:
 
 ```yaml
-version: '3.8'
-
 name: my-transparent-proxy-stack
 
-services:
 
+networks:
+  net-proxy:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+services:
   svc-proxy-clash:
     image: quay.io/labnow/clash:latest # Ensure this image is built with the provided Dockerfile modifications
     container_name: svc-clash
@@ -181,13 +167,6 @@ services:
     networks:
       - net-proxy
     # Your application's other configurations
-
-networks:
-  net-proxy:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.30.0.0/24
 ```
 
 With this configuration, `my-app` will automatically have its internet traffic transparently proxied through `svc-proxy-clash` without any explicit proxy settings within the `my-app` container itself.
