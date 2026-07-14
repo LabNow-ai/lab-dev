@@ -24,7 +24,7 @@ COPY --from=builder /opt/clash /opt/clash
 
 RUN set -eux \
  && echo 'export PATH=${PATH}:/opt/clash' >> /etc/profile.d/path-clash.sh \
- && apt-get update && apt-get install -y nftables vi && rm -rf /var/lib/apt/lists/* \
+ && apt-get update && apt-get install -y nftables vim && rm -rf /var/lib/apt/lists/* \
  && ln -sf /opt/clash/clash          /usr/local/bin/ \
  && ln -sf /opt/clash/start-clash.sh /usr/local/bin/
 
