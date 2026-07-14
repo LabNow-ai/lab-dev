@@ -33,14 +33,14 @@ else
 fi
 
 # Enable IPv4 forwarding
-sysctl -w net.ipv4.ip_forward=1
+sysctl -w net.ipv4.ip_forward=1 || true
 
 # Flush existing nftables rules (optional, for clean slate)
 nft flush ruleset
 
 # Add nftables rules for transparent proxying
 nft -f - << EOF
-table ip tproxy {
+table ip clash_tproxy {
     chain prerouting {
         type filter hook prerouting priority 0;
         # Ignore traffic from Clash itself
