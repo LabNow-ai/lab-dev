@@ -10,11 +10,11 @@ The Hermes Agent container hosts services on the following port:
 - **`9119` (HTTP Dashboard)**: Web-based interface to manage agent sessions, skills, configurations, and plans.
 
 ### Environment variables configuration:
-- `HERMES_DASHBOARD`: Set to `true` or `1` to autostart the dashboard server via Supervisord (defaults to `false` if not set).
+- `HERMES_DASHBOARD`: Controls Dashboard autostart in standalone `all` mode. Defaults to `true`; set to `false` only for explicit Gateway-only debugging.
 - `HERMES_DASHBOARD_HOST`: Interface to bind the dashboard server to (defaults to `0.0.0.0`).
 - `HERMES_DASHBOARD_PUBLISH_HOST`: Host interface published by Docker Compose (defaults to `127.0.0.1` for local-only access).
 - `HERMES_DASHBOARD_PORT`: Port to host the dashboard server on (defaults to `9119`).
-- `HERMES_DASHBOARD_INSECURE`: Set to `true` or `1` to run the dashboard in insecure mode (`--insecure`).
+- `HERMES_DASHBOARD_INSECURE`: Legacy compatibility flag passed to Hermes as `--insecure`; current Hermes treats it as a no-op and still requires authentication on non-loopback binds.
 - `HERMES_DASHBOARD_BASIC_AUTH_USERNAME`: Dashboard basic auth username.
 - `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH`: Dashboard basic auth password hash. Prefer this over plaintext password.
 - `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD`: Plaintext dashboard password fallback. Do not use this in shared or production env files.
@@ -104,7 +104,7 @@ start-hermes.sh dashboard     # 前台启动 Dashboard
 start-hermes.sh all           # 独立容器模式，由内部 supervisord 管理两者
 ```
 
-独立镜像的默认 CMD 是 `start-hermes.sh all`，保持 Gateway 和 Dashboard 同时启动。外部 workspace wrapper 应使用 `gateway` 和 `dashboard` 显式模式，避免嵌套启动第二套 supervisord。
+独立镜像的默认 CMD 是 `start-hermes.sh all`，即使未设置 `HERMES_DASHBOARD` 也会同时启动 Gateway 和 Dashboard；只有显式设置为 `false` 才会禁用 Dashboard。外部 workspace wrapper 应使用 `gateway` 和 `dashboard` 显式模式，避免嵌套启动第二套 supervisord。
 
 Open the dashboard at:
 
@@ -128,6 +128,14 @@ outside localhost. Generate a new hash inside the container with:
 ```bash
 python -c "from plugins.dashboard_auth.basic import hash_password; print(hash_password('your-password'))"
 ```
+
+The image health check requests `GET /api/status`, Hermes' public liveness
+endpoint. It returns HTTP 200 without a session and reports gateway/dashboard
+state without session content or provider credentials. In explicit
+`gateway` mode, the health check falls back to the running gateway process.
+If the Dashboard binds to a non-loopback address without a configured Basic
+Auth or OAuth provider, Hermes exits with a clear error instead of exposing an
+unauthenticated service.
 
 ### Configure model provider
 

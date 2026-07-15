@@ -14,9 +14,12 @@ case "${HERMES_DASHBOARD_INSECURE:-}" in
     1|true|TRUE|True|yes|YES|Yes) insecure="--insecure" ;;
 esac
 
-dashboard_autostart="false"
+# Standalone `all` mode means Gateway and Dashboard together. An explicit
+# HERMES_DASHBOARD=false can still disable Dashboard for debugging, but an
+# unset variable must not silently start a Gateway-only container.
+dashboard_autostart="true"
 case "${HERMES_DASHBOARD:-}" in
-    1|true|TRUE|True|yes|YES|Yes) dashboard_autostart="true" ;;
+    0|false|FALSE|False|no|NO|No) dashboard_autostart="false" ;;
 esac
 
 # Generate /etc/supervisord.conf

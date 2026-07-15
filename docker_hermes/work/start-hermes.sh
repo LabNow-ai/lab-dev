@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 set -eu
 
-# Setup data directory
 HERMES_HOME="${HERMES_HOME:-/root/workspace}"
 mkdir -p "$HERMES_HOME"
 
-for sub in cron sessions logs hooks memories skills skins plans workspace home pairing platforms/pairing logs/gateways; do
-    mkdir -p "$HERMES_HOME/$sub"
-done
+bootstrap_lock_dir="$HERMES_HOME/.hermes-bootstrap.lock"
+bootstrap_marker="$HERMES_HOME/.hermes-bootstrap-v1.complete"
 
-# Seed initial config files
 seed_one() {
     local dest=$1
     local src=$2
@@ -17,18 +14,71 @@ seed_one() {
         cp "/opt/hermes/$src" "$HERMES_HOME/$dest"
     fi
 }
-seed_one ".env" ".env.example"
-seed_one "config.yaml" "cli-config.yaml.example"
-seed_one "SOUL.md" "docker/SOUL.md"
 
-if [ -f "$HERMES_HOME/.env" ]; then
-    chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
-fi
+run_bootstrap() {
+    for sub in cron sessions logs hooks memories skills skins plans workspace home pairing platforms/pairing logs/gateways; do
+        mkdir -p "$HERMES_HOME/$sub"
+    done
 
-# Keep old examples that mounted /opt/data working while standardizing on HERMES_HOME.
-if [ ! -e /opt/data ]; then
-    ln -s "$HERMES_HOME" /opt/data 2>/dev/null || true
-fi
+    seed_one ".env" ".env.example"
+    seed_one "config.yaml" "cli-config.yaml.example"
+    seed_one "SOUL.md" "docker/SOUL.md"
+
+    if [ -f "$HERMES_HOME/.env" ]; then
+        chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
+    fi
+
+    # Keep old examples that mounted /opt/data working while standardizing on HERMES_HOME.
+    if [ ! -e /opt/data ]; then
+        ln -s "$HERMES_HOME" /opt/data 2>/dev/null || true
+    fi
+
+    if [ -f "$HERMES_HOME/config.yaml" ]; then
+        if ! python3 -m scripts.docker_config_migrate; then
+            echo "[start-hermes] config migration failed" >&2
+            return 1
+        fi
+    fi
+
+    if [ ! -f "$HERMES_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-}" ]; then
+        printf '%s' "$HERMES_AUTH_JSON_BOOTSTRAP" > "$HERMES_HOME/auth.json"
+        chmod 600 "$HERMES_HOME/auth.json"
+    fi
+    if [ ! -f "$HERMES_HOME/gateway_state.json" ] && [ "${HERMES_GATEWAY_BOOTSTRAP_STATE:-}" = "running" ]; then
+        printf '{"gateway_state":"running"}\n' > "$HERMES_HOME/gateway_state.json"
+        chmod 644 "$HERMES_HOME/gateway_state.json"
+    fi
+
+    if [ -d "/opt/hermes/skills" ]; then
+        if ! python3 -m tools.skills_sync; then
+            echo "[start-hermes] skills sync failed" >&2
+            return 1
+        fi
+    fi
+
+    touch "$bootstrap_marker"
+}
+
+while [ ! -f "$bootstrap_marker" ]; do
+    if mkdir "$bootstrap_lock_dir" 2>/dev/null; then
+        printf '%s\n' "$$" > "$bootstrap_lock_dir/pid"
+        if [ ! -f "$bootstrap_marker" ]; then
+            run_bootstrap
+        fi
+        rmdir "$bootstrap_lock_dir" 2>/dev/null || true
+        break
+    fi
+
+    lock_pid=""
+    if [ -f "$bootstrap_lock_dir/pid" ]; then
+        lock_pid=$(cat "$bootstrap_lock_dir/pid" 2>/dev/null || true)
+    fi
+    if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+        rm -rf "$bootstrap_lock_dir"
+        continue
+    fi
+    sleep 0.1
+done
 
 # The base image Python version can change. Discover bundled static assets instead
 # of requiring users to pass HERMES_WEB_DIST/HERMES_TUI_DIR manually.
@@ -62,26 +112,6 @@ if [ -z "${HERMES_TUI_DIR:-}" ] || [ ! -d "${HERMES_TUI_DIR:-}" ]; then
     if [ -n "$detected_tui_dir" ]; then
         export HERMES_TUI_DIR="$detected_tui_dir"
     fi
-fi
-
-# Run schema migration
-if [ -f "$HERMES_HOME/config.yaml" ]; then
-    python3 -m scripts.docker_config_migrate || true
-fi
-
-# Seed bootstrap auth.json and gateway_state.json
-if [ ! -f "$HERMES_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-}" ]; then
-    printf '%s' "$HERMES_AUTH_JSON_BOOTSTRAP" > "$HERMES_HOME/auth.json"
-    chmod 600 "$HERMES_HOME/auth.json"
-fi
-if [ ! -f "$HERMES_HOME/gateway_state.json" ] && [ "${HERMES_GATEWAY_BOOTSTRAP_STATE:-}" = "running" ]; then
-    printf '{"gateway_state":"running"}\n' > "$HERMES_HOME/gateway_state.json"
-    chmod 644 "$HERMES_HOME/gateway_state.json"
-fi
-
-# Sync bundled skills
-if [ -d "/opt/hermes/skills" ]; then
-    python3 -m tools.skills_sync || true
 fi
 
 # Find agent-browser Playwright binary and set env

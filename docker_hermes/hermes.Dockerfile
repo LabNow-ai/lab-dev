@@ -43,9 +43,13 @@ ENV HOME=/root/workspace
 WORKDIR /root/workspace
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 
+EXPOSE 9119
+
 # Copy utilities and tools
 COPY work /opt/utils/
-RUN chmod +x /opt/utils/*.sh && cp /opt/utils/start-hermes.sh /usr/local/bin/start-hermes.sh
+RUN chmod +x /opt/utils/*.sh \
+ && cp /opt/utils/start-hermes.sh /usr/local/bin/start-hermes.sh \
+ && cp /opt/utils/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh
 
 # Copy build artifacts from builder
 COPY --from=builder /build/dist/*.whl /tmp/
@@ -68,3 +72,6 @@ RUN set -eux \
 # labnow-open wrapper calls start-hermes.sh with explicit gateway/dashboard
 # modes and therefore does not use this CMD.
 CMD ["start-hermes.sh", "all"]
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["/usr/local/bin/healthcheck-hermes.sh"]
