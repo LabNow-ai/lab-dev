@@ -58,15 +58,10 @@ table ip clash_tproxy {
         ip saddr $NET_PROXY_SUBNET tcp dport 53 tproxy to :1053 meta mark set 1 accept
 
         # 3. Redirect all other TCP/UDP traffic from the proxy subnet to Clash TPROXY (7893)
-        ip saddr $NET_PROXY_SUBNET tcp tproxy to :7893 meta mark set 1 accept
-        ip saddr $NET_PROXY_SUBNET udp tproxy to :7893 meta mark set 1 accept
+        ip saddr $NET_PROXY_SUBNET meta l4proto tcp tproxy to :7893 meta mark set 1 accept
+        ip saddr $NET_PROXY_SUBNET meta l4proto udp tproxy to :7893 meta mark set 1 accept
     }
 
-    chain postrouting {
-        type nat hook postrouting priority 100;
-        # Masquerade traffic originating from the net-proxy subnet
-        ip saddr $NET_PROXY_SUBNET masquerade
-    }
 }
 EOF
 
