@@ -57,7 +57,8 @@ rule-providers:
 # ------------------------- system config -------------------------
 mode: rule
 mixed-port: 7890
-tproxy-port: 7890
+redir-port: 7892
+tproxy-port: 7893
 allow-lan: true
 secret: ''
 ipv6: false
@@ -119,6 +120,7 @@ tun:
   stack: system
   device: tun
   auto-route: false
+  auto-redir: false
   strict-route: false
   auto-detect-interface: false
   dns-hijack:
