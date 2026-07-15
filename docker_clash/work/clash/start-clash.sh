@@ -41,8 +41,9 @@ ip route del local default dev lo table 100 2>/dev/null || true
 ip rule add fwmark 1 table 100
 ip route add local default dev lo table 100
 
-# Clean up existing clash_tproxy table if it exists
+# Clean up existing clash tables if they exist
 nft delete table ip clash_tproxy 2>/dev/null || true
+nft delete table ip clash_dns_nat 2>/dev/null || true
 
 # Add nftables rules for transparent proxying
 nft -f - << EOF
@@ -53,15 +54,25 @@ table ip clash_tproxy {
         # 1. Ignore loopback and private/local subnets to prevent routing loops and ensure local communication works
         ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4, 240.0.0.0/4 } return
 
-        # 2. Redirect DNS queries (UDP/TCP port 53) from the proxy subnet to Clash DNS (1053)
-        ip saddr $NET_PROXY_SUBNET udp dport 53 tproxy to :1053 meta mark set 1 accept
-        ip saddr $NET_PROXY_SUBNET tcp dport 53 tproxy to :1053 meta mark set 1 accept
-
-        # 3. Redirect all other TCP/UDP traffic from the proxy subnet to Clash TPROXY (7893)
-        ip saddr $NET_PROXY_SUBNET meta l4proto tcp tproxy to :7893 meta mark set 1 accept
+        # 2. Redirect UDP traffic from the proxy subnet to Clash TPROXY (7893)
         ip saddr $NET_PROXY_SUBNET meta l4proto udp tproxy to :7893 meta mark set 1 accept
     }
+}
 
+table ip clash_dns_nat {
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        # 1. Redirect DNS queries (UDP/TCP port 53) from the proxy subnet to Clash DNS (1053)
+        ip saddr $NET_PROXY_SUBNET udp dport 53 redirect to :1053
+        ip saddr $NET_PROXY_SUBNET tcp dport 53 redirect to :1053
+
+        # 2. Ignore private/local subnets for TCP routing (except DNS queries handled above)
+        ip saddr $NET_PROXY_SUBNET ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4, 240.0.0.0/4 } return
+
+        # 3. Redirect all other TCP traffic from the proxy subnet to Clash REDIR (7892)
+        ip saddr $NET_PROXY_SUBNET meta l4proto tcp redirect to :7892
+    }
 }
 EOF
 

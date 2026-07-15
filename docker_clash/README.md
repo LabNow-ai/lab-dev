@@ -70,11 +70,12 @@ services:
 ## 3. How It Works
 
 1. **DNS Resolution (Hijack)**:
-   - When an application container makes a DNS request (sent to port `53`), the host's `nftables` rules intercept and redirect the query to Clash's DNS server on port `1053`.
+   - When an application container makes a DNS request (sent to port `53`), the host's `nftables` rules intercept and redirect the query (using `redirect`) to Clash's DNS server on port `1053`.
    - Clash resolves the domain and returns a Fake-IP (from the `198.18.0.0/16` range) to the container.
-2. **Transparent Routing (TPROXY)**:
+2. **Transparent Routing (Redirect & TPROXY)**:
    - The container sends TCP/UDP connections to the Fake-IP.
-   - The host's `nftables` rules intercept all outbound traffic originating from `NET_PROXY_SUBNET` (excluding private local subnets to prevent loops), marks the packets, and redirects them via TPROXY to Clash on port `7893`.
+   - For **TCP** traffic, the host's NAT rules intercept and redirect it via `redirect` to Clash's redir-port on port `7892`.
+   - For **UDP** traffic, the host's mangle rules intercept, mark, and route it via `TPROXY` to Clash on port `7893`.
    - Clash resolves the Fake-IP back to the original domain name, proxies the request, and returns the response.
 
 ---
@@ -82,7 +83,8 @@ services:
 ## 4. Port and Web Dashboard Reference
 
 *   **`7890`**: Mixed HTTP/Socks5 Proxy port (for manual application configuration).
-*   **`7893`**: TPROXY transparent proxy destination port.
+*   **`7892`**: REDIR transparent proxy destination port (for TCP).
+*   **`7893`**: TPROXY transparent proxy destination port (for UDP).
 *   **`9090`**: External Controller REST API port.
 
 
