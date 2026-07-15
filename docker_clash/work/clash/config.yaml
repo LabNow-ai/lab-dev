@@ -57,6 +57,7 @@ rule-providers:
 # ------------------------- system config -------------------------
 mode: rule
 mixed-port: 7890
+tproxy-port: 7890
 allow-lan: true
 secret: ''
 ipv6: false

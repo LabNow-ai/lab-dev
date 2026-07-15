@@ -49,6 +49,12 @@ table ip clash_tproxy {
         ip saddr $NET_PROXY_SUBNET tcp dport { 80, 443 } tproxy to :7890 accept
         ip saddr $NET_PROXY_SUBNET udp dport { 53, 80, 443 } tproxy to :7890 accept
     }
+
+    chain postrouting {
+        type nat hook postrouting priority 100;
+        # Masquerade traffic originating from the net-proxy subnet
+        ip saddr $NET_PROXY_SUBNET masquerade
+    }
 }
 EOF
 

@@ -1,15 +1,14 @@
 name: "${PROFILE_ENV:-X}-proxy-clash"
 
-
 networks:
   net-proxy:
     driver: bridge
     ipam:
       config:
-      - subnet: 172.30.0.0/24
-
+        - subnet: 172.30.0.0/24
 
 services:
+  # Clash Transparent Proxy Gateway
   svc-proxy-clash:
     image: quay.io/labnow/clash:latest
     container_name: svc-clash
@@ -26,3 +25,14 @@ services:
       PROFILE_LOCALIZE: aliyun-pub
       PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
       NET_PROXY_SUBNET: 172.30.0.0/24
+    volumes:
+      - ./work:/opt/clash/config
+  # Example Application Container
+  my-app:
+    image: curlimages/curl:latest
+    container_name: my-app
+    networks:
+      - net-proxy
+    depends_on:
+      - svc-proxy-clash
+    command: curl -fsSL https://ipinfo.io

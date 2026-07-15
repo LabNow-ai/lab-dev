@@ -1,115 +1,216 @@
-# Docker Clash Transparent Proxy Gateway
+# Docker Clash Transparent Egress Gateway
 
-This project provides a Dockerized Clash instance configured as a transparent proxy gateway. By leveraging Docker's host network and `nftables` TPROXY, it routes internet traffic of designated application containers through Clash without needing proxy environment variables or code changes.
+This project provides a Dockerized Clash instance configured as a **Transparent Egress Gateway**. It addresses the challenge of selectively routing traffic from specific Docker/Kubernetes workloads through a proxy, rather than forcing all traffic on the host or all workloads through it. This approach is more aligned with modern service mesh and enterprise gateway designs.
 
-## Architecture Overview
+## I. Overall Architecture
 
+The recommended architecture is a **Transparent Egress Gateway**.
+
+```text
+                        Internet
+                            │
+                ┌─────────────────────┐
+                │  Proxy Provider(s)  │
+                └─────────────────────┘
+                            │
+                     Clash Meta Gateway
+                  (Rule Engine + DNS + TProxy)
+                            ▲
+                            │
+                nftables / Policy Routing
+                            ▲
+                            │
+                    Linux Host Network
+                            ▲
+                            │
+      ┌─────────────────────┴─────────────────────┐
+      │                                           │
+ docker bridge: net-proxy                  docker default
+      │                                           │
+      │                                           │
+ OpenClaw                                    PostgreSQL
+ Browser                                     Redis
+ AI Agent                                    MinIO
+ Playwright                                  ElasticSearch
 ```
-                               Internet
-                                   ▲
-                                   │
-                          Clash Meta Container
-                     (Gateway + Transparent Proxy)
-                                   ▲
-                                   │
-                    Docker bridge: net-proxy
-                         (172.30.0.0/24)
-                                   ▲
-        ┌──────────────────────────┼──────────────────────────┐
-        │                          │                          │
-     OpenClaw                  Playwright               AI Gateway
-     (net-proxy)               (net-proxy)             (net-proxy)
 
- ─────────────────────────────────────────────────────────────────
+**Key Points:**
 
-  PostgreSQL          Redis           MinIO          Elasticsearch
-  (default)          (default)       (default)         (default)
+*   **Host Traffic**: The host's own traffic **will not** pass through Clash.
+*   **Targeted Proxying**: Only containers connected to the `net-proxy` Docker bridge will have their traffic routed through Clash.
+
+## II. Traffic Flow
+
+**For containers on `net-proxy` (e.g., OpenClaw):**
+
+```text
+OpenClaw
+↓
+eth0
+↓
+docker bridge(net-proxy)
+↓
+Host nftables
+↓
+TPROXY
+↓
+Clash Container
+↓
+Rule Engine
+↓
+DIRECT
+或
+Proxy
+↓
+Internet
 ```
 
-*   **Gateway Mode**: The `svc-proxy-clash` container runs in `host` network mode to intercept and route traffic on the `net-proxy` subnet.
-*   **Zero Configuration**: App containers only need to join `net-proxy` to receive proxy routing automatically (no `HTTP_PROXY` variables needed).
-*   **Selective Proxying**: Clash routes traffic (Proxy or Direct) based on rules. Internal services (databases, Redis) on the default network remain unaffected.
+**For Host traffic (e.g., Host curl):**
 
-## Quick Start
+```text
+Host curl
+↓
+eth0
+↓
+Internet
+```
 
-Create a `docker-compose.yml` to run the Clash gateway alongside your application services:
+Host traffic will **not** enter Clash.
+
+## III. Why Not TUN?
+
+TUN (Tunnel) mode modifies the **default route of the entire network namespace**. This means all traffic within that namespace is routed through the TUN device. This approach is generally not suitable for server environments where only a subset of containers needs proxying, as it affects the entire host or container's network stack.
+
+## IV. Host Responsibilities
+
+The host's role is minimal and focused on traffic redirection:
+
+*   **Matching**: Identify traffic originating from the `net-proxy` interface (e.g., `iifname=docker-net-proxy`).
+*   **Forwarding**: Transparently forward this matched traffic using TPROXY to Clash's designated port (e.g., `7890`).
+*   **Restoration**: The host does not concern itself with the ultimate destination (e.g., `google`, `github`, `chatgpt`); it only knows to send the traffic to Clash.
+
+## V. Clash Responsibilities
+
+Clash is solely responsible for the **rule engine** and proxy logic. For example:
 
 ```yaml
-name: "${PROFILE_ENV:-X}-proxy-clash"
-
-networks:
-  net-proxy:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.30.0.0/24
-
-services:
-  # Clash Transparent Proxy Gateway
-  svc-proxy-clash:
-    image: quay.io/labnow/clash:latest
-    container_name: svc-clash
-    hostname: svc-clash
-    restart: unless-stopped
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    environment:
-      TZ: Asia/Shanghai
-      PROFILE_LOCALIZE: aliyun-pub
-      PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
-      NET_PROXY_SUBNET: 172.30.0.0/24
-    volumes:
-      - ./work:/opt/clash/config
-
-  # Example Application Container
-  my-app:
-    image: curlimages/curl:latest
-    container_name: my-app
-    networks:
-      - net-proxy
-    depends_on:
-      - svc-proxy-clash
-    command: curl -fsSL https://ipinfo.io
+DOMAIN-SUFFIX,openai.com,Proxy
+DOMAIN-SUFFIX,github.com,DIRECT
+GEOIP,CN,DIRECT
+MATCH,Proxy
 ```
 
-### Configuration Prerequisites
-*   **IP Forwarding**: Ensure IP forwarding is enabled on the host:
-    ```bash
-    sudo sysctl -w net.ipv4.ip_forward=1
-    ```
-*   **Capabilities**: `cap_add: [NET_ADMIN, NET_RAW]` allows Clash to configure the firewall rules.
+All business logic related to traffic routing (Proxy or Direct) resides within Clash. The host remains unaware of these specific rules.
 
-## How It Works
+## VI. DNS
 
-The transparent proxying is automated inside the Clash container's entrypoint script ([start-clash.sh](./work/clash/start-clash.sh)):
-1. **Startup**: Launches Clash core in the background.
-2. **Subnet Detection**: Targets the subnet defined by `NET_PROXY_SUBNET` (defaults to `172.30.0.0/24`).
-3. **nftables Interception**: Installs `nftables` rules on the host to intercept traffic from the subnet:
-    *   **TCP**: Redirects ports `80`, `443`
-    *   **UDP**: Redirects ports `53`, `80`, `443`
-    These ports are transparently forwarded to Clash's proxy port (`7890`).
+It is recommended that all containers on the `net-proxy` network use Clash's DNS server (e.g., `172.30.0.2`). This ensures consistent DNS resolution and allows Clash's Fake-IP and rule engine to function correctly:
 
-## Configuration & Port Reference
+```text
+Container
+↓
+Fake-IP
+↓
+Rule
+↓
+Proxy/DIRECT
+```
 
-### Listening Ports (Host Network)
-*   **`7890`**: Mixed HTTP/SOCKS5 Proxy & TPROXY destination port.
-*   **`9090`**: External Controller REST API (for web dashboards).
-*   **`1053`**: DNS Server (if DNS redirection is enabled).
+This approach prevents DNS pollution on the host.
 
-### Environment Variables
-*   `PROXY_PROVIDER`: Subscription URL or YAML document URL to source proxy nodes from.
-*   `NET_PROXY_SUBNET`: Subnet of the network to proxy (defaults to `172.30.0.0/24`).
-*   `CLASH_CONFIG_PATH`: Path to the config file (defaults to `/opt/clash/config/config.yaml`).
+## VII. Docker Compose Integration
 
-### Data Persistence
-*   Mount your custom configurations/cache directory to `/opt/clash/config`.
+For any container requiring proxying, simply add it to the `net-proxy` network in your `docker-compose.yml`:
 
-### Web Dashboard UIs
-*   [mihomo core](https://github.com/MetaCubeX/mihomo/tree/Alpha)
-*   [Zashboard (Recommended WebUI)](https://github.com/Zephyruso/zashboard)
-*   [Metacubexd WebUI](https://github.com/MetaCubeX/metacubexd)
-*   [Clash Verge Rev Client](https://clash-verge-rev.github.io)
+```yaml
+services:
+  openclaw:
+    networks:
+      - default
+      - net-proxy
+```
+
+This eliminates the need for `HTTP_PROXY`, `SOCKS_PROXY`, or `ALL_PROXY` environment variables within the application containers.
+
+## VIII. Gateway Container Enhancements
+
+LabNow's Clash image should be enhanced with Gateway capabilities. The `entrypoint` script should perform the following steps:
+
+1.  Start Clash.
+2.  Install `nftables`.
+3.  Enable IP forwarding.
+4.  Enable masquerading.
+5.  Wait for the Docker Bridge to be ready.
+
+This keeps the user's `docker-compose.yml` concise.
+
+## IX. Applicability to Kubernetes
+
+This architecture is **highly applicable to Kubernetes, and even more naturally so**.
+
+In Kubernetes, all traffic from a Pod naturally flows through the CNI (Container Network Interface) on the Node. Therefore, there's no need for Docker Bridge specific configurations.
+
+For example:
+
+```text
+Pod
+↓
+Calico
+↓
+Node
+↓
+TPROXY
+↓
+Clash
+↓
+Internet
+```
+
+This allows for policy-based routing. For instance, by labeling a Namespace (e.g., `metadata: labels: proxy: enabled`), NetworkPolicy or CNI can direct traffic from these Pods to the Gateway.
+
+Alternatively, a DaemonSet can deploy Clash on each Node, similar to an Istio Sidecar, but with a single Gateway per Node, rather than per Pod, to optimize resource usage.
+
+## X. Sidecar vs. Node Gateway
+
+**Avoid a Sidecar approach** where each Pod has its own Clash instance. This leads to significant resource waste (e.g., 100 Pods = 100 Clash instances).
+
+Instead, a **Node-level Gateway** is recommended:
+
+```text
+Node A
+↓
+Clash
+↓
+20 Pods
+
+Node B
+↓
+Clash
+↓
+18 Pods
+```
+
+This resembles an Istio Egress Gateway, providing a centralized proxy for multiple Pods on a Node.
+
+## XI. Long-term Evolution for LabNow
+
+For LabNow as an AI Agent platform, it's recommended to define this component not merely as "Clash" but as a more generic **Egress Gateway**. Its overall responsibilities can be broken down as follows:
+
+```
+                LabNow Egress Gateway
+┌──────────────────────────────────────────────┐
+│ DNS（Fake-IP、DoH、DoQ）                     │
+├──────────────────────────────────────────────┤
+│ Transparent Proxy（TPROXY / REDIRECT）       │
+├──────────────────────────────────────────────┤
+│ Rule Engine（Clash Meta）                    │
+├──────────────────────────────────────────────┤
+│ Proxy Provider（订阅、健康检查、负载均衡）     │
+├──────────────────────────────────────────────┤
+│ Egress Policy（按 Namespace、Tenant、App）   │
+├──────────────────────────────────────────────┤
+│ Metrics（Prometheus）、Audit、Tracing        │
+└──────────────────────────────────────────────┘
+```
+
+This elevates its positioning from a "proxy tool" to a **unified Egress Gateway for AI workloads**. This architecture is consistent with the design principles of Istio Egress Gateway, Cilium Egress Gateway, and Calico Egress Gateway, making it suitable for both standalone Docker and seamless migration to Kubernetes without modifying application code in business containers or Pods.
