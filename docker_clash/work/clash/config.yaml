@@ -115,12 +115,12 @@ dns:
     - 0.0.0.0/32
 
 tun:
-  enable: true
+  enable: false
   stack: system
   device: tun
-  auto-route: true
+  auto-route: false
   strict-route: false
-  auto-detect-interface: true
+  auto-detect-interface: false
   dns-hijack:
   - any:53
   - "tcp://any:53"
