@@ -18,10 +18,12 @@ fi
 
 export SAFE_PATHS="$DIR"
 
-# 2. Get the subnet of the 'net-proxy' Docker network
+# 2. Get the subnet of the 'net-proxy-clash' or 'net-proxy' Docker network
 if [ -z "${NET_PROXY_SUBNET:-}" ]; then
     if command -v docker >/dev/null 2>&1; then
-        NET_PROXY_SUBNET=$(docker network inspect net-proxy --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || echo "")
+        # Try net-proxy-clash first (matching docker-compose), then fallback to net-proxy
+        NET_PROXY_SUBNET=$(docker network inspect net-proxy-clash --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || \
+                           docker network inspect net-proxy --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || echo "")
     fi
 fi
 
@@ -45,16 +47,36 @@ ip route add local default dev lo table 100
 nft delete table ip clash_tproxy 2>/dev/null || true
 nft delete table ip clash_dns_nat 2>/dev/null || true
 
+# Define cleanup function for graceful termination
+cleanup() {
+    echo "Container stopping, cleaning up network rules..."
+    nft delete table ip clash_tproxy 2>/dev/null || true
+    nft delete table ip clash_dns_nat 2>/dev/null || true
+    ip rule del fwmark 1 table 100 2>/dev/null || true
+    ip route del local default dev lo table 100 2>/dev/null || true
+    
+    if [ -n "${CLASH_PID:-}" ]; then
+        echo "Stopping Clash (PID: $CLASH_PID)..."
+        kill -TERM "$CLASH_PID"
+        wait "$CLASH_PID" 2>/dev/null || true
+    fi
+    echo "Cleanup complete. Exiting."
+}
+
+# Trap termination signals to clean up host network rules
+trap 'cleanup' SIGTERM SIGINT EXIT
+
 # 6. Add nftables rules for transparent proxying
 # We configure this BEFORE starting Clash so that application containers
 # do not leak unproxied traffic during the container startup window.
+# We bypass loopback, private networks, link-local (169.254.0.0/16), multicast, and broadcast addresses.
 nft -f - << EOF
 table ip clash_tproxy {
     chain prerouting {
         type filter hook prerouting priority mangle; policy accept;
 
-        # 1. Ignore loopback and private/local subnets to prevent routing loops and ensure local communication works
-        ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4, 240.0.0.0/4 } return
+        # 1. Ignore loopback, private, link-local, multicast, and broadcast subnets
+        ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 224.0.0.0/4, 240.0.0.0/4, 255.255.255.255/32 } return
 
         # 2. Redirect UDP traffic from the proxy subnet to Clash TPROXY (7893)
         ip saddr $NET_PROXY_SUBNET meta l4proto udp tproxy to :7893 meta mark set 1 accept
@@ -69,8 +91,8 @@ table ip clash_dns_nat {
         ip saddr $NET_PROXY_SUBNET udp dport 53 redirect to :1053
         ip saddr $NET_PROXY_SUBNET tcp dport 53 redirect to :1053
 
-        # 2. Ignore private/local subnets for TCP routing (except DNS queries handled above)
-        ip saddr $NET_PROXY_SUBNET ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4, 240.0.0.0/4 } return
+        # 2. Ignore private, link-local, multicast, and broadcast subnets for TCP routing
+        ip saddr $NET_PROXY_SUBNET ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 224.0.0.0/4, 240.0.0.0/4, 255.255.255.255/32 } return
 
         # 3. Redirect all other TCP traffic from the proxy subnet to Clash REDIR (7892)
         ip saddr $NET_PROXY_SUBNET meta l4proto tcp redirect to :7892
@@ -80,6 +102,12 @@ EOF
 
 echo "Clash transparent proxy network rules setup complete."
 
-# 7. Start Clash in the foreground (replacing this shell process as PID 1)
-# This enables proper signal handling (e.g. SIGTERM on docker stop) and avoids manual PID waiting.
-exec /opt/clash/clash -d /opt/clash/config "$@"
+# 7. Start Clash in the background and wait for it
+# We do not use exec so that this script remains active to trap signals and perform cleanup.
+/opt/clash/clash -d /opt/clash/config "$@" &
+CLASH_PID=$!
+
+# Wait for Clash process to finish
+wait "$CLASH_PID"
+# Disable trap on exit so cleanup isn't run twice
+trap - EXIT

@@ -83,7 +83,8 @@ services:
 
 ### 3.3 Network Rule Initialization & Process Execution Flow
 *   **Preventing Traffic Leaks**: To ensure app containers never bypass the proxy during the gateway's boot process, `start-clash.sh` configures all system network parameters (sysctl, policy routing tables, and `nftables` rule sets) **before** launching the Clash binary.
-*   **PID 1 Container Lifecycle Management**: The startup script uses `exec` to start Clash in the foreground. This replaces the bash script process, making the Clash process PID 1 inside the container. This ensures standard container practices, allowing Clash to capture kernel signals (like `SIGTERM` on `docker stop`) and gracefully close connections.
+*   **PID 1 Container Lifecycle Management & Safe Cleanup**: The startup script launches Clash in the background and waits for it, using `trap` to catch termination signals (like `SIGTERM` on `docker stop`). Upon receiving a signal, the script executes a cleanup routine that removes all injected host-level `nftables` rules and routing tables before stopping Clash. This ensures that the host's networking state is cleanly restored and no orphaned iptables/nftables rules are left behind.
+
 
 ---
 

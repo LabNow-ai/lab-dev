@@ -29,6 +29,6 @@ RUN set -eux \
  && ln -sf /opt/clash/clash          /usr/local/bin/ \
  && ln -sf /opt/clash/start-clash.sh /usr/local/bin/
 
-ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml"
+ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.yaml"
 WORKDIR /opt/clash
 ENTRYPOINT ["/opt/clash/start-clash.sh"]
