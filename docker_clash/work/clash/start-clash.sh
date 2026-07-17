@@ -75,7 +75,8 @@ table ip clash_tproxy {
     chain prerouting {
         type filter hook prerouting priority mangle; policy accept;
 
-        # 1. Ignore loopback, private, link-local, multicast, and broadcast subnets
+        # 1. Ignore loopback, private, link-local, multicast, and broadcast subnets, and bypass UDP DNS (53)
+        udp dport 53 return
         ip daddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 224.0.0.0/4, 240.0.0.0/4, 255.255.255.255/32 } return
 
         # 2. Redirect UDP traffic from the proxy subnet to Clash TPROXY (7893)
