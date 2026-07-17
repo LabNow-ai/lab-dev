@@ -2,6 +2,8 @@ name: "${PROFILE_ENV:-X}-proxy-clash"
 
 networks:
   net-proxy-clash:
+    name: net-proxy-clash
+    external: false
     driver: bridge
     ipam:
       config:
@@ -30,7 +32,7 @@ services:
       PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.yaml
       NET_PROXY_SUBNET: 172.30.0.0/24
 
-  # Example Application Container
+  # Example Application Container - MUST exist to create network for svc-proxy-clash to work
   app-example:
     image: quay.io/labnow/atom:latest
     container_name: app-example

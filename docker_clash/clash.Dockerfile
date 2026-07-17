@@ -25,7 +25,7 @@ COPY --from=builder /opt/clash /opt/clash
 
 RUN set -eux \
  && echo 'export PATH=${PATH}:/opt/clash' >> /etc/profile.d/path-clash.sh \
- && apt-get update && apt-get install -y nftables vim htop iputils-ping telnet net-tools iproute2 procps && rm -rf /var/lib/apt/lists/* \
+ && apt-get update && apt-get install -y nftables vim htop jq iputils-ping dnsutils telnet net-tools iproute2 procps && rm -rf /var/lib/apt/lists/* \
  && ln -sf /opt/clash/clash          /usr/local/bin/ \
  && ln -sf /opt/clash/start-clash.sh /usr/local/bin/
 
