@@ -10,10 +10,11 @@ networks:
 services:
   # Clash Transparent Proxy Gateway
   svc-proxy-clash:
-    # To build locally, uncomment the lines below:
     # build:
     #   context: ../
     #   dockerfile: clash.Dockerfile
+    #   args:
+    #     - BASE_NAMESPACE=quay.io/labnow
     image: quay.io/labnow/clash:latest
     container_name: svc-proxy-clash
     hostname: svc-proxy-clash
@@ -31,7 +32,7 @@ services:
 
   # Example Application Container
   app-example:
-    image: curlimages/curl:latest
+    image: quay.io/labnow/atom:latest
     container_name: app-example
     networks:
       - net-proxy-clash

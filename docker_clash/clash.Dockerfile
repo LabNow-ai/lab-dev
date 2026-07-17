@@ -1,6 +1,6 @@
 # Distributed under the terms of the Modified BSD License.
 
-ARG BASE_NAMESPACE
+ARG BASE_NAMESPACE="quay.io/labnow"
 ARG BASE_IMG_BUILD="go-stack"
 ARG BASE_IMG="atom"
 
