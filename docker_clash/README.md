@@ -67,16 +67,23 @@ services:
 
 ---
 
-## 3. How It Works
+## 3. How It Works & Core Design Patterns
 
-1. **DNS Resolution (Hijack)**:
-   - When an application container makes a DNS request (sent to port `53`), the host's `nftables` rules intercept and redirect the query (using `redirect`) to Clash's DNS server on port `1053`.
-   - Clash resolves the domain and returns a Fake-IP (from the `198.18.0.0/16` range) to the container.
-2. **Transparent Routing (Redirect & TPROXY)**:
-   - The container sends TCP/UDP connections to the Fake-IP.
-   - For **TCP** traffic, the host's NAT rules intercept and redirect it via `redirect` to Clash's redir-port on port `7892`.
-   - For **UDP** traffic, the host's mangle rules intercept, mark, and route it via `TPROXY` to Clash on port `7893`.
-   - Clash resolves the Fake-IP back to the original domain name, proxies the request, and returns the response.
+### 3.1 Transparent DNS Hijack & The DNS Constraint
+*   **The Problem with Default DNS**: Docker containers by default use the internal loopback DNS resolver (`127.0.0.11`). Because queries sent to `127.0.0.11` are handled entirely inside the container's private networking loopback interface, they **never reach the host bridge** and cannot be intercepted by host-level `nftables` rules.
+*   **The Solution**: App containers **must configure a non-local external DNS** (e.g., `8.8.8.8`, `114.114.114.114`, or the bridge gateway IP `172.30.0.1`). When the container queries this external IP on port `53`, the packets exit the container onto the host bridge.
+*   **The Interception**: The host's `nftables` NAT rules intercept these queries from the `$NET_PROXY_SUBNET` and redirect them to Clash's local DNS service on port `1053`.
+
+### 3.2 Fake-IP Mode & Domain-based Routing
+*   **Why Fake-IP is enabled (and `*` removed from filter)**: 
+    *   Previously, the configuration filtered all domains (`- '*'`), forcing the container to resolve real IPs. This bypassed the Fake-IP mechanism, meaning Clash would receive connections addressed to raw public IPs.
+    *   When Clash receives raw IP connections, its domain-based rule engine (like `GEOSITE`) becomes ineffective, falling back exclusively to IP-based rules (`GEOIP`), which leads to sub-optimal routing.
+    *   By removing the wildcard filter, Clash's `fake-ip` mode allocates a placeholder IP from the `198.18.0.0/16` range and registers the domain mapping internally.
+    *   When the container establishes a TCP/UDP connection to this Fake-IP, the host's `nftables` intercepts and redirects the connection to Clash. Clash maps the Fake-IP back to the original domain name, correctly evaluates the domain routing rules (such as `GEOSITE,google,Google`), and initiates the proxy connection.
+
+### 3.3 Network Rule Initialization & Process Execution Flow
+*   **Preventing Traffic Leaks**: To ensure app containers never bypass the proxy during the gateway's boot process, `start-clash.sh` configures all system network parameters (sysctl, policy routing tables, and `nftables` rule sets) **before** launching the Clash binary.
+*   **PID 1 Container Lifecycle Management**: The startup script uses `exec` to start Clash in the foreground. This replaces the bash script process, making the Clash process PID 1 inside the container. This ensures standard container practices, allowing Clash to capture kernel signals (like `SIGTERM` on `docker stop`) and gracefully close connections.
 
 ---
 
@@ -86,10 +93,10 @@ services:
 *   **`7892`**: REDIR transparent proxy destination port (for TCP).
 *   **`7893`**: TPROXY transparent proxy destination port (for UDP).
 *   **`9090`**: External Controller REST API port.
-
+*   **Dashboard Path**: Embedded Zashboard is served at `/ui` (maps to `http://<host-ip>:9090/ui/`).
 
 ### Web Dashboard UIs
-*   [mihomo core](https://github.com/MetaCubeX/mihomo/tree/Alpha)
+*   [mihomo core (MetaCubeX)](https://github.com/MetaCubeX/mihomo/tree/Alpha)
 *   [Zashboard (Recommended WebUI)](https://github.com/Zephyruso/zashboard)
 *   [Metacubexd WebUI](https://github.com/MetaCubeX/metacubexd)
 *   [Clash Verge Rev Client](https://clash-verge-rev.github.io)

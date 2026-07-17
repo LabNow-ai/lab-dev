@@ -3,22 +3,22 @@ set -eux
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-echo "Setting PROXY_PROVIDER to: ${PROXY_PROVIDER}!"
-sed -i -e "s|PROXY_PROVIDER|${PROXY_PROVIDER}|g" "${CLASH_CONFIG_PATH:-"/opt/clash/config/config.yaml"}"
+# 1. Dynamically generate config.yaml from template if it exists
+# This ensures that changing PROXY_PROVIDER on container restart works properly.
+CONFIG_TEMPLATE="/opt/clash/config/config.yaml.template"
+CONFIG_FILE="/opt/clash/config/config.yaml"
+
+if [ -f "$CONFIG_TEMPLATE" ]; then
+    echo "Generating config.yaml from template..."
+    sed "s|PROXY_PROVIDER|${PROXY_PROVIDER}|g" "$CONFIG_TEMPLATE" > "$CONFIG_FILE"
+else
+    echo "Warning: Template not found, editing config.yaml in-place..."
+    sed -i "s|PROXY_PROVIDER|${PROXY_PROVIDER}|g" "$CONFIG_FILE"
+fi
 
 export SAFE_PATHS="$DIR"
 
-# Start Clash in the background
-exec /opt/clash/clash -d config $@ &
-CLASH_PID=$!
-
-# Wait for Clash to start and open its ports
-sleep 5
-
-# Get the subnet of the 'net-proxy' Docker network
-# We support specifying it via NET_PROXY_SUBNET environment variable.
-# If not provided, we try using docker command (if available inside the container).
-# If docker is not available, we fallback to the default subnet '172.30.0.0/24'.
+# 2. Get the subnet of the 'net-proxy' Docker network
 if [ -z "${NET_PROXY_SUBNET:-}" ]; then
     if command -v docker >/dev/null 2>&1; then
         NET_PROXY_SUBNET=$(docker network inspect net-proxy --format '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || echo "")
@@ -32,20 +32,22 @@ else
     echo "Using transparent proxy subnet: $NET_PROXY_SUBNET"
 fi
 
-# Enable IPv4 forwarding
+# 3. Enable IPv4 forwarding
 sysctl -w net.ipv4.ip_forward=1 || true
 
-# Add policy routing for TPROXY (routes marked packets locally)
+# 4. Add policy routing for TPROXY (routes marked packets locally)
 ip rule del fwmark 1 table 100 2>/dev/null || true
 ip route del local default dev lo table 100 2>/dev/null || true
 ip rule add fwmark 1 table 100
 ip route add local default dev lo table 100
 
-# Clean up existing clash tables if they exist
+# 5. Clean up existing clash tables if they exist
 nft delete table ip clash_tproxy 2>/dev/null || true
 nft delete table ip clash_dns_nat 2>/dev/null || true
 
-# Add nftables rules for transparent proxying
+# 6. Add nftables rules for transparent proxying
+# We configure this BEFORE starting Clash so that application containers
+# do not leak unproxied traffic during the container startup window.
 nft -f - << EOF
 table ip clash_tproxy {
     chain prerouting {
@@ -76,7 +78,8 @@ table ip clash_dns_nat {
 }
 EOF
 
-echo "Clash transparent proxy setup complete for subnet: $NET_PROXY_SUBNET"
+echo "Clash transparent proxy network rules setup complete."
 
-# Keep the entrypoint running to keep the container alive
-wait $CLASH_PID
+# 7. Start Clash in the foreground (replacing this shell process as PID 1)
+# This enables proper signal handling (e.g. SIGTERM on docker stop) and avoids manual PID waiting.
+exec /opt/clash/clash -d /opt/clash/config "$@"

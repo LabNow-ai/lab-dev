@@ -12,7 +12,8 @@ COPY work/clash /opt/utils/
 
 RUN set -eux && source /opt/utils/script-setup-clash.sh \
  && setup_clash && setup_clash_zashboard \
- && mv /opt/utils/config.yaml    /opt/clash/config \
+ && cp /opt/utils/config.yaml    /opt/clash/config/config.yaml.template \
+ && mv /opt/utils/config.yaml    /opt/clash/config/config.yaml \
  && mv /opt/utils/start-clash.sh /opt/clash/ \
  && chmod +x /opt/clash/*.sh
 
