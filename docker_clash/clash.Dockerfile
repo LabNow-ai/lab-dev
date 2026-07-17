@@ -29,6 +29,11 @@ RUN set -eux \
  && ln -sf /opt/clash/clash          /usr/local/bin/ \
  && ln -sf /opt/clash/start-clash.sh /usr/local/bin/
 
-ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.yaml"
 WORKDIR /opt/clash
 ENTRYPOINT ["/opt/clash/start-clash.sh"]
+
+# Healthcheck to verify if Clash REST API is healthy
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -fs http://127.0.0.1:9090/ || exit 1
+
+ENV PROXY_PROVIDER="https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.yaml"

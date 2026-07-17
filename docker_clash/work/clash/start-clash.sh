@@ -107,6 +107,19 @@ echo "Clash transparent proxy network rules setup complete."
 /opt/clash/clash -d /opt/clash/config "$@" &
 CLASH_PID=$!
 
+# Perform post-startup initialization in the background (wait for REST API and set default GLOBAL proxy)
+(
+    echo "Waiting for Clash REST API to become ready..."
+    for i in {1..30}; do
+        if curl -s -f http://127.0.0.1:9090/ >/dev/null; then
+            echo "Clash REST API is ready. Setting GLOBAL group default selection to NODE-SELECT..."
+            curl -s -X PUT -H "Content-Type: application/json" -d '{"name": "NODE-SELECT"}' http://127.0.0.1:9090/proxies/GLOBAL || true
+            break
+        fi
+        sleep 1
+    done
+) &
+
 # Wait for Clash process to finish
 wait "$CLASH_PID"
 # Disable trap on exit so cleanup isn't run twice
