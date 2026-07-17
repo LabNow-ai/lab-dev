@@ -1,28 +1,45 @@
 name: "${PROFILE_ENV:-X}-proxy-clash"
 
-
 networks:
-  net-proxy:
+  net-proxy-clash:
+    name: net-proxy-clash
+    external: false
     driver: bridge
     ipam:
       config:
-      - subnet: 172.30.0.0/24
-
+        - subnet: 172.30.0.0/24
 
 services:
+  # Clash Transparent Proxy Gateway
   svc-proxy-clash:
+    # build:
+    #   context: ../
+    #   dockerfile: clash.Dockerfile
+    #   args:
+    #     - BASE_NAMESPACE=quay.io/labnow
     image: quay.io/labnow/clash:latest
-    container_name: svc-clash
-    hostname: svc-clash
+    container_name: svc-proxy-clash
+    hostname: svc-proxy-clash
     restart: unless-stopped
     network_mode: host
+    init: true
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    devices:
-      - /dev/net/tun:/dev/net/tun
     environment:
       TZ: Asia/Shanghai
       PROFILE_LOCALIZE: aliyun-pub
-      PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta.yaml
+      PROXY_PROVIDER: https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.yaml
       NET_PROXY_SUBNET: 172.30.0.0/24
+
+  # Example Application Container - MUST exist to create network for svc-proxy-clash to work
+  app-example:
+    image: quay.io/labnow/atom:latest
+    container_name: app-example
+    networks:
+      - net-proxy-clash
+    dns:
+      - 8.8.8.8
+    depends_on:
+      - svc-proxy-clash
+    command: tail -f /dev/null # curl -fsSL https://ipinfo.io
