@@ -1,4 +1,4 @@
-libpcre3-dev
+libpcre2-dev
 libssl-dev
 zlib1g-dev
 libgd-dev
