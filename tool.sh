@@ -7,7 +7,7 @@ set -eux
 # export CI_PROJECT_NAME='LabNow/lab-dev'
 
 CI_PROJECT_NAME=${CI_PROJECT_NAME:-$GITHUB_REPOSITORY}
-CI_PROJECT_BRANCH=${GITHUB_HEAD_REF:-"main"}
+CI_PROJECT_BRANCH=${GITHUB_HEAD_REF:-$(git branch --show-current)}
 CI_PROJECT_SPACE=$(echo "${CI_PROJECT_BRANCH}" | cut -f1 -d'/')
 
 # If on the main branch, image namespace will be same as CI_PROJECT_NAME's name space;
@@ -16,7 +16,7 @@ CI_PROJECT_SPACE=$(echo "${CI_PROJECT_BRANCH}" | cut -f1 -d'/')
 export CI_PROJECT_NAMESPACE="$(dirname ${CI_PROJECT_NAME})${NAMESPACE_SUFFIX}" ;
 
 export IMG_NAMESPACE=$(echo "${CI_PROJECT_NAMESPACE}" | awk '{print tolower($0)}')
-export IMG_PREFIX_SRC=$(echo "${REGISTRY_SRC:-"docker.io"}/${IMG_NAMESPACE}" | awk '{print tolower($0)}')
+export IMG_PREFIX_SRC=$(echo "${REGISTRY_SRC:-"quay.io"}/${IMG_NAMESPACE}"   | awk '{print tolower($0)}')
 export IMG_PREFIX_DST=$(echo "${REGISTRY_DST:-"docker.io"}/${IMG_NAMESPACE}" | awk '{print tolower($0)}')
 export TAG_SUFFIX="-$(git rev-parse --short HEAD)"
 
@@ -28,7 +28,6 @@ echo "--------> DOCKER_TAG_SUFFIX=${TAG_SUFFIX}"
 
 
 build_image() {
-    [ -n "${IMG_PREFIX_SRC:-}" ] || { echo "ERROR: tool.sh must be sourced before building; BASE_NAMESPACE is not initialized" >&2; return 1; }
     echo "$@" ;
     IMG=$1; TAG=$2; FILE=$3; shift 3; VER=$(date +%Y.%m%d.%H%M)${TAG_SUFFIX}; WORKDIR="$(dirname $FILE)";
     docker build --compress --force-rm=true -t "${IMG_PREFIX_DST}/${IMG}:${TAG}" -f "$FILE" --build-arg "BASE_NAMESPACE=${IMG_PREFIX_SRC}" "$@" "${WORKDIR}"
@@ -37,7 +36,6 @@ build_image() {
 }
 
 build_image_no_tag() {
-    [ -n "${IMG_PREFIX_SRC:-}" ] || { echo "ERROR: tool.sh must be sourced before building; BASE_NAMESPACE is not initialized" >&2; return 1; }
     echo "$@" ;
     IMG=$1; TAG=$2; FILE=$3; shift 3; WORKDIR="$(dirname $FILE)";
     docker build --compress --force-rm=true -t "${IMG_PREFIX_DST}/${IMG}:${TAG}" -f "$FILE" --build-arg "BASE_NAMESPACE=${IMG_PREFIX_SRC}" "$@" "${WORKDIR}"
