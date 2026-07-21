@@ -2,8 +2,7 @@
 set -eu
 
 # Dashboard exposes the public, read-only /api/status liveness endpoint.
-# Gateway-only containers have no Dashboard, so fall back to the foreground
-# gateway process in that mode.
+# Gateway-only containers have no Dashboard, so fall back to the foreground gateway process in that mode.
 port="${HERMES_DASHBOARD_PORT:-9119}"
 dashboard_enabled="${HERMES_DASHBOARD:-true}"
 
