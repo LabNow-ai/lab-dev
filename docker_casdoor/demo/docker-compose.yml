@@ -25,7 +25,7 @@ services:
         /bin/bash -l -c '
         ls -alh /opt/casdoor
         echo "driverName = postgres" >> /opt/casdoor/conf/app.conf
-        echo "dataSourceName = \"user=postgres password=postgres host=db-postgres port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
+        echo "dataSourceName = \"user=postgres password=postgres host=db-postgres-common port=5432 sslmode=disable dbname=casdoor\"" >> /opt/casdoor/conf/app.conf
         sleep 8s
         cat /opt/casdoor/conf/app.conf
         /opt/casdoor/server -createDatabase=true'
