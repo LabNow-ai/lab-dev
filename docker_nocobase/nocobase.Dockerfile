@@ -15,7 +15,7 @@ RUN set -eux \
  && source /opt/utils/script-setup-db-clients.sh && setup_postgresql_client \
  ## ----------------------------- Install dependencies and build
  && source /opt/utils/script-setup-core.sh && setup_node_base 22 \
- && npm install -g yarn \
+ && npm install -g yarn @nocobase/cli \
  && source /opt/utils/script-setup-nocobase.sh \
  && cd /opt && setup_nocobase_create_app \
  && mv /opt/utils/docker-entrypoint.sh /opt/nocobase/ \

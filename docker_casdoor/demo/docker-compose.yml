@@ -1,15 +1,25 @@
+name: "${PROFILE_ENV:-X}-svc-casdoor"
+
 services:
-  db-postgres-casdoor:
-      # su postgres && psql -d casdoor -U pg-casdoor-username
-      image: docker.io/labnow/postgres-16:latest
-      container_name: db-postgres
-      environment:
-        POSTGRES_DB: casdoor
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
+  db-postgres-common:
+    container_name: db-postgres-common
+    hostname: db-postgres-common
+    image: quay.io/labnow/postgres-17:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_DB: casdoor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["35432:5432"]
+    networks: ["net-moa"]
+    volumes:
+      - /data/storage/pg-common:/var/lib/postgresql/data
+    # su postgres && psql -d casdoor
 
   svc-casdoor:
-      image: docker.io/labnow/casdoor
+      image: quay.io/labnow/casdoor
       container_name: svc-casdoor
       command: |
         /bin/bash -l -c '
@@ -21,8 +31,7 @@ services:
         /opt/casdoor/server -createDatabase=true'
       ports:
         - 8000:8000
-      depends_on:
-        - db-postgres-casdoor
+      depends_on: ["db-postgres-common"]
       healthcheck:
         test:  ["CMD-SHELL", "curl --head -fsSk http://localhost:8000/health/ready" ]
         interval: 30s
