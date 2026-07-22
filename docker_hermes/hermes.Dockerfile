@@ -6,8 +6,6 @@ ARG BASE_IMG="node"
 # --- Building Stage ---
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG} AS builder
 
-LABEL maintainer="postmaster@labnow.ai"
-
 # Build-time environment
 ENV NODE_ENV=development
 WORKDIR /build
@@ -38,29 +36,37 @@ ENV NODE_ENV=production
 ENV HERMES_HOME=/root/workspace
 ENV HERMES_WEB_DIST=/usr/local/lib/python3.12/dist-packages/hermes_cli/web_dist
 ENV HERMES_TUI_DIR=/usr/local/lib/python3.12/dist-packages/hermes_cli/tui_dist
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PATH="/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
 ENV HOME=/root/workspace
 WORKDIR /root/workspace
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 
-# Copy utilities and tools
-COPY work /opt/utils/
-RUN chmod +x /opt/utils/*.sh && cp /opt/utils/start-hermes.sh /usr/local/bin/start-hermes.sh
 
 # Copy build artifacts from builder
 COPY --from=builder /build/dist/*.whl /tmp/
 
-# Install Runtime dependencies
+# Copy utilities and tools
+COPY work /opt/utils/
+
 RUN set -eux \
+ && chmod +x /opt/utils/*.sh \
+ && ln -sf /opt/utils/start-hermes.sh       /usr/local/bin/start-hermes.sh \
+ && ln -sf /opt/utils/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
+ ## Install Runtime dependencies
+ && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && pip install --no-cache-dir /tmp/*.whl \
  && npx playwright install --with-deps chromium --only-shell \
  ## Install supervisord (Go version)
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
- && install__clean \
- && rm -rf /tmp/*.whl
+ && install__clean
 
-# Data persistence
-VOLUME /root/workspace
+# Data persistence is owned by the runtime orchestrator.
+# Compose and external workspace wrappers must provide the explicit `/root/workspace` mount.
 
-CMD ["start-hermes.sh"]
+# Standalone containers keep the historical gateway+dashboard behavior.
+# The labnow-open wrapper calls start-hermes.sh with explicit gateway/dashboard modes and therefore does not use this CMD.
+CMD ["start-hermes.sh", "all"]
+EXPOSE 9119
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["/usr/local/bin/healthcheck-hermes.sh"]

@@ -7,7 +7,7 @@ set -eux
 # export CI_PROJECT_NAME='LabNow/lab-dev'
 
 CI_PROJECT_NAME=${CI_PROJECT_NAME:-$GITHUB_REPOSITORY}
-CI_PROJECT_BRANCH=${GITHUB_HEAD_REF:-"main"}
+CI_PROJECT_BRANCH=${GITHUB_HEAD_REF:-$(git branch --show-current)}
 CI_PROJECT_SPACE=$(echo "${CI_PROJECT_BRANCH}" | cut -f1 -d'/')
 
 # If on the main branch, image namespace will be same as CI_PROJECT_NAME's name space;
@@ -16,7 +16,7 @@ CI_PROJECT_SPACE=$(echo "${CI_PROJECT_BRANCH}" | cut -f1 -d'/')
 export CI_PROJECT_NAMESPACE="$(dirname ${CI_PROJECT_NAME})${NAMESPACE_SUFFIX}" ;
 
 export IMG_NAMESPACE=$(echo "${CI_PROJECT_NAMESPACE}" | awk '{print tolower($0)}')
-export IMG_PREFIX_SRC=$(echo "${REGISTRY_SRC:-"docker.io"}/${IMG_NAMESPACE}" | awk '{print tolower($0)}')
+export IMG_PREFIX_SRC=$(echo "${REGISTRY_SRC:-"quay.io"}/${IMG_NAMESPACE}"   | awk '{print tolower($0)}')
 export IMG_PREFIX_DST=$(echo "${REGISTRY_DST:-"docker.io"}/${IMG_NAMESPACE}" | awk '{print tolower($0)}')
 export TAG_SUFFIX="-$(git rev-parse --short HEAD)"
 
