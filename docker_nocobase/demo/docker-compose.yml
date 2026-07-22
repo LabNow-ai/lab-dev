@@ -33,6 +33,9 @@ services:
         DB_PASSWORD: postgres
         DB_DATABASE: nocobase
         LOCALE: zh-CN
+        # INIT_ROOT_USERNAME: nocobase
+        # INIT_ROOT_EMAIL: admin@nocobase.com
+        # INIT_ROOT_PASSWORD: admin123
       ports:
         - 13000:13000
       depends_on: ["db-postgres-common"]
