@@ -28,11 +28,12 @@ CREATE TABLE IF NOT EXISTS "t_crm_contacts" (
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
+  "assigneeId" bigint,
   "name" character varying(255),
   "phone" character varying(255),
   "age" bigint,
   "gender" character varying(255),
-  "state" character varying(255) DEFAULT 'lead',
+  "state" character varying(255) DEFAULT 'sea',
   CONSTRAINT "t_crm_contacts_pkey" PRIMARY KEY ("id")
 );
 
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_tags" (
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "tag" character varying(255),
-  "state" character varying(255) DEFAULT 'custom',
+  "state" character varying(255) DEFAULT '0',
   CONSTRAINT "t_crm_tags_pkey" PRIMARY KEY ("id")
 );
 
@@ -105,7 +106,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
 );
 
 -- =========================================================
--- 3. Bind sequence ownership
+-- 3. Bind sequence ownership & indexes
 -- =========================================================
 ALTER SEQUENCE "t_crm_contacts_id_seq" OWNED BY "t_crm_contacts"."id";
 ALTER SEQUENCE "t_crm_tags_id_seq" OWNED BY "t_crm_tags"."id";
@@ -113,6 +114,8 @@ ALTER SEQUENCE "t_crm_spus_id_seq" OWNED BY "t_crm_spus"."id";
 ALTER SEQUENCE "t_crm_skus_id_seq" OWNED BY "t_crm_skus"."id";
 ALTER SEQUENCE "t_crm_orders_id_seq" OWNED BY "t_crm_orders"."id";
 ALTER SEQUENCE "t_crm_orderItems_id_seq" OWNED BY "t_crm_orderItems"."id";
+
+CREATE INDEX IF NOT EXISTS "t_crm_contacts_assignee_id_idx" ON "t_crm_contacts" ("assigneeId");
 
 -- =========================================================
 -- 4. NocoBase System Metadata Registration (Batch Operations)
@@ -135,28 +138,6 @@ WHERE c.name = 'CRM'
   );
 
 -- 4.2 Collections Registration & Target Key Configuration (sort starting from 101)
-UPDATE "collections" AS c
-SET "title" = v.title,
-    "sort" = v.sort_val,
-    "options" = jsonb_build_object(
-      'tableName', v.name,
-      'timestamps', false,
-      'autoGenId', false,
-      'filterTargetKey', jsonb_build_array('id'),
-      'from', 'dbsync',
-      'underscored', false,
-      'unavailableActions', jsonb_build_array()
-    )::json
-FROM (VALUES
-  ('t_crm_contacts',   '联系人',       101),
-  ('t_crm_tags',       '标签',         102),
-  ('t_crm_spus',       '产品(SPU)',     103),
-  ('t_crm_skus',       '商品规格(SKU)', 104),
-  ('t_crm_orders',     '订单',         105),
-  ('t_crm_orderItems', '订单明细',     106)
-) AS v(name, title, sort_val)
-WHERE c."name" = v.name;
-
 INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options", "sort")
 SELECT
   'crm_' || v.name,
@@ -171,19 +152,23 @@ SELECT
     'filterTargetKey', jsonb_build_array('id'),
     'from', 'dbsync',
     'underscored', false,
+    'titleField', v.title_field,
     'unavailableActions', jsonb_build_array()
   )::json,
   v.sort_val
 FROM (VALUES
-  ('t_crm_contacts',   '联系人',       101),
-  ('t_crm_tags',       '标签',         102),
-  ('t_crm_spus',       '产品(SPU)',     103),
-  ('t_crm_skus',       '商品规格(SKU)', 104),
-  ('t_crm_orders',     '订单',         105),
-  ('t_crm_orderItems', '订单明细',     106)
-) AS v(name, title, sort_val)
+  ('t_crm_contacts',   '联系人',       101, 'name'),
+  ('t_crm_tags',       '标签',         102, 'tag'),
+  ('t_crm_spus',       '产品(SPU)',     103, 'productName'),
+  ('t_crm_skus',       '商品规格(SKU)', 104, 'packageSpecDisplay'),
+  ('t_crm_orders',     '订单',         105, 'id'),
+  ('t_crm_orderItems', '订单明细',     106, 'id')
+) AS v(name, title, sort_val, title_field)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = v.name);
+ON CONFLICT ("name") DO UPDATE SET
+  "title" = EXCLUDED."title",
+  "sort" = EXCLUDED."sort",
+  "options" = EXCLUDED."options";
 
 -- 4.3 Fields Registration & Display Titles (Including Foreign Key Association Fields)
 INSERT INTO "fields" ("key", "name", "type", "interface", "options", "collectionName", "sort")
@@ -202,11 +187,12 @@ FROM (VALUES
   ('t_crm_contacts', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 3),
   ('t_crm_contacts', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
   ('t_crm_contacts', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
-  ('t_crm_contacts', 'name', 'string', 'input', '{"allowNull": true, "field": "name", "uiSchema": {"type": "string", "title": "姓名", "x-component": "Input"}}', 6),
-  ('t_crm_contacts', 'phone', 'string', 'input', '{"allowNull": true, "field": "phone", "uiSchema": {"type": "string", "title": "手机号码", "x-component": "Input"}}', 7),
-  ('t_crm_contacts', 'age', 'bigInt', 'integer', '{"allowNull": true, "field": "age", "uiSchema": {"type": "number", "title": "年龄", "x-component": "InputNumber"}}', 8),
-  ('t_crm_contacts', 'gender', 'string', 'input', '{"allowNull": true, "field": "gender", "uiSchema": {"type": "string", "title": "性别", "x-component": "Input"}}', 9),
-  ('t_crm_contacts', 'state', 'string', 'input', '{"allowNull": true, "field": "state", "uiSchema": {"type": "string", "title": "阶段状态", "x-component": "Input"}}', 10),
+  ('t_crm_contacts', 'assignee', 'belongsTo', 'm2o', '{"target": "users", "foreignKey": "assigneeId", "targetKey": "id", "uiSchema": {"type": "object", "title": "负责人", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}}}', 6),
+  ('t_crm_contacts', 'name', 'string', 'input', '{"allowNull": true, "field": "name", "uiSchema": {"type": "string", "title": "姓名", "x-component": "Input"}}', 7),
+  ('t_crm_contacts', 'phone', 'string', 'input', '{"allowNull": true, "field": "phone", "uiSchema": {"type": "string", "title": "手机号码", "x-component": "Input"}}', 8),
+  ('t_crm_contacts', 'age', 'bigInt', 'integer', '{"allowNull": true, "field": "age", "uiSchema": {"type": "number", "title": "年龄", "x-component": "InputNumber"}}', 9),
+  ('t_crm_contacts', 'gender', 'string', 'radioGroup', '{"allowNull": true, "field": "gender", "uiSchema": {"type": "string", "title": "性别", "x-component": "Radio.Group", "enum": [{"value": "M", "label": "男", "color": "blue"}, {"value": "F", "label": "女", "color": "red"}, {"value": "Unknown", "label": "未知", "color": "default"}]}}', 10),
+  ('t_crm_contacts', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "sea", "uiSchema": {"type": "string", "title": "阶段状态", "x-component": "Select", "enum": [{"value": "sea", "label": "公海", "color": "blue"}, {"value": "assigned", "label": "已认领", "color": "magenta"}, {"value": "following", "label": "沟通中", "color": "green"}, {"value": "opportunity", "label": "高潜", "color": "lime"}, {"value": "customer", "label": "已购买", "color": "purple"}, {"value": "invalid", "label": "无效", "color": "default"}, {"value": "lost", "label": "流失", "color": "default"}]}}', 11),
 
   -- t_crm_tags
   ('t_crm_tags', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
@@ -215,7 +201,7 @@ FROM (VALUES
   ('t_crm_tags', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
   ('t_crm_tags', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
   ('t_crm_tags', 'tag', 'string', 'input', '{"allowNull": true, "field": "tag", "uiSchema": {"type": "string", "title": "标签名称", "x-component": "Input"}}', 6),
-  ('t_crm_tags', 'state', 'string', 'input', '{"allowNull": true, "field": "state", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Input"}}', 7),
+  ('t_crm_tags', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "0", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Select", "enum": [{"value": "0", "label": "正常", "color": "blue"}, {"value": "1", "label": "禁用", "color": "default"}]}}', 7),
 
   -- t_crm_spus
   ('t_crm_spus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
@@ -226,7 +212,7 @@ FROM (VALUES
   ('t_crm_spus', 'productName', 'string', 'input', '{"allowNull": false, "field": "productName", "uiSchema": {"type": "string", "title": "产品名", "x-component": "Input"}}', 6),
   ('t_crm_spus', 'spec', 'string', 'input', '{"allowNull": true, "field": "spec", "uiSchema": {"type": "string", "title": "品规", "x-component": "Input"}}', 7),
   ('t_crm_spus', 'baseUnit', 'string', 'input', '{"allowNull": true, "field": "baseUnit", "uiSchema": {"type": "string", "title": "基本单位", "x-component": "Input"}}', 8),
-  ('t_crm_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "最小单元计量数值", "x-component": "InputNumber"}}', 9),
+  ('t_crm_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "最小单元计量数量", "x-component": "InputNumber"}}', 9),
   ('t_crm_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "最小单元计量单位", "x-component": "Input"}}', 10),
   ('t_crm_spus', 'unitSpecDisplay', 'string', 'input', '{"allowNull": true, "field": "unitSpecDisplay", "uiSchema": {"type": "string", "title": "规格显示名称", "x-component": "Input"}}', 11),
 
@@ -263,7 +249,11 @@ FROM (VALUES
   ('t_crm_orderItems', 'unitPrice', 'float', 'number', '{"allowNull": false, "field": "unitPrice", "uiSchema": {"type": "number", "title": "单价", "x-component": "InputNumber"}}', 9)
 ) AS v(col_name, f_name, f_type, f_iface, opts, sort_val)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fields')
-  AND NOT EXISTS (SELECT 1 FROM "fields" WHERE "collectionName" = v.col_name AND "name" = v.f_name);
+ON CONFLICT ("collectionName", "name") DO UPDATE SET
+  "type" = EXCLUDED."type",
+  "interface" = EXCLUDED."interface",
+  "options" = EXCLUDED."options",
+  "sort" = EXCLUDED."sort";
 
 -- Ensure all NULL sort values in fields table are populated to prevent plugin-field-sort error
 UPDATE "fields" SET "sort" = sub.seq
