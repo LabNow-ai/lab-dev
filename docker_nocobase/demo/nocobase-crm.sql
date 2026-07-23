@@ -175,22 +175,23 @@ SELECT
   v.name,
   v.title,
   false,
-  false,
+  v.hidden_val,
   v.opts::json,
   v.sort_val
 FROM (VALUES
-	('t_crm_tags',           '标签',            100, '{"tableName": "t_crm_tags", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "tag", "unavailableActions": []}'),
-	('t_crm_contacts',       '联系人',          110, '{"tableName": "t_crm_contacts", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
-  ('t_crm_contactTags',    '客户标签',				111, '{"timestamps": true, "autoGenId": false, "autoCreate": true, "isThrough": true, "sortable": false, "filterTargetKey": ["contact", "tag"]}'),
-	('t_crm_contactRecords', '客户沟通记录',		112, '{"tableName": "t_crm_contactRecords", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}'),
-	('t_crm_spus',           '产品(SPU)',				121, '{"tableName": "t_crm_spus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
-	('t_crm_skus',           '商品规格(SKU)',		122, '{"tableName": "t_crm_skus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "packageSpecDisplay", "unavailableActions": []}'),
-	('t_crm_orders',         '订单',						131, '{"tableName": "t_crm_orders", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
-	('t_crm_orderItems',     '订单明细',				132, '{"tableName": "t_crm_orderItems", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}')
-) AS v(name, title, sort_val, opts)
+	('t_crm_tags',           '标签',          false, 100, '{"template": "general", "tableName": "t_crm_tags", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "tag", "unavailableActions": []}'),
+	('t_crm_contacts',       '联系人',        false, 110, '{"template": "general", "tableName": "t_crm_contacts", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
+  ('t_crm_contactTags',    '客户标签',      true,  111, '{"template": "general", "timestamps": true, "autoGenId": false, "autoCreate": true, "isThrough": true, "sortable": false}'),
+	('t_crm_contactRecords', '客户沟通记录',  false, 112, '{"template": "general", "tableName": "t_crm_contactRecords", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}'),
+	('t_crm_spus',           '产品(SPU)',      false, 121, '{"template": "general", "tableName": "t_crm_spus", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
+	('t_crm_skus',           '商品规格(SKU)',  false, 122, '{"template": "general", "tableName": "t_crm_skus", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "packageSpecDisplay", "unavailableActions": []}'),
+	('t_crm_orders',         '订单',          false, 131, '{"template": "general", "tableName": "t_crm_orders", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
+	('t_crm_orderItems',     '订单明细',      false, 132, '{"template": "general", "tableName": "t_crm_orderItems", "timestamps": false, "autoGenId": false, "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}')
+) AS v(name, title, hidden_val, sort_val, opts)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
 ON CONFLICT ("name") DO UPDATE SET
   "title" = EXCLUDED."title",
+  "hidden" = EXCLUDED."hidden",
   "sort" = EXCLUDED."sort",
   "options" = EXCLUDED."options";
 
