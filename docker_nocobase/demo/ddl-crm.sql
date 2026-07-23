@@ -2,9 +2,10 @@
   NocoBase fresh-database bootstrap (PostgreSQL) - "public" schema
   - Standalone initial DDL for CRM tables (prefixed with "t_crm_")
   - Sequence + DEFAULT nextval(...)
-  - Audit fields (id, createdAt, createdById, updatedAt, updatedById) placed immediately after id
+  - Physical foreign key constraints (spuId, fk_orders, fk_sku, fk_order)
   - Built-in NocoBase metadata registration (categories, collections & fields)
-  - Built-in createdAt, createdBy, updatedAt, updatedBy field interfaces & sort order
+  - Association metadata (m2o / belongsTo) for all foreign keys
+  - Collection sort numbers starting from 101
 */
 
 -- =========================================================
@@ -72,7 +73,8 @@ CREATE TABLE IF NOT EXISTS "t_crm_skus" (
   "saleUnit" character varying(255),
   "packageSpecDisplay" text NOT NULL,
   "salePrice" double precision NOT NULL,
-  CONSTRAINT "t_crm_skus_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_skus_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_skus_spuId_fkey" FOREIGN KEY ("spuId") REFERENCES "t_crm_spus"("id") ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_orders" (
@@ -83,7 +85,8 @@ CREATE TABLE IF NOT EXISTS "t_crm_orders" (
   "updatedById" bigint,
   "fk_orders" bigint,
   "total" double precision,
-  CONSTRAINT "t_crm_orders_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_orders_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_orders_fk_orders_fkey" FOREIGN KEY ("fk_orders") REFERENCES "t_crm_contacts"("id") ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
@@ -96,7 +99,9 @@ CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
   "fk_order" bigint,
   "quantity" double precision NOT NULL,
   "unitPrice" double precision NOT NULL,
-  CONSTRAINT "t_crm_orderItems_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_orderItems_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_orderItems_fk_sku_fkey" FOREIGN KEY ("fk_sku") REFERENCES "t_crm_skus"("id") ON DELETE SET NULL,
+  CONSTRAINT "t_crm_orderItems_fk_order_fkey" FOREIGN KEY ("fk_order") REFERENCES "t_crm_orders"("id") ON DELETE CASCADE
 );
 
 -- =========================================================
@@ -129,9 +134,10 @@ WHERE c.name = 'CRM'
     SELECT 1 FROM "collectionCategory" cc WHERE cc."categoryId" = c.id AND cc."collectionName" = col.name
   );
 
--- 4.2 Collections Registration & Target Key Configuration
+-- 4.2 Collections Registration & Target Key Configuration (sort starting from 101)
 UPDATE "collections" AS c
 SET "title" = v.title,
+    "sort" = v.sort_val,
     "options" = jsonb_build_object(
       'tableName', v.name,
       'timestamps', false,
@@ -142,16 +148,16 @@ SET "title" = v.title,
       'unavailableActions', jsonb_build_array()
     )::json
 FROM (VALUES
-  ('t_crm_contacts',   '联系人'),
-  ('t_crm_tags',       '标签'),
-  ('t_crm_spus',       '产品(SPU)'),
-  ('t_crm_skus',       '商品规格(SKU)'),
-  ('t_crm_orders',     '订单'),
-  ('t_crm_orderItems', '订单明细')
-) AS v(name, title)
+  ('t_crm_contacts',   '联系人',       101),
+  ('t_crm_tags',       '标签',         102),
+  ('t_crm_spus',       '产品(SPU)',     103),
+  ('t_crm_skus',       '商品规格(SKU)', 104),
+  ('t_crm_orders',     '订单',         105),
+  ('t_crm_orderItems', '订单明细',     106)
+) AS v(name, title, sort_val)
 WHERE c."name" = v.name;
 
-INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
+INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options", "sort")
 SELECT
   'crm_' || v.name,
   v.name,
@@ -166,19 +172,20 @@ SELECT
     'from', 'dbsync',
     'underscored', false,
     'unavailableActions', jsonb_build_array()
-  )::json
+  )::json,
+  v.sort_val
 FROM (VALUES
-  ('t_crm_contacts',   '联系人'),
-  ('t_crm_tags',       '标签'),
-  ('t_crm_spus',       '产品(SPU)'),
-  ('t_crm_skus',       '商品规格(SKU)'),
-  ('t_crm_orders',     '订单'),
-  ('t_crm_orderItems', '订单明细')
-) AS v(name, title)
+  ('t_crm_contacts',   '联系人',       101),
+  ('t_crm_tags',       '标签',         102),
+  ('t_crm_spus',       '产品(SPU)',     103),
+  ('t_crm_skus',       '商品规格(SKU)', 104),
+  ('t_crm_orders',     '订单',         105),
+  ('t_crm_orderItems', '订单明细',     106)
+) AS v(name, title, sort_val)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
   AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = v.name);
 
--- 4.3 Fields Registration & Display Titles (Audit fields immediately after id)
+-- 4.3 Fields Registration & Display Titles (Including Foreign Key Association Fields)
 INSERT INTO "fields" ("key", "name", "type", "interface", "options", "collectionName", "sort")
 SELECT
   'f_' || v.col_name || '_' || v.f_name,
@@ -216,11 +223,11 @@ FROM (VALUES
   ('t_crm_spus', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 3),
   ('t_crm_spus', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
   ('t_crm_spus', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
-  ('t_crm_spus', 'productName', 'string', 'input', '{"allowNull": false, "field": "productName", "uiSchema": {"type": "string", "title": "药品名称/产品名", "x-component": "Input"}}', 6),
-  ('t_crm_spus', 'spec', 'string', 'input', '{"allowNull": true, "field": "spec", "uiSchema": {"type": "string", "title": "规格", "x-component": "Input"}}', 7),
+  ('t_crm_spus', 'productName', 'string', 'input', '{"allowNull": false, "field": "productName", "uiSchema": {"type": "string", "title": "产品名", "x-component": "Input"}}', 6),
+  ('t_crm_spus', 'spec', 'string', 'input', '{"allowNull": true, "field": "spec", "uiSchema": {"type": "string", "title": "品规", "x-component": "Input"}}', 7),
   ('t_crm_spus', 'baseUnit', 'string', 'input', '{"allowNull": true, "field": "baseUnit", "uiSchema": {"type": "string", "title": "基本单位", "x-component": "Input"}}', 8),
-  ('t_crm_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "单剂量数值", "x-component": "InputNumber"}}', 9),
-  ('t_crm_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "单剂量单位", "x-component": "Input"}}', 10),
+  ('t_crm_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "最小单元计量数值", "x-component": "InputNumber"}}', 9),
+  ('t_crm_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "最小单元计量单位", "x-component": "Input"}}', 10),
   ('t_crm_spus', 'unitSpecDisplay', 'string', 'input', '{"allowNull": true, "field": "unitSpecDisplay", "uiSchema": {"type": "string", "title": "规格显示名称", "x-component": "Input"}}', 11),
 
   -- t_crm_skus
@@ -229,7 +236,7 @@ FROM (VALUES
   ('t_crm_skus', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 3),
   ('t_crm_skus', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
   ('t_crm_skus', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
-  ('t_crm_skus', 'spuId', 'bigInt', 'integer', '{"allowNull": true, "field": "spuId", "uiSchema": {"type": "number", "title": "关联SPU ID", "x-component": "InputNumber"}}', 6),
+  ('t_crm_skus', 'spu', 'belongsTo', 'm2o', '{"target": "t_crm_spus", "foreignKey": "spuId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联产品(SPU)", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "productName"}}}}', 6),
   ('t_crm_skus', 'packageQty', 'float', 'number', '{"allowNull": false, "field": "packageQty", "uiSchema": {"type": "number", "title": "包装内数量", "x-component": "InputNumber"}}', 7),
   ('t_crm_skus', 'saleUnit', 'string', 'input', '{"allowNull": true, "field": "saleUnit", "uiSchema": {"type": "string", "title": "销售单位", "x-component": "Input"}}', 8),
   ('t_crm_skus', 'packageSpecDisplay', 'text', 'textarea', '{"allowNull": false, "field": "packageSpecDisplay", "uiSchema": {"type": "string", "title": "包装规格说明", "x-component": "Input.TextArea"}}', 9),
@@ -241,7 +248,7 @@ FROM (VALUES
   ('t_crm_orders', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 3),
   ('t_crm_orders', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
   ('t_crm_orders', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
-  ('t_crm_orders', 'fk_orders', 'bigInt', 'integer', '{"allowNull": true, "field": "fk_orders", "uiSchema": {"type": "number", "title": "关联客户/联系人ID", "x-component": "InputNumber"}}', 6),
+  ('t_crm_orders', 'contact', 'belongsTo', 'm2o', '{"target": "t_crm_contacts", "foreignKey": "fk_orders", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联客户(联系人)", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "name"}}}}', 6),
   ('t_crm_orders', 'total', 'float', 'number', '{"allowNull": true, "field": "total", "uiSchema": {"type": "number", "title": "订单总金额", "x-component": "InputNumber"}}', 7),
 
   -- t_crm_orderItems
@@ -250,8 +257,8 @@ FROM (VALUES
   ('t_crm_orderItems', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 3),
   ('t_crm_orderItems', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
   ('t_crm_orderItems', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
-  ('t_crm_orderItems', 'fk_sku', 'bigInt', 'integer', '{"allowNull": true, "field": "fk_sku", "uiSchema": {"type": "number", "title": "关联SKU ID", "x-component": "InputNumber"}}', 6),
-  ('t_crm_orderItems', 'fk_order', 'bigInt', 'integer', '{"allowNull": true, "field": "fk_order", "uiSchema": {"type": "number", "title": "关联订单ID", "x-component": "InputNumber"}}', 7),
+  ('t_crm_orderItems', 'sku', 'belongsTo', 'm2o', '{"target": "t_crm_skus", "foreignKey": "fk_sku", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联商品规格(SKU)", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "packageSpecDisplay"}}}}', 6),
+  ('t_crm_orderItems', 'order', 'belongsTo', 'm2o', '{"target": "t_crm_orders", "foreignKey": "fk_order", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联订单", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "id"}}}}', 7),
   ('t_crm_orderItems', 'quantity', 'float', 'number', '{"allowNull": false, "field": "quantity", "uiSchema": {"type": "number", "title": "数量", "x-component": "InputNumber"}}', 8),
   ('t_crm_orderItems', 'unitPrice', 'float', 'number', '{"allowNull": false, "field": "unitPrice", "uiSchema": {"type": "number", "title": "单价", "x-component": "InputNumber"}}', 9)
 ) AS v(col_name, f_name, f_type, f_iface, opts, sort_val)
