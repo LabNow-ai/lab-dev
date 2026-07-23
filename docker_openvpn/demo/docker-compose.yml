@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  openvpn:
+    image: quay.io/labnow/openvpn:latest
+    container_name: openvpn
+    restart: always
+    ports:
+      - "1194:1194/udp"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./openvpn-data:/etc/openvpn
+    # Optional: specify sysctls if needed as per the article
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv6.conf.default.forwarding=1
+      - net.ipv6.conf.all.forwarding=1
+
+networks:
+  default:
+    name: net-openvpn
