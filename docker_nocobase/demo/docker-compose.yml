@@ -18,8 +18,9 @@ services:
     # su postgres && psql -d nocobase
 
   svc-nocobase:
-      image: quay.io/labnow0dev/nocobase
+      image: quay.io/labnow/nocobase
       container_name: svc-nocobase
+      hostname: svc-nocobase
       environment:
         TZ: Asia/Shanghai
         DB_DIALECT: postgres

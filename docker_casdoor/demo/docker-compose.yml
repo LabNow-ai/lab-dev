@@ -21,6 +21,7 @@ services:
   svc-casdoor:
       image: quay.io/labnow/casdoor
       container_name: svc-casdoor
+      hostname: svc-nocobase
       command: |
         /bin/bash -l -c '
         ls -alh /opt/casdoor

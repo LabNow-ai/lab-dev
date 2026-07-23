@@ -1,28 +1,26 @@
 /*
   NocoBase current-schema bootstrap (PostgreSQL) - "public" schema
-  - based on current uploaded field JSON
-  - only current tables in "public" schema
-  - no foreign keys / no extra constraints except primary keys
-  - id uses explicit sequence + nextval(...) for better NocoBase recognition
-  - Includes NocoBase system metadata (collections & fields) registration
+  - CRM tables prefixed with "t_crm_" in "public" schema
+  - Sequences + DEFAULT nextval(...)
+  - Includes NocoBase system metadata (categories, collections & fields) registration
 */
 
 -- =========================================================
 -- 1. Sequences
 -- =========================================================
-CREATE SEQUENCE IF NOT EXISTS "contacts_id_seq";
-CREATE SEQUENCE IF NOT EXISTS "tags_id_seq";
-CREATE SEQUENCE IF NOT EXISTS "spus_id_seq";
-CREATE SEQUENCE IF NOT EXISTS "skus_id_seq";
-CREATE SEQUENCE IF NOT EXISTS "orders_id_seq";
-CREATE SEQUENCE IF NOT EXISTS "order_item_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_contacts_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_tags_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_spus_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_skus_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_orders_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_orderItems_id_seq";
 
 -- =========================================================
 -- 2. Main tables
 -- =========================================================
 
-CREATE TABLE IF NOT EXISTS "contacts" (
-  "id" bigint NOT NULL DEFAULT nextval('contacts_id_seq'::regclass),
+CREATE TABLE IF NOT EXISTS "t_crm_contacts" (
+  "id" bigint NOT NULL DEFAULT nextval('t_crm_contacts_id_seq'::regclass),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -32,22 +30,22 @@ CREATE TABLE IF NOT EXISTS "contacts" (
   "gender" character varying(255),
   "state" character varying(255) DEFAULT 'lead',
   "name" character varying(255),
-  CONSTRAINT "contacts_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_contacts_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE IF NOT EXISTS "tags" (
-  "id" bigint NOT NULL DEFAULT nextval('tags_id_seq'::regclass),
+CREATE TABLE IF NOT EXISTS "t_crm_tags" (
+  "id" bigint NOT NULL DEFAULT nextval('t_crm_tags_id_seq'::regclass),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "tag" character varying(255),
   "state" character varying(255) DEFAULT 'custom',
-  CONSTRAINT "tags_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_tags_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE IF NOT EXISTS "spus" (
-  "id" bigint NOT NULL DEFAULT nextval('spus_id_seq'::regclass),
+CREATE TABLE IF NOT EXISTS "t_crm_spus" (
+  "id" bigint NOT NULL DEFAULT nextval('t_crm_spus_id_seq'::regclass),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -58,11 +56,11 @@ CREATE TABLE IF NOT EXISTS "spus" (
   "unitMeasureValue" double precision NOT NULL,
   "unitMeasureUnit" character varying(255),
   "unitSpecDisplay" character varying(255),
-  CONSTRAINT "spus_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_spus_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE IF NOT EXISTS "skus" (
-  "id" bigint NOT NULL DEFAULT nextval('skus_id_seq'::regclass),
+CREATE TABLE IF NOT EXISTS "t_crm_skus" (
+  "id" bigint NOT NULL DEFAULT nextval('t_crm_skus_id_seq'::regclass),
   "spuId" bigint,
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -72,179 +70,272 @@ CREATE TABLE IF NOT EXISTS "skus" (
   "saleUnit" character varying(255),
   "packageSpecDisplay" text NOT NULL,
   "salePrice" double precision NOT NULL,
-  CONSTRAINT "skus_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_skus_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE IF NOT EXISTS "orders" (
-  "id" bigint NOT NULL DEFAULT nextval('orders_id_seq'::regclass),
+CREATE TABLE IF NOT EXISTS "t_crm_orders" (
+  "id" bigint NOT NULL DEFAULT nextval('t_crm_orders_id_seq'::regclass),
   "fk_orders" bigint,
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "total" double precision,
-  CONSTRAINT "orders_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_orders_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE IF NOT EXISTS "order_item" (
-  "id" bigint NOT NULL DEFAULT nextval('order_item_id_seq'::regclass),
+CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_orderItems_id_seq"'::regclass),
   "fk_sku" bigint,
   "fk_order" bigint,
-  "f_1v0rw7p0jjg" bigint,
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "quantity" double precision NOT NULL,
   "unitPrice" double precision NOT NULL,
-  CONSTRAINT "order_item_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_orderItems_pkey" PRIMARY KEY ("id")
 );
 
 -- =========================================================
 -- 3. Bind sequence ownership
 -- =========================================================
-ALTER SEQUENCE "contacts_id_seq" OWNED BY "contacts"."id";
-ALTER SEQUENCE "tags_id_seq" OWNED BY "tags"."id";
-ALTER SEQUENCE "spus_id_seq" OWNED BY "spus"."id";
-ALTER SEQUENCE "skus_id_seq" OWNED BY "skus"."id";
-ALTER SEQUENCE "orders_id_seq" OWNED BY "orders"."id";
-ALTER SEQUENCE "order_item_id_seq" OWNED BY "order_item"."id";
+ALTER SEQUENCE "t_crm_contacts_id_seq" OWNED BY "t_crm_contacts"."id";
+ALTER SEQUENCE "t_crm_tags_id_seq" OWNED BY "t_crm_tags"."id";
+ALTER SEQUENCE "t_crm_spus_id_seq" OWNED BY "t_crm_spus"."id";
+ALTER SEQUENCE "t_crm_skus_id_seq" OWNED BY "t_crm_skus"."id";
+ALTER SEQUENCE "t_crm_orders_id_seq" OWNED BY "t_crm_orders"."id";
+ALTER SEQUENCE "t_crm_orderItems_id_seq" OWNED BY "t_crm_orderItems"."id";
 
 -- =========================================================
--- 4. NocoBase System Metadata (Category, Collections & Fields) Registration
+-- 4. NocoBase System Metadata Registration (Batch Operations)
 -- =========================================================
 
--- ---------------------------------------------------------
 -- 4.1 Collection Category Registration ('CRM')
--- ---------------------------------------------------------
--- Ensure category 'CRM' exists in NocoBase
 INSERT INTO "collectionCategories" ("id", "name", "color", "sort", "createdAt", "updatedAt")
 SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000), 'CRM', 'magenta', 1, NOW(), NOW()
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collectionCategories')
   AND NOT EXISTS (SELECT 1 FROM "collectionCategories" WHERE "name" = 'CRM');
 
--- Link CRM tables to category 'CRM' in NocoBase
 INSERT INTO "collectionCategory" ("categoryId", "collectionName", "createdAt", "updatedAt")
 SELECT c.id, col.name, NOW(), NOW()
 FROM "collectionCategories" c
-CROSS JOIN (VALUES ('contacts'), ('tags'), ('spus'), ('skus'), ('orders'), ('order_item')) AS col(name)
+CROSS JOIN (VALUES ('t_crm_contacts'), ('t_crm_tags'), ('t_crm_spus'), ('t_crm_skus'), ('t_crm_orders'), ('t_crm_orderItems')) AS col(name)
 WHERE c.name = 'CRM'
   AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collectionCategory')
   AND NOT EXISTS (
     SELECT 1 FROM "collectionCategory" cc WHERE cc."categoryId" = c.id AND cc."collectionName" = col.name
   );
 
--- ---------------------------------------------------------
--- 4.2 Collections (Table Display Names)
--- ---------------------------------------------------------
+-- 4.2 Collections Registration & Target Key Configuration
+-- Batch Update existing collections (post-dbsync)
+UPDATE "collections" AS c
+SET "title" = v.title,
+    "options" = jsonb_build_object(
+      'tableName', v.name,
+      'timestamps', false,
+      'autoGenId', false,
+      'filterTargetKey', jsonb_build_array('id'),
+      'from', 'dbsync',
+      'underscored', false,
+      'unavailableActions', jsonb_build_array()
+    )::json
+FROM (VALUES
+  ('t_crm_contacts',   '联系人'),
+  ('t_crm_tags',       '标签'),
+  ('t_crm_spus',       '产品(SPU)'),
+  ('t_crm_skus',       '商品规格(SKU)'),
+  ('t_crm_orders',     '订单'),
+  ('t_crm_orderItems', '订单明细')
+) AS v(name, title)
+WHERE c."name" = v.name;
 
--- Update titles if collection entries exist (e.g., synced via NocoBase Data Source Manager)
-UPDATE "collections" SET "title" = '联系人' WHERE "name" = 'contacts';
-UPDATE "collections" SET "title" = '标签' WHERE "name" = 'tags';
-UPDATE "collections" SET "title" = '产品(SPU)' WHERE "name" = 'spus';
-UPDATE "collections" SET "title" = '商品规格(SKU)' WHERE "name" = 'skus';
-UPDATE "collections" SET "title" = '订单' WHERE "name" = 'orders';
-UPDATE "collections" SET "title" = '订单明细' WHERE "name" = 'order_item';
-
--- Insert collection entries if not yet exist (Pre-dbsync fallback)
+-- Batch Insert missing collections (pre-dbsync fallback)
 INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
-SELECT 'crm_contacts', 'contacts', '联系人', false, false, '{"tableName":"contacts","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
+SELECT
+  'crm_' || v.name,
+  v.name,
+  v.title,
+  false,
+  false,
+  jsonb_build_object(
+    'tableName', v.name,
+    'timestamps', false,
+    'autoGenId', false,
+    'filterTargetKey', jsonb_build_array('id'),
+    'from', 'dbsync',
+    'underscored', false,
+    'unavailableActions', jsonb_build_array()
+  )::json
+FROM (VALUES
+  ('t_crm_contacts',   '联系人'),
+  ('t_crm_tags',       '标签'),
+  ('t_crm_spus',       '产品(SPU)'),
+  ('t_crm_skus',       '商品规格(SKU)'),
+  ('t_crm_orders',     '订单'),
+  ('t_crm_orderItems', '订单明细')
+) AS v(name, title)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'contacts');
+  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = v.name);
 
-INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
-SELECT 'crm_tags', 'tags', '标签', false, false, '{"tableName":"tags","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
-WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'tags');
+-- 4.3 Fields Registration & Display Titles (Batch Insert & Update)
 
-INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
-SELECT 'crm_spus', 'spus', '产品(SPU)', false, false, '{"tableName":"spus","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
-WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'spus');
+-- Batch Insert all fields into NocoBase fields table if not yet exist
+INSERT INTO "fields" ("key", "name", "type", "interface", "options", "collectionName", "sort")
+SELECT
+  'f_' || v.col_name || '_' || v.f_name,
+  v.f_name,
+  v.f_type,
+  v.f_iface,
+  v.opts::json,
+  v.col_name,
+  v.sort_val
+FROM (VALUES
+  -- t_crm_contacts
+  ('t_crm_contacts', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
+  ('t_crm_contacts', 'name', 'string', 'input', '{"allowNull": true, "field": "name", "uiSchema": {"type": "string", "title": "姓名", "x-component": "Input"}}', 2),
+  ('t_crm_contacts', 'phone', 'string', 'input', '{"allowNull": true, "field": "phone", "uiSchema": {"type": "string", "title": "手机号码", "x-component": "Input"}}', 3),
+  ('t_crm_contacts', 'age', 'bigInt', 'integer', '{"allowNull": true, "field": "age", "uiSchema": {"type": "number", "title": "年龄", "x-component": "InputNumber"}}', 4),
+  ('t_crm_contacts', 'gender', 'string', 'input', '{"allowNull": true, "field": "gender", "uiSchema": {"type": "string", "title": "性别", "x-component": "Input"}}', 5),
+  ('t_crm_contacts', 'state', 'string', 'input', '{"allowNull": true, "field": "state", "uiSchema": {"type": "string", "title": "阶段状态", "x-component": "Input"}}', 6),
+  ('t_crm_contacts', 'createdAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "createdAt", "uiSchema": {"type": "datetime", "title": "创建时间", "x-component": "DatePicker"}}', 7),
+  ('t_crm_contacts', 'createdById', 'bigInt', 'integer', '{"allowNull": true, "field": "createdById", "uiSchema": {"type": "number", "title": "创建人ID", "x-component": "InputNumber"}}', 8),
+  ('t_crm_contacts', 'updatedAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "updatedAt", "uiSchema": {"type": "datetime", "title": "更新时间", "x-component": "DatePicker"}}', 9),
+  ('t_crm_contacts', 'updatedById', 'bigInt', 'integer', '{"allowNull": true, "field": "updatedById", "uiSchema": {"type": "number", "title": "更新人ID", "x-component": "InputNumber"}}', 10),
+  -- t_crm_tags
+  ('t_crm_tags', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
+  ('t_crm_tags', 'tag', 'string', 'input', '{"allowNull": true, "field": "tag", "uiSchema": {"type": "string", "title": "标签名称", "x-component": "Input"}}', 2),
+  ('t_crm_tags', 'state', 'string', 'input', '{"allowNull": true, "field": "state", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Input"}}', 3),
+  ('t_crm_tags', 'createdAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "createdAt", "uiSchema": {"type": "datetime", "title": "创建时间", "x-component": "DatePicker"}}', 4),
+  ('t_crm_tags', 'createdById', 'bigInt', 'integer', '{"allowNull": true, "field": "createdById", "uiSchema": {"type": "number", "title": "创建人ID", "x-component": "InputNumber"}}', 5),
+  ('t_crm_tags', 'updatedAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "updatedAt", "uiSchema": {"type": "datetime", "title": "更新时间", "x-component": "DatePicker"}}', 6),
+  ('t_crm_tags', 'updatedById', 'bigInt', 'integer', '{"allowNull": true, "field": "updatedById", "uiSchema": {"type": "number", "title": "更新人ID", "x-component": "InputNumber"}}', 7),
+  -- t_crm_spus
+  ('t_crm_spus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
+  ('t_crm_spus', 'productName', 'string', 'input', '{"allowNull": false, "field": "productName", "uiSchema": {"type": "string", "title": "药品名称/产品名", "x-component": "Input"}}', 2),
+  ('t_crm_spus', 'dosageForm', 'string', 'input', '{"allowNull": true, "field": "dosageForm", "uiSchema": {"type": "string", "title": "剂型", "x-component": "Input"}}', 3),
+  ('t_crm_spus', 'baseUnit', 'string', 'input', '{"allowNull": true, "field": "baseUnit", "uiSchema": {"type": "string", "title": "基本单位", "x-component": "Input"}}', 4),
+  ('t_crm_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "单剂量数值", "x-component": "InputNumber"}}', 5),
+  ('t_crm_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "单剂量单位", "x-component": "Input"}}', 6),
+  ('t_crm_spus', 'unitSpecDisplay', 'string', 'input', '{"allowNull": true, "field": "unitSpecDisplay", "uiSchema": {"type": "string", "title": "规格显示名称", "x-component": "Input"}}', 7),
+  ('t_crm_spus', 'createdAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "createdAt", "uiSchema": {"type": "datetime", "title": "创建时间", "x-component": "DatePicker"}}', 8),
+  ('t_crm_spus', 'createdById', 'bigInt', 'integer', '{"allowNull": true, "field": "createdById", "uiSchema": {"type": "number", "title": "创建人ID", "x-component": "InputNumber"}}', 9),
+  ('t_crm_spus', 'updatedAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "updatedAt", "uiSchema": {"type": "datetime", "title": "更新时间", "x-component": "DatePicker"}}', 10),
+  ('t_crm_spus', 'updatedById', 'bigInt', 'integer', '{"allowNull": true, "field": "updatedById", "uiSchema": {"type": "number", "title": "更新人ID", "x-component": "InputNumber"}}', 11),
+  -- t_crm_skus
+  ('t_crm_skus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
+  ('t_crm_skus', 'spuId', 'bigInt', 'integer', '{"allowNull": true, "field": "spuId", "uiSchema": {"type": "number", "title": "关联SPU ID", "x-component": "InputNumber"}}', 2),
+  ('t_crm_skus', 'packageQty', 'float', 'number', '{"allowNull": false, "field": "packageQty", "uiSchema": {"type": "number", "title": "包装内数量", "x-component": "InputNumber"}}', 3),
+  ('t_crm_skus', 'saleUnit', 'string', 'input', '{"allowNull": true, "field": "saleUnit", "uiSchema": {"type": "string", "title": "销售单位", "x-component": "Input"}}', 4),
+  ('t_crm_skus', 'packageSpecDisplay', 'text', 'textarea', '{"allowNull": false, "field": "packageSpecDisplay", "uiSchema": {"type": "string", "title": "包装规格说明", "x-component": "Input.TextArea"}}', 5),
+  ('t_crm_skus', 'salePrice', 'float', 'number', '{"allowNull": false, "field": "salePrice", "uiSchema": {"type": "number", "title": "销售单价", "x-component": "InputNumber"}}', 6),
+  ('t_crm_skus', 'createdAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "createdAt", "uiSchema": {"type": "datetime", "title": "创建时间", "x-component": "DatePicker"}}', 7),
+  ('t_crm_skus', 'createdById', 'bigInt', 'integer', '{"allowNull": true, "field": "createdById", "uiSchema": {"type": "number", "title": "创建人ID", "x-component": "InputNumber"}}', 8),
+  ('t_crm_skus', 'updatedAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "updatedAt", "uiSchema": {"type": "datetime", "title": "更新时间", "x-component": "DatePicker"}}', 9),
+  ('t_crm_skus', 'updatedById', 'bigInt', 'integer', '{"allowNull": true, "field": "updatedById", "uiSchema": {"type": "number", "title": "更新人ID", "x-component": "InputNumber"}}', 10),
+  -- t_crm_orders
+  ('t_crm_orders', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "订单ID", "x-component": "InputNumber"}}', 1),
+  ('t_crm_orders', 'fk_orders', 'bigInt', 'integer', '{"allowNull": true, "field": "fk_orders", "uiSchema": {"type": "number", "title": "关联客户/联系人ID", "x-component": "InputNumber"}}', 2),
+  ('t_crm_orders', 'total', 'float', 'number', '{"allowNull": true, "field": "total", "uiSchema": {"type": "number", "title": "订单总金额", "x-component": "InputNumber"}}', 3),
+  ('t_crm_orders', 'createdAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "createdAt", "uiSchema": {"type": "datetime", "title": "创建时间", "x-component": "DatePicker"}}', 4),
+  ('t_crm_orders', 'createdById', 'bigInt', 'integer', '{"allowNull": true, "field": "createdById", "uiSchema": {"type": "number", "title": "创建人ID", "x-component": "InputNumber"}}', 5),
+  ('t_crm_orders', 'updatedAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "updatedAt", "uiSchema": {"type": "datetime", "title": "更新时间", "x-component": "DatePicker"}}', 6),
+  ('t_crm_orders', 'updatedById', 'bigInt', 'integer', '{"allowNull": true, "field": "updatedById", "uiSchema": {"type": "number", "title": "更新人ID", "x-component": "InputNumber"}}', 7),
+  -- t_crm_orderItems
+  ('t_crm_orderItems', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "明细ID", "x-component": "InputNumber"}}', 1),
+  ('t_crm_orderItems', 'fk_sku', 'bigInt', 'integer', '{"allowNull": true, "field": "fk_sku", "uiSchema": {"type": "number", "title": "关联SKU ID", "x-component": "InputNumber"}}', 2),
+  ('t_crm_orderItems', 'fk_order', 'bigInt', 'integer', '{"allowNull": true, "field": "fk_order", "uiSchema": {"type": "number", "title": "关联订单ID", "x-component": "InputNumber"}}', 3),
+  ('t_crm_orderItems', 'quantity', 'float', 'number', '{"allowNull": false, "field": "quantity", "uiSchema": {"type": "number", "title": "数量", "x-component": "InputNumber"}}', 4),
+  ('t_crm_orderItems', 'unitPrice', 'float', 'number', '{"allowNull": false, "field": "unitPrice", "uiSchema": {"type": "number", "title": "单价", "x-component": "InputNumber"}}', 5),
+  ('t_crm_orderItems', 'createdAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "createdAt", "uiSchema": {"type": "datetime", "title": "创建时间", "x-component": "DatePicker"}}', 6),
+  ('t_crm_orderItems', 'createdById', 'bigInt', 'integer', '{"allowNull": true, "field": "createdById", "uiSchema": {"type": "number", "title": "创建人ID", "x-component": "InputNumber"}}', 7),
+  ('t_crm_orderItems', 'updatedAt', 'datetimeTz', 'datetime', '{"allowNull": true, "field": "updatedAt", "uiSchema": {"type": "datetime", "title": "更新时间", "x-component": "DatePicker"}}', 8),
+  ('t_crm_orderItems', 'updatedById', 'bigInt', 'integer', '{"allowNull": true, "field": "updatedById", "uiSchema": {"type": "number", "title": "更新人ID", "x-component": "InputNumber"}}', 9)
+) AS v(col_name, f_name, f_type, f_iface, opts, sort_val)
+WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fields')
+  AND NOT EXISTS (SELECT 1 FROM "fields" WHERE "collectionName" = v.col_name AND "name" = v.f_name);
 
-INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
-SELECT 'crm_skus', 'skus', '商品规格(SKU)', false, false, '{"tableName":"skus","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
-WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'skus');
+-- Ensure all NULL sort values in fields table are populated to prevent plugin-field-sort error
+UPDATE "fields" SET "sort" = sub.seq
+FROM (
+  SELECT key, ROW_NUMBER() OVER (ORDER BY "collectionName", name) as seq
+  FROM "fields"
+) sub
+WHERE "fields".key = sub.key AND "fields"."sort" IS NULL;
 
-INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
-SELECT 'crm_orders', 'orders', '订单', false, false, '{"tableName":"orders","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
-WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'orders');
+-- Batch Update primaryKey: true for all CRM tables' id field
+UPDATE "fields"
+SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || '{"primaryKey": true}'::jsonb)::json 
+WHERE "collectionName" IN ('t_crm_contacts', 't_crm_tags', 't_crm_spus', 't_crm_skus', 't_crm_orders', 't_crm_orderItems') AND "name" = 'id';
 
-INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
-SELECT 'crm_order_item', 'order_item', '订单明细', false, false, '{"tableName":"order_item","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
-WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
-  AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'order_item');
-
--- ---------------------------------------------------------
--- 4.3 Fields Display Names (options -> uiSchema -> title)
--- ---------------------------------------------------------
--- Safely merge/update title inside fields.options (json type) -> uiSchema -> title
-
--- contacts
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', 'ID')))::json WHERE "collectionName" = 'contacts' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'contacts' AND "name" = 'createdAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'contacts' AND "name" = 'createdById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'contacts' AND "name" = 'updatedAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'contacts' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '手机号码')))::json WHERE "collectionName" = 'contacts' AND "name" = 'phone';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '年龄')))::json WHERE "collectionName" = 'contacts' AND "name" = 'age';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '性别')))::json WHERE "collectionName" = 'contacts' AND "name" = 'gender';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '阶段状态')))::json WHERE "collectionName" = 'contacts' AND "name" = 'state';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '姓名')))::json WHERE "collectionName" = 'contacts' AND "name" = 'name';
-
--- tags
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', 'ID')))::json WHERE "collectionName" = 'tags' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'tags' AND "name" = 'createdAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'tags' AND "name" = 'createdById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'tags' AND "name" = 'updatedAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'tags' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '标签名称')))::json WHERE "collectionName" = 'tags' AND "name" = 'tag';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '标签类型/状态')))::json WHERE "collectionName" = 'tags' AND "name" = 'state';
-
--- spus
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', 'ID')))::json WHERE "collectionName" = 'spus' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'spus' AND "name" = 'createdAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'spus' AND "name" = 'createdById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'spus' AND "name" = 'updatedAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'spus' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '药品名称/产品名')))::json WHERE "collectionName" = 'spus' AND "name" = 'productName';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '剂型')))::json WHERE "collectionName" = 'spus' AND "name" = 'dosageForm';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '基本单位')))::json WHERE "collectionName" = 'spus' AND "name" = 'baseUnit';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '单剂量数值')))::json WHERE "collectionName" = 'spus' AND "name" = 'unitMeasureValue';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '单剂量单位')))::json WHERE "collectionName" = 'spus' AND "name" = 'unitMeasureUnit';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '规格显示名称')))::json WHERE "collectionName" = 'spus' AND "name" = 'unitSpecDisplay';
-
--- skus
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', 'ID')))::json WHERE "collectionName" = 'skus' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '关联SPU ID')))::json WHERE "collectionName" = 'skus' AND "name" = 'spuId';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'skus' AND "name" = 'createdAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'skus' AND "name" = 'createdById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'skus' AND "name" = 'updatedAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'skus' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '包装内数量')))::json WHERE "collectionName" = 'skus' AND "name" = 'packageQty';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '销售单位')))::json WHERE "collectionName" = 'skus' AND "name" = 'saleUnit';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '包装规格说明')))::json WHERE "collectionName" = 'skus' AND "name" = 'packageSpecDisplay';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '销售单价')))::json WHERE "collectionName" = 'skus' AND "name" = 'salePrice';
-
--- orders
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '订单ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '关联客户/联系人ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'fk_orders';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'orders' AND "name" = 'createdAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'createdById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'orders' AND "name" = 'updatedAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '订单总金额')))::json WHERE "collectionName" = 'orders' AND "name" = 'total';
-
--- order_item
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '明细ID')))::json WHERE "collectionName" = 'order_item' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '关联SKU ID')))::json WHERE "collectionName" = 'order_item' AND "name" = 'fk_sku';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '关联订单ID')))::json WHERE "collectionName" = 'order_item' AND "name" = 'fk_order';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '自定义关联项')))::json WHERE "collectionName" = 'order_item' AND "name" = 'f_1v0rw7p0jjg';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'order_item' AND "name" = 'createdAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'order_item' AND "name" = 'createdById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'order_item' AND "name" = 'updatedAt';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'order_item' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '数量')))::json WHERE "collectionName" = 'order_item' AND "name" = 'quantity';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '单价')))::json WHERE "collectionName" = 'order_item' AND "name" = 'unitPrice';
+-- Batch Update field display titles for existing fields
+UPDATE "fields" AS f
+SET "options" = (
+  COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object(
+    'uiSchema',
+    COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', v.title)
+  )
+)::json
+FROM (VALUES
+  -- t_crm_contacts
+  ('t_crm_contacts', 'id', 'ID'),
+  ('t_crm_contacts', 'name', '姓名'),
+  ('t_crm_contacts', 'phone', '手机号码'),
+  ('t_crm_contacts', 'age', '年龄'),
+  ('t_crm_contacts', 'gender', '性别'),
+  ('t_crm_contacts', 'state', '阶段状态'),
+  ('t_crm_contacts', 'createdAt', '创建时间'),
+  ('t_crm_contacts', 'createdById', '创建人ID'),
+  ('t_crm_contacts', 'updatedAt', '更新时间'),
+  ('t_crm_contacts', 'updatedById', '更新人ID'),
+  -- t_crm_tags
+  ('t_crm_tags', 'id', 'ID'),
+  ('t_crm_tags', 'tag', '标签名称'),
+  ('t_crm_tags', 'state', '标签类型/状态'),
+  ('t_crm_tags', 'createdAt', '创建时间'),
+  ('t_crm_tags', 'createdById', '创建人ID'),
+  ('t_crm_tags', 'updatedAt', '更新时间'),
+  ('t_crm_tags', 'updatedById', '更新人ID'),
+  -- t_crm_spus
+  ('t_crm_spus', 'id', 'ID'),
+  ('t_crm_spus', 'productName', '药品名称/产品名'),
+  ('t_crm_spus', 'dosageForm', '剂型'),
+  ('t_crm_spus', 'baseUnit', '基本单位'),
+  ('t_crm_spus', 'unitMeasureValue', '单剂量数值'),
+  ('t_crm_spus', 'unitMeasureUnit', '单剂量单位'),
+  ('t_crm_spus', 'unitSpecDisplay', '规格显示名称'),
+  ('t_crm_spus', 'createdAt', '创建时间'),
+  ('t_crm_spus', 'createdById', '创建人ID'),
+  ('t_crm_spus', 'updatedAt', '更新时间'),
+  ('t_crm_spus', 'updatedById', '更新人ID'),
+  -- t_crm_skus
+  ('t_crm_skus', 'id', 'ID'),
+  ('t_crm_skus', 'spuId', '关联SPU ID'),
+  ('t_crm_skus', 'packageQty', '包装内数量'),
+  ('t_crm_skus', 'saleUnit', '销售单位'),
+  ('t_crm_skus', 'packageSpecDisplay', '包装规格说明'),
+  ('t_crm_skus', 'salePrice', '销售单价'),
+  ('t_crm_skus', 'createdAt', '创建时间'),
+  ('t_crm_skus', 'createdById', '创建人ID'),
+  ('t_crm_skus', 'updatedAt', '更新时间'),
+  ('t_crm_skus', 'updatedById', '更新人ID'),
+  -- t_crm_orders
+  ('t_crm_orders', 'id', '订单ID'),
+  ('t_crm_orders', 'fk_orders', '关联客户/联系人ID'),
+  ('t_crm_orders', 'total', '订单总金额'),
+  ('t_crm_orders', 'createdAt', '创建时间'),
+  ('t_crm_orders', 'createdById', '创建人ID'),
+  ('t_crm_orders', 'updatedAt', '更新时间'),
+  ('t_crm_orders', 'updatedById', '更新人ID'),
+  -- t_crm_orderItems
+  ('t_crm_orderItems', 'id', '明细ID'),
+  ('t_crm_orderItems', 'fk_sku', '关联SKU ID'),
+  ('t_crm_orderItems', 'fk_order', '关联订单ID'),
+  ('t_crm_orderItems', 'quantity', '数量'),
+  ('t_crm_orderItems', 'unitPrice', '单价'),
+  ('t_crm_orderItems', 'createdAt', '创建时间'),
+  ('t_crm_orderItems', 'createdById', '创建人ID'),
+  ('t_crm_orderItems', 'updatedAt', '更新时间'),
+  ('t_crm_orderItems', 'updatedById', '更新人ID')
+) AS v(col_name, f_name, title)
+WHERE f."collectionName" = v.col_name AND f."name" = v.f_name;
