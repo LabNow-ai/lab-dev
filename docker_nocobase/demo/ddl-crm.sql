@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS "spus" (
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
-  "drugName" character varying(255) NOT NULL,
+  "productName" character varying(255) NOT NULL,
   "dosageForm" character varying(255),
   "baseUnit" character varying(255),
   "unitMeasureValue" double precision NOT NULL,
@@ -111,11 +111,31 @@ ALTER SEQUENCE "orders_id_seq" OWNED BY "orders"."id";
 ALTER SEQUENCE "order_item_id_seq" OWNED BY "order_item"."id";
 
 -- =========================================================
--- 4. NocoBase System Metadata (collections & fields) Registration
+-- 4. NocoBase System Metadata (Category, Collections & Fields) Registration
 -- =========================================================
 
 -- ---------------------------------------------------------
--- 4.1 Collections (Table Display Names)
+-- 4.1 Collection Category Registration ('CRM')
+-- ---------------------------------------------------------
+-- Ensure category 'CRM' exists in NocoBase
+INSERT INTO "collectionCategories" ("id", "name", "color", "sort", "createdAt", "updatedAt")
+SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000), 'CRM', 'magenta', 1, NOW(), NOW()
+WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collectionCategories')
+  AND NOT EXISTS (SELECT 1 FROM "collectionCategories" WHERE "name" = 'CRM');
+
+-- Link CRM tables to category 'CRM' in NocoBase
+INSERT INTO "collectionCategory" ("categoryId", "collectionName", "createdAt", "updatedAt")
+SELECT c.id, col.name, NOW(), NOW()
+FROM "collectionCategories" c
+CROSS JOIN (VALUES ('contacts'), ('tags'), ('spus'), ('skus'), ('orders'), ('order_item')) AS col(name)
+WHERE c.name = 'CRM'
+  AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collectionCategory')
+  AND NOT EXISTS (
+    SELECT 1 FROM "collectionCategory" cc WHERE cc."categoryId" = c.id AND cc."collectionName" = col.name
+  );
+
+-- ---------------------------------------------------------
+-- 4.2 Collections (Table Display Names)
 -- ---------------------------------------------------------
 
 -- Update titles if collection entries exist (e.g., synced via NocoBase Data Source Manager)
@@ -126,7 +146,7 @@ UPDATE "collections" SET "title" = '商品规格(SKU)' WHERE "name" = 'skus';
 UPDATE "collections" SET "title" = '订单' WHERE "name" = 'orders';
 UPDATE "collections" SET "title" = '订单明细' WHERE "name" = 'order_item';
 
--- Insert collection entries if not yet exist
+-- Insert collection entries if not yet exist (Pre-dbsync fallback)
 INSERT INTO "collections" ("key", "name", "title", "inherit", "hidden", "options")
 SELECT 'crm_contacts', 'contacts', '联系人', false, false, '{"tableName":"contacts","timestamps":false,"autoGenId":false,"filterTargetKey":"id","from":"dbsync","underscored":false}'::json
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
@@ -158,7 +178,7 @@ WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collec
   AND NOT EXISTS (SELECT 1 FROM "collections" WHERE "name" = 'order_item');
 
 -- ---------------------------------------------------------
--- 4.2 Fields Display Names (options -> uiSchema -> title)
+-- 4.3 Fields Display Names (options -> uiSchema -> title)
 -- ---------------------------------------------------------
 -- Safely merge/update title inside fields.options (json type) -> uiSchema -> title
 
@@ -189,7 +209,7 @@ UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || json
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'spus' AND "name" = 'createdById';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'spus' AND "name" = 'updatedAt';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新人ID')))::json WHERE "collectionName" = 'spus' AND "name" = 'updatedById';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '药品名称/产品名')))::json WHERE "collectionName" = 'spus' AND "name" = 'drugName';
+UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '药品名称/产品名')))::json WHERE "collectionName" = 'spus' AND "name" = 'productName';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '剂型')))::json WHERE "collectionName" = 'spus' AND "name" = 'dosageForm';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '基本单位')))::json WHERE "collectionName" = 'spus' AND "name" = 'baseUnit';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '单剂量数值')))::json WHERE "collectionName" = 'spus' AND "name" = 'unitMeasureValue';
@@ -210,7 +230,7 @@ UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || json
 
 -- orders
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '订单ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'id';
-UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '关联联系人/客户ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'fk_orders';
+UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '关联客户/联系人ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'fk_orders';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建时间')))::json WHERE "collectionName" = 'orders' AND "name" = 'createdAt';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '创建人ID')))::json WHERE "collectionName" = 'orders' AND "name" = 'createdById';
 UPDATE "fields" SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || jsonb_build_object('uiSchema', COALESCE(("options"::jsonb)->'uiSchema', '{}'::jsonb) || jsonb_build_object('title', '更新时间')))::json WHERE "collectionName" = 'orders' AND "name" = 'updatedAt';
