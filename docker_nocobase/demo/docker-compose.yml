@@ -18,9 +18,10 @@ services:
     # su postgres && psql -d nocobase
 
   svc-nocobase:
-      image: quay.io/labnow/nocobase
+      image: quay.io/labnow0dev/nocobase
       container_name: svc-nocobase
       hostname: svc-nocobase
+      depends_on: ["db-postgres-common"]
       environment:
         TZ: Asia/Shanghai
         DB_DIALECT: postgres
@@ -33,9 +34,9 @@ services:
         # INIT_ROOT_USERNAME: nocobase
         # INIT_ROOT_EMAIL: admin@nocobase.com
         # INIT_ROOT_PASSWORD: admin123
-      ports:
-        - 13000:13000
-      depends_on: ["db-postgres-common"]
+      ports: ["13000:13000"]
+      volumes:
+        - /data/storage/nocobase/storage:/opt/nocobase/storage
       healthcheck:
         test:  ["CMD-SHELL", "curl --head -fsSk http://localhost:13000/" ]
         interval: 30s
