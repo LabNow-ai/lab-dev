@@ -6,6 +6,7 @@
   - Built-in NocoBase metadata registration (categories, collections & fields)
   - Association metadata (m2o, m2m, o2m / belongsTo, belongsToMany, hasMany)
   - Collection sort numbers starting from 101
+  - Composite primary key & filterTargetKey configuration for junction table (t_crm_contactTags)
 */
 
 -- =========================================================
@@ -178,14 +179,14 @@ SELECT
   v.opts::json,
   v.sort_val
 FROM (VALUES
-  ('t_crm_contacts',       '联系人',         101, '{"tableName": "t_crm_contacts", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
-  ('t_crm_tags',           '标签',           102, '{"tableName": "t_crm_tags", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "tag", "unavailableActions": []}'),
-  ('t_crm_spus',           '产品(SPU)',      103, '{"tableName": "t_crm_spus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
-  ('t_crm_skus',           '商品规格(SKU)',  104, '{"tableName": "t_crm_skus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "packageSpecDisplay", "unavailableActions": []}'),
-  ('t_crm_orders',         '订单',           105, '{"tableName": "t_crm_orders", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
-  ('t_crm_orderItems',     '订单明细',       106, '{"tableName": "t_crm_orderItems", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
-  ('t_crm_contactTags',    '客户标签',       107, '{"timestamps": true, "autoGenId": false, "autoCreate": true, "isThrough": true, "sortable": false}'),
-  ('t_crm_contactRecords', '沟通记录',       108, '{"tableName": "t_crm_contactRecords", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}')
+	('t_crm_tags',           '标签',            100, '{"tableName": "t_crm_tags", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "tag", "unavailableActions": []}'),
+	('t_crm_contacts',       '联系人',          110, '{"tableName": "t_crm_contacts", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
+  ('t_crm_contactTags',    '客户标签',				111, '{"timestamps": true, "autoGenId": false, "autoCreate": true, "isThrough": true, "sortable": false, "filterTargetKey": ["contact", "tag"]}'),
+	('t_crm_contactRecords', '客户沟通记录',		112, '{"tableName": "t_crm_contactRecords", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}'),
+	('t_crm_spus',           '产品(SPU)',				121, '{"tableName": "t_crm_spus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
+	('t_crm_skus',           '商品规格(SKU)',		122, '{"tableName": "t_crm_skus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "packageSpecDisplay", "unavailableActions": []}'),
+	('t_crm_orders',         '订单',						131, '{"tableName": "t_crm_orders", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
+	('t_crm_orderItems',     '订单明细',				132, '{"tableName": "t_crm_orderItems", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}')
 ) AS v(name, title, sort_val, opts)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
 ON CONFLICT ("name") DO UPDATE SET
@@ -240,9 +241,9 @@ FROM (VALUES
   ('t_crm_tags', 'tag', 'string', 'input', '{"allowNull": true, "field": "tag", "uiSchema": {"type": "string", "title": "标签名称", "x-component": "Input"}}', 6),
   ('t_crm_tags', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "0", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Select", "enum": [{"value": "0", "label": "正常", "color": "blue"}, {"value": "1", "label": "禁用", "color": "default"}]}}', 7),
 
-  -- t_crm_contactTags (Through Collection)
-  ('t_crm_contactTags', 'contact', 'bigInt', 'integer', '{"isForeignKey": true, "uiSchema": {"type": "number", "title": "contact", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
-  ('t_crm_contactTags', 'tag', 'bigInt', 'integer', '{"isForeignKey": true, "uiSchema": {"type": "number", "title": "tag", "x-component": "InputNumber", "x-read-pretty": true}}', 2),
+  -- t_crm_contactTags (Through Collection with Composite Primary Key)
+  ('t_crm_contactTags', 'contact', 'bigInt', 'integer', '{"primaryKey": true, "isForeignKey": true, "uiSchema": {"type": "number", "title": "contact", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_contactTags', 'tag', 'bigInt', 'integer', '{"primaryKey": true, "isForeignKey": true, "uiSchema": {"type": "number", "title": "tag", "x-component": "InputNumber", "x-read-pretty": true}}', 2),
 
   -- t_crm_spus
   ('t_crm_spus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
@@ -304,7 +305,8 @@ FROM (
 ) sub
 WHERE "fields".key = sub.key AND "fields"."sort" IS NULL;
 
--- Batch Update primaryKey: true for all CRM tables' id field
+-- Batch Update primaryKey: true for all CRM tables' primary key fields (including composite keys)
 UPDATE "fields"
 SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || '{"primaryKey": true}'::jsonb)::json 
-WHERE "collectionName" IN ('t_crm_contacts', 't_crm_contactRecords', 't_crm_tags', 't_crm_spus', 't_crm_skus', 't_crm_orders', 't_crm_orderItems') AND "name" = 'id';
+WHERE ("collectionName" IN ('t_crm_contacts', 't_crm_contactRecords', 't_crm_tags', 't_crm_spus', 't_crm_skus', 't_crm_orders', 't_crm_orderItems') AND "name" = 'id')
+   OR ("collectionName" = 't_crm_contactTags' AND "name" IN ('contact', 'tag'));
