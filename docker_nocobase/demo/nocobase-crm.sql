@@ -2,9 +2,9 @@
   NocoBase fresh-database bootstrap (PostgreSQL) - "public" schema
   - Standalone initial DDL for CRM tables (prefixed with "t_crm_")
   - Sequence + DEFAULT nextval(...)
-  - Physical foreign key constraints (spuId, fk_orders, fk_sku, fk_order)
+  - Physical foreign key constraints & Many-to-Many junction table (t_crm_contactTags)
   - Built-in NocoBase metadata registration (categories, collections & fields)
-  - Association metadata (m2o / belongsTo) for all foreign keys
+  - Association metadata (m2o, m2m / belongsTo, belongsToMany)
   - Collection sort numbers starting from 101
 */
 
@@ -46,6 +46,17 @@ CREATE TABLE IF NOT EXISTS "t_crm_tags" (
   "tag" character varying(255),
   "state" character varying(255) DEFAULT '0',
   CONSTRAINT "t_crm_tags_pkey" PRIMARY KEY ("id")
+);
+
+-- Many-to-Many Junction Table between t_crm_contacts and t_crm_tags
+CREATE TABLE IF NOT EXISTS "t_crm_contactTags" (
+  "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "contact" bigint NOT NULL,
+  "tag" bigint NOT NULL,
+  CONSTRAINT "t_crm_contactTags_pkey" PRIMARY KEY ("contact", "tag"),
+  CONSTRAINT "t_crm_contactTags_contact_fkey" FOREIGN KEY ("contact") REFERENCES "t_crm_contacts"("id") ON DELETE CASCADE,
+  CONSTRAINT "t_crm_contactTags_tag_fkey" FOREIGN KEY ("tag") REFERENCES "t_crm_tags"("id") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_spus" (
@@ -130,7 +141,7 @@ WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collec
 INSERT INTO "collectionCategory" ("categoryId", "collectionName", "createdAt", "updatedAt")
 SELECT c.id, col.name, NOW(), NOW()
 FROM "collectionCategories" c
-CROSS JOIN (VALUES ('t_crm_contacts'), ('t_crm_tags'), ('t_crm_spus'), ('t_crm_skus'), ('t_crm_orders'), ('t_crm_orderItems')) AS col(name)
+CROSS JOIN (VALUES ('t_crm_contacts'), ('t_crm_tags'), ('t_crm_contactTags'), ('t_crm_spus'), ('t_crm_skus'), ('t_crm_orders'), ('t_crm_orderItems')) AS col(name)
 WHERE c.name = 'CRM'
   AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collectionCategory')
   AND NOT EXISTS (
@@ -145,32 +156,24 @@ SELECT
   v.title,
   false,
   false,
-  jsonb_build_object(
-    'tableName', v.name,
-    'timestamps', false,
-    'autoGenId', false,
-    'filterTargetKey', jsonb_build_array('id'),
-    'from', 'dbsync',
-    'underscored', false,
-    'titleField', v.title_field,
-    'unavailableActions', jsonb_build_array()
-  )::json,
+  v.opts::json,
   v.sort_val
 FROM (VALUES
-  ('t_crm_contacts',   '联系人',       101, 'name'),
-  ('t_crm_tags',       '标签',         102, 'tag'),
-  ('t_crm_spus',       '产品(SPU)',     103, 'productName'),
-  ('t_crm_skus',       '商品规格(SKU)', 104, 'packageSpecDisplay'),
-  ('t_crm_orders',     '订单',         105, 'id'),
-  ('t_crm_orderItems', '订单明细',     106, 'id')
-) AS v(name, title, sort_val, title_field)
+  ('t_crm_contacts',    '联系人',          101, '{"tableName": "t_crm_contacts", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
+  ('t_crm_tags',        '标签',            102, '{"tableName": "t_crm_tags", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "tag", "unavailableActions": []}'),
+  ('t_crm_spus',        '产品(SPU)',        103, '{"tableName": "t_crm_spus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
+  ('t_crm_skus',        '商品规格(SKU)',    104, '{"tableName": "t_crm_skus", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "packageSpecDisplay", "unavailableActions": []}'),
+  ('t_crm_orders',      '订单',            105, '{"tableName": "t_crm_orders", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
+  ('t_crm_orderItems',  '订单明细',        106, '{"tableName": "t_crm_orderItems", "timestamps": false, "autoGenId": false, "filterTargetKey": ["id"], "from": "dbsync", "underscored": false, "titleField": "id", "unavailableActions": []}'),
+  ('t_crm_contactTags', 't_crm_contactTags',107, '{"timestamps": true, "autoGenId": false, "autoCreate": true, "isThrough": true, "sortable": false}')
+) AS v(name, title, sort_val, opts)
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collections')
 ON CONFLICT ("name") DO UPDATE SET
   "title" = EXCLUDED."title",
   "sort" = EXCLUDED."sort",
   "options" = EXCLUDED."options";
 
--- 4.3 Fields Registration & Display Titles (Including Foreign Key Association Fields)
+-- 4.3 Fields Registration & Display Titles (Including Foreign Key & Many-to-Many Association Fields)
 INSERT INTO "fields" ("key", "name", "type", "interface", "options", "collectionName", "sort")
 SELECT
   'f_' || v.col_name || '_' || v.f_name,
@@ -193,6 +196,7 @@ FROM (VALUES
   ('t_crm_contacts', 'age', 'bigInt', 'integer', '{"allowNull": true, "field": "age", "uiSchema": {"type": "number", "title": "年龄", "x-component": "InputNumber"}}', 9),
   ('t_crm_contacts', 'gender', 'string', 'radioGroup', '{"allowNull": true, "field": "gender", "uiSchema": {"type": "string", "title": "性别", "x-component": "Radio.Group", "enum": [{"value": "M", "label": "男", "color": "blue"}, {"value": "F", "label": "女", "color": "red"}, {"value": "Unknown", "label": "未知", "color": "default"}]}}', 10),
   ('t_crm_contacts', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "sea", "uiSchema": {"type": "string", "title": "阶段状态", "x-component": "Select", "enum": [{"value": "sea", "label": "公海", "color": "blue"}, {"value": "assigned", "label": "已认领", "color": "magenta"}, {"value": "following", "label": "沟通中", "color": "green"}, {"value": "opportunity", "label": "高潜", "color": "lime"}, {"value": "customer", "label": "已购买", "color": "purple"}, {"value": "invalid", "label": "无效", "color": "default"}, {"value": "lost", "label": "流失", "color": "default"}]}}', 11),
+  ('t_crm_contacts', 'tags', 'belongsToMany', 'm2m', '{"target": "t_crm_tags", "through": "t_crm_contactTags", "foreignKey": "contact", "otherKey": "tag", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "联系人标签", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 12),
 
   -- t_crm_tags
   ('t_crm_tags', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
@@ -202,6 +206,10 @@ FROM (VALUES
   ('t_crm_tags', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 5),
   ('t_crm_tags', 'tag', 'string', 'input', '{"allowNull": true, "field": "tag", "uiSchema": {"type": "string", "title": "标签名称", "x-component": "Input"}}', 6),
   ('t_crm_tags', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "0", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Select", "enum": [{"value": "0", "label": "正常", "color": "blue"}, {"value": "1", "label": "禁用", "color": "default"}]}}', 7),
+
+  -- t_crm_contactTags (Through Collection)
+  ('t_crm_contactTags', 'contact', 'bigInt', 'integer', '{"isForeignKey": true, "uiSchema": {"type": "number", "title": "contact", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_contactTags', 'tag', 'bigInt', 'integer', '{"isForeignKey": true, "uiSchema": {"type": "number", "title": "tag", "x-component": "InputNumber", "x-read-pretty": true}}', 2),
 
   -- t_crm_spus
   ('t_crm_spus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": true, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber"}}', 1),
