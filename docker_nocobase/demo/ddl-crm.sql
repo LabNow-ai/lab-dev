@@ -111,11 +111,11 @@ ALTER SEQUENCE "orders_id_seq" OWNED BY "orders"."id";
 ALTER SEQUENCE "order_item_id_seq" OWNED BY "order_item"."id";
 
 -- =========================================================
--- 5. NocoBase System Metadata (collections & fields) Registration
+-- 4. NocoBase System Metadata (collections & fields) Registration
 -- =========================================================
 
 -- ---------------------------------------------------------
--- 5.1 Collections (Table Display Names)
+-- 4.1 Collections (Table Display Names)
 -- ---------------------------------------------------------
 
 -- Update titles if collection entries exist (e.g., synced via NocoBase Data Source Manager)

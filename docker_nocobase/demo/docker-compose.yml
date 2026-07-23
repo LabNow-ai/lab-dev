@@ -18,12 +18,8 @@ services:
     # su postgres && psql -d nocobase
 
   svc-nocobase:
-      image: quay.io/labnow/nocobase
+      image: quay.io/labnow0dev/nocobase
       container_name: svc-nocobase
-      command: |
-        /bin/bash -l -c '
-        sleep 5s
-        /opt/nocobase/docker-entrypoint.sh'
       environment:
         TZ: Asia/Shanghai
         DB_DIALECT: postgres
