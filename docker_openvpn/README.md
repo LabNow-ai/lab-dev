@@ -1,6 +1,6 @@
 # Docker OpenVPN Server
 
-This project provides a Dockerized OpenVPN instance based on the `kylemanna/openvpn` image. It allows for quick deployment of an enterprise-grade VPN service with EasyRSA PKI management.
+This project provides a Dockerized OpenVPN instance. It allows for quick deployment of an enterprise-grade VPN service with EasyRSA PKI management.
 
 ## 1. Quick Start
 
@@ -45,8 +45,3 @@ docker-compose up -d
 - **Port**: `1194/udp` (Default)
 - **Capabilities**: Requires `NET_ADMIN` to manage network interfaces and routing.
 - **Volume**: Mounts `/etc/openvpn` to persist certificates and configurations.
-
-## 3. References
-
-- [Docker部署OpenVPN：企业级VPN服务搭建](https://mp.weixin.qq.com/s/lng3kPVAWImPoulpGXr-Gw)
-- [kylemanna/docker-openvpn GitHub Repository](https://github.com/kylemanna/docker-openvpn)
