@@ -80,6 +80,7 @@ WORKDIR /opt/hermes
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
+ && uv pip install ./vendor/*.whl \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
  && ln -sf /opt/hermes/start-hermes.sh       /usr/local/bin/start-hermes.sh \
  && ln -sf /opt/hermes/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
