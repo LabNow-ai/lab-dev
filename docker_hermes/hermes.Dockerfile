@@ -82,8 +82,8 @@ RUN set -eux \
  && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \ 
  && uv pip install ./vendor/*.whl \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
- && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/start-hermes.sh \
- && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/healthcheck-hermes.sh \
+ && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/ \
+ && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/ \
  && . /opt/utils/script-setup-sys.sh && setup_supervisord \
  && install__clean
 
