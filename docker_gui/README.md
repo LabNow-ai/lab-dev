@@ -99,7 +99,7 @@ docker run --rm -p 8080:8080 labnow/gui:selkies --encoder=vp8enc --enable_resize
 
 ```bash
 docker run --rm -it -p 8080:8080 \  
-  quay.io/labnow0dev/gui-linux bash
+  quay.io/labnow/gui-linux bash
 
 # optional env:
   -e SELKIES_TURN_PROTOCOL=tcp \
