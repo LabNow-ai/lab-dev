@@ -29,7 +29,8 @@ RUN set -eux \
  && playwright install --with-deps chromium --only-shell \
  && npm cache clean --force \
  ## ---------- hack python-olm for building compatible wheels ----------
- && mkdir -p /tmp/olm && cd /tmp/olm \
+ && mkdir -pv /opt/hermes/vendor \
+ && mkdir -pv /tmp/olm && cd /tmp/olm \
  && curl -s https://pypi.org/pypi/python-olm/3.2.16/json \
   | jq -r '.urls[] | select(.packagetype=="sdist").url' \
   | xargs curl -L -o python-olm-3.2.16.tar.gz \
@@ -37,14 +38,12 @@ RUN set -eux \
  && cd python-olm-3.2.16 \
  && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
  && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
- && mv /tmp/olm/wheels/*olm*.whl /opt/hermes \
+ && mv /tmp/olm/wheels/*olm*.whl /opt/hermes/vendor/ \
  && cd /opt/hermes \
- && pip install ./*.whl \
- && rm ./uv.lock \
- ## ---------- uv sync (cached on manifests) ----------
- && uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix || \
-    uv sync          --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
-
+ && pip install ./vendor/*.whl \
+ && rm ./uv.lock
+ ## ---------- (hack finished) ----------
+ 
 ### ---------- Frontend build (web + ui-tui) ----------
 RUN set -eux \
  && (cd web    && npm run build) \
@@ -52,6 +51,7 @@ RUN set -eux \
  && mkdir -pv hermes_cli/tui_dist && cp ui-tui/dist/entry.js hermes_cli/tui_dist/ \
  ## ---------- Link hermes-agent itself (editable, no deps) + install-method stamp ----------
  && uv pip install --no-cache-dir --no-deps -e "." \
+      --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix \
  && mkdir -p /opt/hermes/bin \
  && cp /opt/hermes/docker/hermes-exec-shim.sh /opt/hermes/bin/hermes 2>/dev/null || { \
       printf '#!/usr/bin/env bash\nexec /opt/hermes/.venv/bin/hermes "$@"\n' > /opt/hermes/bin/hermes; \
@@ -73,11 +73,8 @@ LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV HERMES_HOME=/root/workspace
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
-# Put the hermes venv at the front so `python3`, `hermes`, `uv`, etc. resolve to the managed install.
-# This also lets `python3 -m scripts.*` / `python3 -m tools.*` in the seeding scripts find the hermes source tree via the appended PYTHONPATH.
-ENV VIRTUAL_ENV=/opt/hermes/.venv
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
-ENV PATH="/opt/hermes/.venv/bin:/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
+ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
 ENV HOME=/root/workspace
 WORKDIR /root/workspace
 
@@ -90,8 +87,6 @@ RUN set -eux \
  && ln -sf /opt/hermes/start-hermes.sh       /usr/local/bin/start-hermes.sh \
  && ln -sf /opt/hermes/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
- ## Runtime APT deps (hermes needs libolm for matrix, ffmpeg for voice, ripgrep for FTS, etc.)
- && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
  ## Detect the real hermes_cli location inside the venv and record it in a profile.d snippet
  ## so start-hermes.sh's auto-detect always finds the built frontends.
