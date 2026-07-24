@@ -39,9 +39,8 @@ RUN set -eux \
  && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
  && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
  && mv /tmp/olm/wheels/*olm*.whl /opt/hermes/vendor/ \
- && cd /opt/hermes \
- && pip install ./vendor/*.whl \
- && rm ./uv.lock
+ && cd /opt/hermes && rm ./uv.lock \
+ && uv pip install ./vendor/*.whl
  ## ---------- (hack finished) ----------
  
 ### ---------- Frontend build (web + ui-tui) ----------
@@ -50,6 +49,7 @@ RUN set -eux \
  && (cd ui-tui && npm run build) \
  && mkdir -pv hermes_cli/tui_dist && cp ui-tui/dist/entry.js hermes_cli/tui_dist/ \
  ## ---------- Link hermes-agent itself (editable, no deps) + install-method stamp ----------
+ && cd /opt/hermes \
  && uv pip install --no-cache-dir --no-deps -e "." \
       --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix \
  && mkdir -p /opt/hermes/bin \
@@ -71,19 +71,22 @@ LABEL maintainer="postmaster@labnow.ai"
 
 # Production environment
 ENV NODE_ENV=production
-ENV HERMES_HOME=/root/workspace
+ENV HERMES_HOME=/opt/hermes
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
 ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
-ENV HOME=/root/workspace
-WORKDIR /root/workspace
 
 # Copy the full hermes install tree from the builder (venv + source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
 
+WORKDIR /opt/hermes
+
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
+ && uv pip install ./vendor/*.whl \
+ && uv pip install --no-cache-dir --no-deps -e "." \
+      --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix \
  && ln -sf /opt/hermes/start-hermes.sh       /usr/local/bin/start-hermes.sh \
  && ln -sf /opt/hermes/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
