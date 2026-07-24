@@ -12,16 +12,11 @@ ENV NODE_ENV=development
 ENV UV_LINK_MODE=copy
 ENV npm_config_install_links=false
 
-# Copy utilities and tools
-COPY work /opt/utils/
-
 WORKDIR /opt/hermes
 
 # Install build-time system dependencies (compilers + native libs needed for Python extensions).
 # Without these, `uv sync` fails when compiling packages like `matrix-*-crypto`, `cryptography`, or `ffi`-based wheels on cold builds.
 RUN set -eux \
- && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/hermes/ \
- && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && apt-get -qq update -yq --fix-missing \
  && apt-get -qq install -yq --no-install-recommends \
       libffi-dev libolm-dev \
@@ -32,10 +27,6 @@ RUN set -eux \
  && npm install -g playwright \
  && playwright install --with-deps chromium --only-shell \
  && npm cache clean --force \
- ## ---------- Python dependency install via uv (cached on manifests) ----------
- ## README.md is referenced by pyproject.toml but excluded by .dockerignore in source;
- ## create a placeholder so uv's build frontend doesn't fail.
- && touch ./README.md \
  ## ---------- hack python-olm for building compatible wheels ----------
  && mkdir -p /tmp/olm && cd /tmp/olm \
  && curl -s https://pypi.org/pypi/python-olm/3.2.16/json \
@@ -45,17 +36,18 @@ RUN set -eux \
  && cd python-olm-3.2.16 \
  && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
  && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
- && pip install /tmp/olm/wheels/*.whl \
+ && mv /tmp/olm/wheels/*olm*.whl /opt/hermes \
  && cd /opt/hermes \
+ && pip install ./*.whl \
  ## ---------- uv sync (cached on manifests) ----------
  && uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix || \
     uv sync          --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
 
-# ---------- Frontend build (web + ui-tui) ----------
+### ---------- Frontend build (web + ui-tui) ----------
 RUN set -eux \
- && (cd web && npm run build) \
+ && (cd web    && npm run build) \
  && (cd ui-tui && npm run build) \
- && mkdir -p hermes_cli/tui_dist && cp ui-tui/dist/entry.js hermes_cli/tui_dist/ \
+ && mkdir -pv hermes_cli/tui_dist && cp ui-tui/dist/entry.js hermes_cli/tui_dist/ \
  ## ---------- Link hermes-agent itself (editable, no deps) + install-method stamp ----------
  && uv pip install --no-cache-dir --no-deps -e "." \
  && mkdir -p /opt/hermes/bin \
@@ -65,7 +57,12 @@ RUN set -eux \
  && chmod 0755 /opt/hermes/bin/hermes \
  && printf 'docker\n' > /opt/hermes/.install_method
 
-# --- Runtime Stage ---
+# Copy utilities and tools
+COPY work /opt/utils/
+RUN chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/hermes/
+
+
+### --- Runtime Stage ---
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 LABEL maintainer="postmaster@labnow.ai"
@@ -85,15 +82,14 @@ WORKDIR /root/workspace
 # Copy the full hermes install tree from the builder (venv + source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
 
-
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
  && ln -sf /opt/hermes/start-hermes.sh       /usr/local/bin/start-hermes.sh \
  && ln -sf /opt/hermes/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
+ && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  ## Runtime APT deps (hermes needs libolm for matrix, ffmpeg for voice, ripgrep for FTS, etc.)
  && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
- && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
  ## Detect the real hermes_cli location inside the venv and record it in a profile.d snippet
  ## so start-hermes.sh's auto-detect always finds the built frontends.
