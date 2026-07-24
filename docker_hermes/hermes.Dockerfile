@@ -10,34 +10,31 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} AS builder
 # Build-time environment
 ENV NODE_ENV=development
 ENV UV_LINK_MODE=copy
+ENV npm_config_install_links=false
+
+
 WORKDIR /opt/hermes
 
 # Install build-time system dependencies (compilers + native libs needed for Python extensions).
-# Without these, `uv sync` fails when compiling packages like `matrix-*-crypto`, `cryptography`,
-# or `ffi`-based wheels on cold builds.
+# Without these, `uv sync` fails when compiling packages like `matrix-*-crypto`, `cryptography`, or `ffi`-based wheels on cold builds.
 RUN set -eux \
  && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && apt-get -qq update -yq --fix-missing \
  && apt-get -qq install -yq --no-install-recommends \
       libffi-dev libolm-dev \
  ## Clone source (full clone for reproducibility; depth 1 for speed)
- && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git .
-
-# ---------- Node dependencies + Playwright (cached on manifests) ----------
-ENV npm_config_install_links=false
-RUN set -eux \
+ && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
+ ## ---------- Node dependencies + Playwright (cached on manifests) ----------
  && npm install --prefer-offline --no-audit --fetch-retries=5 \
  && for i in 1 2 3; do \
       npx playwright install --with-deps chromium --only-shell && break || \
       { [ "$i" = 3 ] && exit 1; echo "playwright install failed (attempt $i); retrying in 10s"; sleep 10; }; \
     done \
- && npm cache clean --force
-
-# ---------- Python dependency install via uv (cached on manifests) ----------
-# README.md is referenced by pyproject.toml but excluded by .dockerignore in source;
-# create a placeholder so uv's build frontend doesn't fail.
-RUN set -eux \
- && touch ./README.md
+ && npm cache clean --force \
+ ## ---------- Python dependency install via uv (cached on manifests) ----------
+ ## README.md is referenced by pyproject.toml but excluded by .dockerignore in source;
+ ## create a placeholder so uv's build frontend doesn't fail.
+ && touch ./README.md \
  && uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix || \
     uv sync --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
 
@@ -45,10 +42,8 @@ RUN set -eux \
 RUN set -eux \
  && (cd web && npm run build) \
  && (cd ui-tui && npm run build) \
- && mkdir -p hermes_cli/tui_dist && cp ui-tui/dist/entry.js hermes_cli/tui_dist/
-
-# ---------- Link hermes-agent itself (editable, no deps) + install-method stamp ----------
-RUN set -eux \
+ && mkdir -p hermes_cli/tui_dist && cp ui-tui/dist/entry.js hermes_cli/tui_dist/ \
+ ## ---------- Link hermes-agent itself (editable, no deps) + install-method stamp ----------
  && uv pip install --no-cache-dir --no-deps -e "." \
  && mkdir -p /opt/hermes/bin \
  && cp /opt/hermes/docker/hermes-exec-shim.sh /opt/hermes/bin/hermes 2>/dev/null || { \
