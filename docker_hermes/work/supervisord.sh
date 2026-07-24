@@ -7,7 +7,7 @@ set -eu
 # Set up dashboard parameters
 dash_host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
 dash_port="${HERMES_DASHBOARD_PORT:-9119}"
-hermes_home="${HERMES_HOME:-/root/workspace}"
+hermes_home="${HERMES_HOME:-/root/.hermes}"
 
 insecure=""
 case "${HERMES_DASHBOARD_INSECURE:-}" in

@@ -67,29 +67,28 @@ LABEL maintainer="postmaster@labnow.ai"
 
 # Production environment
 ENV NODE_ENV=production
-ENV HERMES_HOME=/opt/hermes
+ENV HERMES_HOME=/root/.hermes
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
 ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
-
+ENV HOME=/root/.hermes
 # Copy the full hermes install tree from the builder (source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
-
-WORKDIR /opt/hermes
+WORKDIR /root/.hermes
 
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
- && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \ 
+ && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \ 
  && uv pip install ./vendor/*.whl \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
  && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/start-hermes.sh \
  && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/healthcheck-hermes.sh \
- && source /opt/utils/script-setup-sys.sh && setup_supervisord \
+ && . /opt/utils/script-setup-sys.sh && setup_supervisord \
  && install__clean
 
 # Data persistence is owned by the runtime orchestrator.
-# Compose and external workspace wrappers must provide the explicit `/root/workspace` mount.
+# Compose and external workspace wrappers must provide the explicit `${HERMES_HOME}` mount.
 
 # Standalone containers keep the historical gateway+dashboard behavior.
 # The labnow-open wrapper calls start-hermes.sh with explicit gateway/dashboard modes and therefore does not use this CMD.
