@@ -12,12 +12,15 @@ ENV NODE_ENV=development
 ENV UV_LINK_MODE=copy
 ENV npm_config_install_links=false
 
+# Copy utilities and tools
+COPY work /opt/utils/
 
 WORKDIR /opt/hermes
 
 # Install build-time system dependencies (compilers + native libs needed for Python extensions).
 # Without these, `uv sync` fails when compiling packages like `matrix-*-crypto`, `cryptography`, or `ffi`-based wheels on cold builds.
 RUN set -eux \
+ && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/hermes/ \
  && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && apt-get -qq update -yq --fix-missing \
  && apt-get -qq install -yq --no-install-recommends \
@@ -26,17 +29,27 @@ RUN set -eux \
  && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
  ## ---------- Node dependencies + Playwright (cached on manifests) ----------
  && npm install --prefer-offline --no-audit --fetch-retries=5 \
- && for i in 1 2 3; do \
-      npx playwright install --with-deps chromium --only-shell && break || \
-      { [ "$i" = 3 ] && exit 1; echo "playwright install failed (attempt $i); retrying in 10s"; sleep 10; }; \
-    done \
+ && npm install -g playwright \
+ && playwright install --with-deps chromium --only-shell \
  && npm cache clean --force \
  ## ---------- Python dependency install via uv (cached on manifests) ----------
  ## README.md is referenced by pyproject.toml but excluded by .dockerignore in source;
  ## create a placeholder so uv's build frontend doesn't fail.
  && touch ./README.md \
+ ## ---------- hack python-olm for building compatible wheels ----------
+ && mkdir -p /tmp/olm && cd /tmp/olm \
+ && curl -s https://pypi.org/pypi/python-olm/3.2.16/json \
+  | jq -r '.urls[] | select(.packagetype=="sdist").url' \
+  | xargs curl -L -o python-olm-3.2.16.tar.gz \
+ && tar xf python-olm-3.2.16.tar.gz \
+ && cd python-olm-3.2.16 \
+ && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
+ && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
+ && pip install /tmp/olm/wheels/*.whl \
+ && cd /opt/hermes \
+ ## ---------- uv sync (cached on manifests) ----------
  && uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix || \
-    uv sync --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
+    uv sync          --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
 
 # ---------- Frontend build (web + ui-tui) ----------
 RUN set -eux \
@@ -72,15 +85,12 @@ WORKDIR /root/workspace
 # Copy the full hermes install tree from the builder (venv + source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
 
-# Copy utilities and tools
-COPY work /opt/utils/
 
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
- && chmod +x /opt/utils/*.sh \
- && ln -sf /opt/utils/start-hermes.sh       /usr/local/bin/start-hermes.sh \
- && ln -sf /opt/utils/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
+ && ln -sf /opt/hermes/start-hermes.sh       /usr/local/bin/start-hermes.sh \
+ && ln -sf /opt/hermes/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
  ## Runtime APT deps (hermes needs libolm for matrix, ffmpeg for voice, ripgrep for FTS, etc.)
  && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-retries \
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
