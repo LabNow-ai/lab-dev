@@ -11,6 +11,7 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} AS builder
 ENV NODE_ENV=development
 ENV UV_LINK_MODE=copy
 ENV npm_config_install_links=false
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 
 WORKDIR /opt/hermes
 
@@ -39,6 +40,7 @@ RUN set -eux \
  && mv /tmp/olm/wheels/*olm*.whl /opt/hermes \
  && cd /opt/hermes \
  && pip install ./*.whl \
+ && rm ./uv.lock \
  ## ---------- uv sync (cached on manifests) ----------
  && uv sync --frozen --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix || \
     uv sync          --no-install-project --extra all --extra messaging --extra anthropic --extra bedrock --extra azure-identity --extra hindsight --extra matrix
