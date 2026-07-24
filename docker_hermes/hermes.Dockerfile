@@ -80,12 +80,12 @@ WORKDIR /opt/hermes
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
+ && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \ 
  && uv pip install ./vendor/*.whl \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
- && ln -sf /opt/hermes/start-hermes.sh       /usr/local/bin/start-hermes.sh \
- && ln -sf /opt/hermes/healthcheck-hermes.sh /usr/local/bin/healthcheck-hermes.sh \
+ && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/start-hermes.sh \
+ && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/healthcheck-hermes.sh \
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
- && source /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
  && install__clean
 
 # Data persistence is owned by the runtime orchestrator.
