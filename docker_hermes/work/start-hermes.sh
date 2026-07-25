@@ -141,7 +141,7 @@ case "$1" in
             echo "[start-hermes] the all mode does not accept extra arguments" >&2
             exit 2
         fi
-        exec /opt/utils/supervisord.sh
+        exec /opt/hermes/start-hermes-supervisord.sh
         ;;
     gateway)
         shift
