@@ -72,11 +72,10 @@ ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
 ENV HOME=/root/.hermes
 # Copy the full hermes install tree from the builder (source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
-WORKDIR /root/.hermes
 
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
-RUN set -eux \
+RUN set -eux && cd /opt/hermes \
  && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \ 
  && uv pip install ./vendor/*.whl \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
@@ -90,6 +89,7 @@ RUN set -eux \
 
 # Standalone containers keep the historical gateway+dashboard behavior.
 # The labnow-open wrapper calls start-hermes.sh with explicit gateway/dashboard modes and therefore does not use this CMD.
+WORKDIR /root/.hermes
 CMD ["start-hermes.sh", "all"]
 EXPOSE 9119
 HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=5 \
