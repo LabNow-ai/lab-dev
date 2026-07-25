@@ -15,14 +15,16 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 
 WORKDIR /opt/hermes
 
+# Copy utilities and tools
+COPY work /opt/utils/
+
 # Install build-time system dependencies (compilers + native libs needed for Python extensions).
 # Without these, `uv sync` fails when compiling packages like `matrix-*-crypto`, `cryptography`, or `ffi`-based wheels on cold builds.
 RUN set -eux \
- && apt-get -qq update -yq --fix-missing \
- && apt-get -qq install -yq --no-install-recommends \
-      libffi-dev libolm-dev \
+ && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
  ## Clone source (full clone for reproducibility; depth 1 for speed)
  && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
+ && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/utils/install_list_hermes.apt /opt/hermes/ \
  ## ---------- hack python-olm for building compatible wheels ----------
  && mkdir -pv /opt/hermes/vendor \
  && mkdir -pv /tmp/olm && cd /tmp/olm \
@@ -56,10 +58,6 @@ RUN set -eux \
  && chmod 0755 /opt/hermes/bin/hermes \
  && printf 'docker\n' > /opt/hermes/.install_method
 
-# Copy utilities and tools
-COPY work /opt/utils/
-RUN chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/hermes/
-
 ### --- Runtime Stage ---
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
@@ -79,7 +77,7 @@ WORKDIR /root/.hermes
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux \
- && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \ 
+ && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \ 
  && uv pip install ./vendor/*.whl \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
  && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/ \
