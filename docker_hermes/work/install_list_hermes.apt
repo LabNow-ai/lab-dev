@@ -1,9 +1,9 @@
-iputils-ping
-ripgrep
-ffmpeg
 libffi-dev
 libolm-dev
+iputils-ping
+xz-utils
+ripgrep
+ffmpeg
 procps
 openssh-client
 docker-cli
-xz-utils

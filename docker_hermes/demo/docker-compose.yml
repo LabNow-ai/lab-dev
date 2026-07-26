@@ -11,7 +11,7 @@ services:
     command: ["start-hermes.sh", "all"]
     environment:
       TZ: ${TZ:-Asia/Shanghai}
-      HERMES_HOME: /root/workspace
+      HERMES_HOME: /root/.hermes
       HERMES_DASHBOARD: ${HERMES_DASHBOARD:-true}
       HERMES_DASHBOARD_HOST: ${HERMES_DASHBOARD_HOST:-0.0.0.0}
       HERMES_DASHBOARD_PORT: ${HERMES_DASHBOARD_PORT:-9119}
@@ -36,7 +36,7 @@ services:
       start_period: 20s
       retries: 3
     volumes:
-      - ${HERMES_DATA_DIR:-../../.data/hermes}:/root/workspace
+      - ${HERMES_DATA_DIR:-../../.data/hermes}:/root/.hermes
     logging:
       driver: "json-file"
       options:

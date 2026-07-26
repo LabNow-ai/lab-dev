@@ -25,9 +25,9 @@ The Hermes Agent container hosts services on the following port:
 
 Hermes persists session data, memory, custom skills, and configurations under:
 
-- **`/root/workspace`**: Sourced home directory for all agent states. Must be mounted via Docker Compose or a workspace volume.
+- **`/root/.hermes`**: Sourced home directory for all agent states. Must be mounted via Docker Compose or a workspace volume.
 
-### Subdirectories under `/root/workspace`:
+### Subdirectories under `/root/.hermes`:
 - `sessions/`, `memories/` - Database and conversation history.
 - `skills/`, `plans/` - Executable custom agent skills and plan workflows.
 - `config.yaml`, `.env` - Main configuration and environment profiles.
@@ -107,7 +107,7 @@ docker run -d \
   --name svc-hermes \
   --hostname hermes \
   -p 9119:9119 \
-  -v /path/to/your/data:/root/workspace \
+  -v /path/to/your/data:/root/.hermes \
   -e HERMES_DASHBOARD=true \
   quay.io/labnow/hermes:local
 ```

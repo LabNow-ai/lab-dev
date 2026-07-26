@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-HERMES_HOME="${HERMES_HOME:-/root/workspace}"
+HERMES_HOME="${HERMES_HOME:-/root/.hermes}"
 mkdir -p "$HERMES_HOME"
 
 bootstrap_lock_dir="$HERMES_HOME/.hermes-bootstrap.lock"
@@ -124,8 +124,8 @@ if [ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ] && [ -n "${PLAYWRIGHT_BROWSERS_PA
 fi
 
 # Configure environments for command invocation
-export HOME=/root/workspace
-cd /root/workspace
+export HOME="${HERMES_HOME}"
+cd "${HERMES_HOME}"
 
 # Explicit service modes allow an outer supervisor (for example labnow-open) to
 # manage Hermes processes directly instead of starting a nested supervisor.
@@ -141,7 +141,7 @@ case "$1" in
             echo "[start-hermes] the all mode does not accept extra arguments" >&2
             exit 2
         fi
-        exec /opt/utils/supervisord.sh
+        exec /opt/hermes/start-hermes-supervisord.sh
         ;;
     gateway)
         shift
