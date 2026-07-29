@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_customer" (
 
 CREATE TABLE IF NOT EXISTS "t_crm_tags" (
   "_id" bigint NOT NULL DEFAULT nextval('"t_crm_tags_id_seq"'::regclass),
-  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('TAG', true, 5, 'base32'),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('TAG', false, 5, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_tags" (
 -- Many-to-Many Junction Table between t_crm_customer and t_crm_tags
 CREATE TABLE IF NOT EXISTS "t_crm_customerTags" (
   "_id" bigint NOT NULL DEFAULT nextval('"t_crm_customerTags_id_seq"'::regclass),
-  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CTAG', true, 6, 'base32'),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CTAG', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "customer" bigint NOT NULL,
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_customerRecords" (
 
 CREATE TABLE IF NOT EXISTS "t_meta_spus" (
   "_id" bigint NOT NULL DEFAULT nextval('"t_meta_spus_id_seq"'::regclass),
-  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('SPU', true, 6, 'base32'),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('SPU', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS "t_meta_spus" (
   "baseUnit" character varying(255),
   "unitMeasureValue" double precision NOT NULL,
   "unitMeasureUnit" character varying(255),
-  "unitSpecDisplay" character varying(255),
+  "spuDisplayName" character varying(255),
   "data1" text,
   "data2" text,
   CONSTRAINT "t_meta_spus_pkey" PRIMARY KEY ("_id")
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS "t_meta_spus" (
 
 CREATE TABLE IF NOT EXISTS "t_meta_skus" (
   "_id" bigint NOT NULL DEFAULT nextval('"t_meta_skus_id_seq"'::regclass),
-  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('SKU', true, 6, 'base32'),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('SKU', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS "t_meta_skus" (
   "spuId" bigint,
   "packageQty" double precision NOT NULL,
   "saleUnit" character varying(255),
-  "packageSpecDisplay" text NOT NULL,
+  "skuDisplayName" text NOT NULL,
   "salePrice" double precision NOT NULL,
   "data1" text,
   "data2" text,
@@ -296,7 +296,7 @@ FROM (VALUES
   ('t_crm_customerTags', '顾客标签', true, 111, '{"template": "general", "timestamps": true, "autoGenId": true, "autoCreate": true, "isThrough": true, "sortable": false}'),
   ('t_crm_customerRecords', '顾客沟通记录', false, 112, '{"template": "general", "tableName": "t_crm_customerRecords", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}'),
   ('t_meta_spus', '产品(SPU)', false, 121, '{"template": "general", "tableName": "t_meta_spus", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
-  ('t_meta_skus', '商品规格(SKU)', false, 122, '{"template": "general", "tableName": "t_meta_skus", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "packageSpecDisplay", "unavailableActions": []}'),
+  ('t_meta_skus', '商品规格(SKU)', false, 122, '{"template": "general", "tableName": "t_meta_skus", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "skuDisplayName", "unavailableActions": []}'),
   ('t_crm_orders', '订单', false, 131, '{"template": "general", "tableName": "t_crm_orders", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "code", "unavailableActions": []}'),
   ('t_crm_orderItems', '订单明细', false, 132, '{"template": "general", "tableName": "t_crm_orderItems", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "code", "unavailableActions": []}')
 ) AS v(name, title, hidden_val, sort_val, opts)
@@ -389,7 +389,7 @@ FROM (VALUES
   ('t_meta_spus', 'baseUnit', 'string', 'input', '{"allowNull": true, "field": "baseUnit", "uiSchema": {"type": "string", "title": "基础计量单位", "x-component": "Input"}}', 9),
   ('t_meta_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "最小单元计量数量", "x-component": "InputNumber"}}', 10),
   ('t_meta_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "最小单元计量单位", "x-component": "Input"}}', 11),
-  ('t_meta_spus', 'unitSpecDisplay', 'string', 'input', '{"allowNull": true, "field": "unitSpecDisplay", "uiSchema": {"type": "string", "title": "规格显示名称", "x-component": "Input"}}', 12),
+  ('t_meta_spus', 'spuDisplayName', 'string', 'input', '{"allowNull": true, "field": "spuDisplayName", "uiSchema": {"type": "string", "title": "SPU展示名", "x-component": "Input"}}', 12),
   ('t_meta_spus', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 13),
   ('t_meta_spus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
 
@@ -403,7 +403,7 @@ FROM (VALUES
   ('t_meta_skus', 'spu', 'belongsTo', 'm2o', '{"target": "t_meta_spus", "foreignKey": "spuId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联产品(SPU)", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "productName"}}}}', 7),
   ('t_meta_skus', 'packageQty', 'float', 'number', '{"allowNull": false, "field": "packageQty", "uiSchema": {"type": "number", "title": "包装内数量", "x-component": "InputNumber"}}', 8),
   ('t_meta_skus', 'saleUnit', 'string', 'input', '{"allowNull": true, "field": "saleUnit", "uiSchema": {"type": "string", "title": "销售单位", "x-component": "Input"}}', 9),
-  ('t_meta_skus', 'packageSpecDisplay', 'text', 'textarea', '{"allowNull": false, "field": "packageSpecDisplay", "uiSchema": {"type": "string", "title": "包装规格说明", "x-component": "Input.TextArea"}}', 10),
+  ('t_meta_skus', 'skuDisplayName', 'text', 'textarea', '{"allowNull": false, "field": "skuDisplayName", "uiSchema": {"type": "string", "title": "SKU展示名", "x-component": "Input.TextArea"}}', 10),
   ('t_meta_skus', 'salePrice', 'float', 'number', '{"allowNull": false, "field": "salePrice", "uiSchema": {"type": "number", "title": "销售单价", "x-component": "InputNumber"}}', 11),
   ('t_meta_skus', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 12),
   ('t_meta_skus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
@@ -427,7 +427,7 @@ FROM (VALUES
   ('t_crm_orderItems', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
   ('t_crm_orderItems', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
   ('t_crm_orderItems', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
-  ('t_crm_orderItems', 'sku', 'belongsTo', 'm2o', '{"target": "t_meta_skus", "foreignKey": "skuId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联商品规格(SKU)", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "packageSpecDisplay"}}}}', 7),
+  ('t_crm_orderItems', 'sku', 'belongsTo', 'm2o', '{"target": "t_meta_skus", "foreignKey": "skuId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联商品规格(SKU)", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "skuDisplayName"}}}}', 7),
   ('t_crm_orderItems', 'order', 'belongsTo', 'm2o', '{"target": "t_crm_orders", "foreignKey": "orderId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联订单", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "code"}}}}', 8),
   ('t_crm_orderItems', 'quantity', 'float', 'number', '{"allowNull": false, "field": "quantity", "uiSchema": {"type": "number", "title": "数量", "x-component": "InputNumber"}}', 9),
   ('t_crm_orderItems', 'unitPrice', 'float', 'number', '{"allowNull": false, "field": "unitPrice", "uiSchema": {"type": "number", "title": "单价", "x-component": "InputNumber"}}', 10),
