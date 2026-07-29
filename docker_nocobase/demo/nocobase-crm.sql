@@ -6,7 +6,7 @@
   - Built-in NocoBase metadata registration (categories, collections & fields)
   - Association metadata (m2o, m2m, o2m / belongsTo, belongsToMany, hasMany)
   - Collection sort numbers starting from 101
-  - Snowflake ID style primary keys with _id suffix
+  - Snowflake ID style primary keys with id column
 */
 
 -- =========================================================
@@ -88,11 +88,11 @@ CREATE SEQUENCE IF NOT EXISTS "t_crm_orders_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_crm_orderItems_id_seq";
 
 -- =========================================================
--- 2. Main tables (Audit columns placed immediately after _id)
+-- 2. Main tables (Audit columns placed immediately after id)
 -- =========================================================
 
 CREATE TABLE IF NOT EXISTS "t_crm_customer" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_crm_customer_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_customer_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CUST', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -106,11 +106,11 @@ CREATE TABLE IF NOT EXISTS "t_crm_customer" (
   "state" character varying(255) DEFAULT 'sea',
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_customer_pkey" PRIMARY KEY ("_id")
+  CONSTRAINT "t_crm_customer_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_tags" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_crm_tags_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_tags_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('TAG', false, 5, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -120,12 +120,12 @@ CREATE TABLE IF NOT EXISTS "t_crm_tags" (
   "state" character varying(255) DEFAULT '0',
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_tags_pkey" PRIMARY KEY ("_id")
+  CONSTRAINT "t_crm_tags_pkey" PRIMARY KEY ("id")
 );
 
 -- Many-to-Many Junction Table between t_crm_customer and t_crm_tags
 CREATE TABLE IF NOT EXISTS "t_crm_customerTags" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_crm_customerTags_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_customerTags_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CTAG', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -133,15 +133,15 @@ CREATE TABLE IF NOT EXISTS "t_crm_customerTags" (
   "tag" bigint NOT NULL,
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_customerTags_pkey" PRIMARY KEY ("_id"),
+  CONSTRAINT "t_crm_customerTags_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "t_crm_customerTags_customer_tag_uk" UNIQUE ("customer", "tag"),
-  CONSTRAINT "t_crm_customerTags_customer_fkey" FOREIGN KEY ("customer") REFERENCES "t_crm_customer"("_id") ON DELETE CASCADE,
-  CONSTRAINT "t_crm_customerTags_tag_fkey" FOREIGN KEY ("tag") REFERENCES "t_crm_tags"("_id") ON DELETE CASCADE
+  CONSTRAINT "t_crm_customerTags_customer_fkey" FOREIGN KEY ("customer") REFERENCES "t_crm_customer"("id") ON DELETE CASCADE,
+  CONSTRAINT "t_crm_customerTags_tag_fkey" FOREIGN KEY ("tag") REFERENCES "t_crm_tags"("id") ON DELETE CASCADE
 );
 
 -- One-to-Many Table for Customer Communication Records
 CREATE TABLE IF NOT EXISTS "t_crm_customerRecords" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_crm_customerRecords_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_customerRecords_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CREC', true, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -154,12 +154,12 @@ CREATE TABLE IF NOT EXISTS "t_crm_customerRecords" (
   "recordTime" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_customerRecords_pkey" PRIMARY KEY ("_id"),
-  CONSTRAINT "t_crm_customerRecords_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("_id") ON DELETE CASCADE
+  CONSTRAINT "t_crm_customerRecords_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_customerRecords_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("id") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "t_meta_spus" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_meta_spus_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_meta_spus_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('SPU', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -173,11 +173,11 @@ CREATE TABLE IF NOT EXISTS "t_meta_spus" (
   "spuDisplayName" character varying(255),
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_meta_spus_pkey" PRIMARY KEY ("_id")
+  CONSTRAINT "t_meta_spus_pkey" PRIMARY KEY ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "t_meta_skus" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_meta_skus_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_meta_skus_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('SKU', false, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -190,27 +190,28 @@ CREATE TABLE IF NOT EXISTS "t_meta_skus" (
   "salePrice" double precision NOT NULL,
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_meta_skus_pkey" PRIMARY KEY ("_id"),
-  CONSTRAINT "t_meta_skus_spuId_fkey" FOREIGN KEY ("spuId") REFERENCES "t_meta_spus"("_id") ON DELETE SET NULL
+  CONSTRAINT "t_meta_skus_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_meta_skus_spuId_fkey" FOREIGN KEY ("spuId") REFERENCES "t_meta_spus"("id") ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_orders" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_crm_orders_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_orders_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('ORD', true, 6, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "customerId" bigint,
+  "status" character varying(255) DEFAULT 'pending',
   "total" double precision,
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_orders_pkey" PRIMARY KEY ("_id"),
-  CONSTRAINT "t_crm_orders_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("_id") ON DELETE SET NULL
+  CONSTRAINT "t_crm_orders_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_orders_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("id") ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
-  "_id" bigint NOT NULL DEFAULT nextval('"t_crm_orderItems_id_seq"'::regclass),
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_orderItems_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('ITEM', true, 7, 'base32'),
   "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" bigint,
@@ -222,22 +223,22 @@ CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
   "unitPrice" double precision NOT NULL,
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_orderItems_pkey" PRIMARY KEY ("_id"),
-  CONSTRAINT "t_crm_orderItems_skuId_fkey" FOREIGN KEY ("skuId") REFERENCES "t_meta_skus"("_id") ON DELETE SET NULL,
-  CONSTRAINT "t_crm_orderItems_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "t_crm_orders"("_id") ON DELETE CASCADE
+  CONSTRAINT "t_crm_orderItems_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_orderItems_skuId_fkey" FOREIGN KEY ("skuId") REFERENCES "t_meta_skus"("id") ON DELETE SET NULL,
+  CONSTRAINT "t_crm_orderItems_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "t_crm_orders"("id") ON DELETE CASCADE
 );
 
 -- =========================================================
 -- 3. Bind sequence ownership & indexes
 -- =========================================================
-ALTER SEQUENCE "t_crm_customer_id_seq" OWNED BY "t_crm_customer"."_id";
-ALTER SEQUENCE "t_crm_tags_id_seq" OWNED BY "t_crm_tags"."_id";
-ALTER SEQUENCE "t_crm_customerTags_id_seq" OWNED BY "t_crm_customerTags"."_id";
-ALTER SEQUENCE "t_crm_customerRecords_id_seq" OWNED BY "t_crm_customerRecords"."_id";
-ALTER SEQUENCE "t_meta_spus_id_seq" OWNED BY "t_meta_spus"."_id";
-ALTER SEQUENCE "t_meta_skus_id_seq" OWNED BY "t_meta_skus"."_id";
-ALTER SEQUENCE "t_crm_orders_id_seq" OWNED BY "t_crm_orders"."_id";
-ALTER SEQUENCE "t_crm_orderItems_id_seq" OWNED BY "t_crm_orderItems"."_id";
+ALTER SEQUENCE "t_crm_customer_id_seq" OWNED BY "t_crm_customer"."id";
+ALTER SEQUENCE "t_crm_tags_id_seq" OWNED BY "t_crm_tags"."id";
+ALTER SEQUENCE "t_crm_customerTags_id_seq" OWNED BY "t_crm_customerTags"."id";
+ALTER SEQUENCE "t_crm_customerRecords_id_seq" OWNED BY "t_crm_customerRecords"."id";
+ALTER SEQUENCE "t_meta_spus_id_seq" OWNED BY "t_meta_spus"."id";
+ALTER SEQUENCE "t_meta_skus_id_seq" OWNED BY "t_meta_skus"."id";
+ALTER SEQUENCE "t_crm_orders_id_seq" OWNED BY "t_crm_orders"."id";
+ALTER SEQUENCE "t_crm_orderItems_id_seq" OWNED BY "t_crm_orderItems"."id";
 
 CREATE INDEX IF NOT EXISTS "t_crm_customer_assignee_id_idx" ON "t_crm_customer" ("assigneeId");
 CREATE INDEX IF NOT EXISTS "t_crm_customerRecords_customerId_idx" ON "t_crm_customerRecords" ("customerId");
@@ -323,7 +324,7 @@ SELECT
   v.sort_val
 FROM (VALUES
   -- t_crm_customer
-  ('t_crm_customer', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_customer', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customer', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_customer', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_customer', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -341,7 +342,7 @@ FROM (VALUES
   ('t_crm_customer', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 16),
 
   -- t_crm_customerRecords
-  ('t_crm_customerRecords', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "记录ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_customerRecords', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "记录ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customerRecords', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_customerRecords', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_customerRecords', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -356,7 +357,7 @@ FROM (VALUES
   ('t_crm_customerRecords', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
 
   -- t_crm_tags
-  ('t_crm_tags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_tags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_tags', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_tags', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_tags', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -367,8 +368,8 @@ FROM (VALUES
   ('t_crm_tags', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 9),
   ('t_crm_tags', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 10),
 
-  -- t_crm_customerTags (Through Collection with surrogate _id)
-  ('t_crm_customerTags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  -- t_crm_customerTags (Through Collection with surrogate id)
+  ('t_crm_customerTags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customerTags', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_customerTags', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_customerTags', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
@@ -378,7 +379,7 @@ FROM (VALUES
   ('t_crm_customerTags', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 8),
 
   -- t_meta_spus
-  ('t_meta_spus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_meta_spus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_meta_spus', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_meta_spus', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_meta_spus', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -394,7 +395,7 @@ FROM (VALUES
   ('t_meta_spus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
 
   -- t_meta_skus
-  ('t_meta_skus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_meta_skus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_meta_skus', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_meta_skus', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_meta_skus', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -409,19 +410,21 @@ FROM (VALUES
   ('t_meta_skus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
 
   -- t_crm_orders
-  ('t_crm_orders', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "订单ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_orders', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "订单ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_orders', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_orders', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_orders', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
   ('t_crm_orders', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
   ('t_crm_orders', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
   ('t_crm_orders', 'customer', 'belongsTo', 'm2o', '{"target": "t_crm_customer", "foreignKey": "customerId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联顾客", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "name"}}}}', 7),
-  ('t_crm_orders', 'total', 'float', 'number', '{"allowNull": true, "field": "total", "uiSchema": {"type": "number", "title": "订单总金额", "x-component": "InputNumber"}}', 8),
-  ('t_crm_orders', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 9),
-  ('t_crm_orders', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 10),
+  ('t_crm_orders', 'status', 'string', 'select', '{"allowNull": true, "field": "status", "defaultValue": "pending", "uiSchema": {"type": "string", "title": "订单状态", "x-component": "Select", "enum": [{"value": "pending", "label": "待支付", "color": "gold"}, {"value": "processing", "label": "处理中", "color": "blue"}, {"value": "shipped", "label": "已发货", "color": "purple"}, {"value": "completed", "label": "已完成", "color": "green"}, {"value": "cancelled", "label": "已取消", "color": "default"}]}}', 8),
+  ('t_crm_orders', 'total', 'float', 'number', '{"allowNull": true, "field": "total", "uiSchema": {"type": "number", "title": "订单总金额", "x-component": "InputNumber"}}', 9),
+  ('t_crm_orders', 'items', 'hasMany', 'o2m', '{"target": "t_crm_orderItems", "foreignKey": "orderId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "订单明细", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 10),
+  ('t_crm_orders', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 11),
+  ('t_crm_orders', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 12),
 
   -- t_crm_orderItems
-  ('t_crm_orderItems', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "明细ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_orderItems', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "明细ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_orderItems', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_orderItems', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_orderItems', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -454,3 +457,32 @@ UPDATE "fields"
 SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || '{"primaryKey": true}'::jsonb)::json 
 WHERE ("collectionName" IN ('t_crm_customer', 't_crm_customerRecords', 't_crm_tags', 't_meta_spus', 't_meta_skus', 't_crm_orders', 't_crm_orderItems') AND "name" = 'id')
    OR ("collectionName" = 't_crm_customerTags' AND "name" = 'id');
+
+-- =========================================================
+-- 5. Business Triggers (Auto calculate order.total from items)
+-- =========================================================
+CREATE OR REPLACE FUNCTION fn_update_crm_order_total()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_order_id bigint;
+BEGIN
+  v_order_id := COALESCE(NEW."orderId", OLD."orderId");
+
+  IF v_order_id IS NOT NULL THEN
+    UPDATE "t_crm_orders"
+    SET "total" = COALESCE((
+      SELECT SUM("quantity" * "unitPrice") FROM "t_crm_orderItems" WHERE "orderId" = v_order_id
+    ), 0)
+    WHERE "id" = v_order_id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_update_crm_order_total ON "t_crm_orderItems";
+CREATE TRIGGER trg_update_crm_order_total
+AFTER INSERT OR UPDATE OF "quantity", "unitPrice", "orderId" OR DELETE
+ON "t_crm_orderItems"
+FOR EACH ROW
+EXECUTE FUNCTION fn_update_crm_order_total();
