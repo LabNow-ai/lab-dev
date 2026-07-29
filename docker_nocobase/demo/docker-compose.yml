@@ -18,19 +18,21 @@ services:
     # su postgres && psql -d nocobase
 
   svc-nocobase:
-      image: quay.io/labnow/nocobase
       container_name: svc-nocobase
       hostname: svc-nocobase
+      image: quay.io/labnow/nocobase:latest
+      pull_policy: always
+      restart: unless-stopped
       depends_on: ["db-postgres-common"]
       environment:
         TZ: Asia/Shanghai
+        LOCALE: zh-CN
         DB_DIALECT: postgres
         DB_HOST: db-postgres-common
         DB_PORT: 5432
         DB_USER: postgres
         DB_PASSWORD: postgres
         DB_DATABASE: nocobase
-        LOCALE: zh-CN
         # INIT_ROOT_USERNAME: nocobase
         # INIT_ROOT_EMAIL: admin@nocobase.com
         # INIT_ROOT_PASSWORD: admin123
