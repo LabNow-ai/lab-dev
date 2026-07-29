@@ -323,7 +323,7 @@ SELECT
   v.sort_val
 FROM (VALUES
   -- t_crm_customer
-  ('t_crm_customer', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_customer', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customer', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_customer', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_customer', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -341,7 +341,7 @@ FROM (VALUES
   ('t_crm_customer', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 16),
 
   -- t_crm_customerRecords
-  ('t_crm_customerRecords', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "记录ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_customerRecords', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "记录ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customerRecords', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_customerRecords', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_customerRecords', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -356,7 +356,7 @@ FROM (VALUES
   ('t_crm_customerRecords', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
 
   -- t_crm_tags
-  ('t_crm_tags', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_tags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_tags', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_tags', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_tags', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -368,7 +368,7 @@ FROM (VALUES
   ('t_crm_tags', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 10),
 
   -- t_crm_customerTags (Through Collection with surrogate _id)
-  ('t_crm_customerTags', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_customerTags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customerTags', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_customerTags', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_customerTags', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 4),
@@ -378,14 +378,14 @@ FROM (VALUES
   ('t_crm_customerTags', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 8),
 
   -- t_meta_spus
-  ('t_meta_spus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_meta_spus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_meta_spus', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_meta_spus', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_meta_spus', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
   ('t_meta_spus', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
   ('t_meta_spus', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
   ('t_meta_spus', 'productName', 'string', 'input', '{"allowNull": false, "field": "productName", "uiSchema": {"type": "string", "title": "产品名", "x-component": "Input"}}', 7),
-  ('t_meta_spus', 'spec', 'string', 'input', '{"allowNull": true, "field": "spec", "uiSchema": {"type": "string", "title": "规格/剂型", "x-component": "Input"}}', 8),
+  ('t_meta_spus', 'spec', 'string', 'input', '{"allowNull": true, "field": "spec", "uiSchema": {"type": "string", "title": "规格", "x-component": "Input"}}', 8),
   ('t_meta_spus', 'baseUnit', 'string', 'input', '{"allowNull": true, "field": "baseUnit", "uiSchema": {"type": "string", "title": "基础计量单位", "x-component": "Input"}}', 9),
   ('t_meta_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "最小单元计量数量", "x-component": "InputNumber"}}', 10),
   ('t_meta_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "最小单元计量单位", "x-component": "Input"}}', 11),
@@ -394,7 +394,7 @@ FROM (VALUES
   ('t_meta_spus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
 
   -- t_meta_skus
-  ('t_meta_skus', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_meta_skus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_meta_skus', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_meta_skus', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_meta_skus', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -409,7 +409,7 @@ FROM (VALUES
   ('t_meta_skus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
 
   -- t_crm_orders
-  ('t_crm_orders', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "订单ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_orders', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "订单ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_orders', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_orders', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_orders', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
@@ -421,7 +421,7 @@ FROM (VALUES
   ('t_crm_orders', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 10),
 
   -- t_crm_orderItems
-  ('t_crm_orderItems', 'id', 'bigInt', 'integer', '{"allowNull": true, "primaryKey": true, "autoIncrement": false, "snowflakeId": true, "field": "_id", "uiSchema": {"type": "number", "title": "明细ID", "x-component": "InputNumber", "x-read-pretty": true}}', 1),
+  ('t_crm_orderItems', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "_id", "uiSchema": {"type": "number", "title": "明细ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_orderItems', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
   ('t_crm_orderItems', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
   ('t_crm_orderItems', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
