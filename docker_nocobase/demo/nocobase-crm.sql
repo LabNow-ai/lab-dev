@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_customer" (
   "assigneeId" bigint,
   "name" character varying(255),
   "phone" character varying(255),
+  "addr" text,
   "age" bigint,
   "gender" character varying(255),
   "state" character varying(255) DEFAULT 'sea',
@@ -116,6 +117,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_tags" (
   "createdById" bigint,
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
+  "dimension" character varying(255),
   "tag" character varying(255),
   "state" character varying(255) DEFAULT '0',
   "data1" text,
@@ -245,6 +247,7 @@ CREATE INDEX IF NOT EXISTS "t_crm_customerRecords_customerId_idx" ON "t_crm_cust
 CREATE INDEX IF NOT EXISTS "t_crm_orders_customerId_idx" ON "t_crm_orders" ("customerId");
 CREATE INDEX IF NOT EXISTS "t_crm_orderItems_skuId_idx" ON "t_crm_orderItems" ("skuId");
 CREATE INDEX IF NOT EXISTS "t_crm_orderItems_orderId_idx" ON "t_crm_orderItems" ("orderId");
+CREATE INDEX IF NOT EXISTS "t_crm_tags_dimension_idx" ON "t_crm_tags" ("dimension");
 
 -- =========================================================
 -- 4. NocoBase System Metadata Registration (Batch Operations)
@@ -333,13 +336,15 @@ FROM (VALUES
   ('t_crm_customer', 'assignee', 'belongsTo', 'm2o', '{"target": "users", "foreignKey": "assigneeId", "targetKey": "id", "uiSchema": {"type": "object", "title": "负责人", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}}}', 7),
   ('t_crm_customer', 'name', 'string', 'input', '{"allowNull": true, "field": "name", "uiSchema": {"type": "string", "title": "姓名", "x-component": "Input"}}', 8),
   ('t_crm_customer', 'phone', 'string', 'input', '{"allowNull": true, "field": "phone", "uiSchema": {"type": "string", "title": "手机号码", "x-component": "Input"}}', 9),
-  ('t_crm_customer', 'age', 'bigInt', 'integer', '{"allowNull": true, "field": "age", "uiSchema": {"type": "number", "title": "年龄", "x-component": "InputNumber"}}', 10),
-  ('t_crm_customer', 'gender', 'string', 'radioGroup', '{"allowNull": true, "field": "gender", "uiSchema": {"type": "string", "title": "性别", "x-component": "Radio.Group", "enum": [{"value": "M", "label": "男", "color": "blue"}, {"value": "F", "label": "女", "color": "red"}, {"value": "Unknown", "label": "未知", "color": "default"}]}}', 11),
-  ('t_crm_customer', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "sea", "uiSchema": {"type": "string", "title": "阶段状态", "x-component": "Select", "enum": [{"value": "sea", "label": "公海", "color": "blue"}, {"value": "assigned", "label": "已认领", "color": "magenta"}, {"value": "following", "label": "沟通中", "color": "green"}, {"value": "opportunity", "label": "高潜", "color": "lime"}, {"value": "customer", "label": "已购买", "color": "purple"}, {"value": "invalid", "label": "无效", "color": "default"}, {"value": "lost", "label": "流失", "color": "default"}]}}', 12),
-  ('t_crm_customer', 'tags', 'belongsToMany', 'm2m', '{"target": "t_crm_tags", "through": "t_crm_customerTags", "foreignKey": "customer", "otherKey": "tag", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "顾客标签", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 13),
-  ('t_crm_customer', 'records', 'hasMany', 'o2m', '{"target": "t_crm_customerRecords", "foreignKey": "customerId", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "沟通记录", "x-component": "AssociationField"}}', 14),
-  ('t_crm_customer', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 15),
-  ('t_crm_customer', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 16),
+  ('t_crm_customer', 'addr', 'text', 'textarea', '{"allowNull": true, "field": "addr", "uiSchema": {"type": "string", "title": "地址", "x-component": "Input.TextArea"}}', 10),
+  ('t_crm_customer', 'age', 'bigInt', 'integer', '{"allowNull": true, "field": "age", "uiSchema": {"type": "number", "title": "年龄", "x-component": "InputNumber"}}', 11),
+  ('t_crm_customer', 'gender', 'string', 'radioGroup', '{"allowNull": true, "field": "gender", "uiSchema": {"type": "string", "title": "性别", "x-component": "Radio.Group", "enum": [{"value": "M", "label": "男", "color": "blue"}, {"value": "F", "label": "女", "color": "red"}, {"value": "Unknown", "label": "未知", "color": "default"}]}}', 12),
+  ('t_crm_customer', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "sea", "uiSchema": {"type": "string", "title": "阶段状态", "x-component": "Select", "enum": [{"value": "sea", "label": "公海", "color": "blue"}, {"value": "assigned", "label": "已认领", "color": "magenta"}, {"value": "following", "label": "沟通中", "color": "green"}, {"value": "opportunity", "label": "高潜", "color": "lime"}, {"value": "customer", "label": "已购买", "color": "purple"}, {"value": "invalid", "label": "无效", "color": "default"}, {"value": "lost", "label": "流失", "color": "default"}]}}', 13),
+  ('t_crm_customer', 'tags', 'belongsToMany', 'm2m', '{"target": "t_crm_tags", "through": "t_crm_customerTags", "foreignKey": "customer", "otherKey": "tag", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "顾客标签", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 14),
+  ('t_crm_customer', 'records', 'hasMany', 'o2m', '{"target": "t_crm_customerRecords", "foreignKey": "customerId", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "沟通记录", "x-component": "AssociationField"}}', 15),
+  ('t_crm_customer', 'orders', 'hasMany', 'o2m', '{"target": "t_crm_orders", "foreignKey": "customerId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "订单列表", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 16),
+  ('t_crm_customer', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 17),
+  ('t_crm_customer', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 18),
 
   -- t_crm_customerRecords
   ('t_crm_customerRecords', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "记录ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
@@ -363,10 +368,12 @@ FROM (VALUES
   ('t_crm_tags', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
   ('t_crm_tags', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
   ('t_crm_tags', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
-  ('t_crm_tags', 'tag', 'string', 'input', '{"allowNull": true, "field": "tag", "uiSchema": {"type": "string", "title": "标签名称", "x-component": "Input"}}', 7),
-  ('t_crm_tags', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "0", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Select", "enum": [{"value": "0", "label": "正常", "color": "blue"}, {"value": "1", "label": "禁用", "color": "default"}]}}', 8),
-  ('t_crm_tags', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 9),
-  ('t_crm_tags', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 10),
+  ('t_crm_tags', 'dimension', 'string', 'input', '{"allowNull": true, "field": "dimension", "uiSchema": {"type": "string", "title": "标签维度", "x-component": "Input"}}', 7),
+  ('t_crm_tags', 'tag', 'string', 'input', '{"allowNull": true, "field": "tag", "uiSchema": {"type": "string", "title": "标签名称", "x-component": "Input"}}', 8),
+  ('t_crm_tags', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "0", "uiSchema": {"type": "string", "title": "标签状态", "x-component": "Select", "enum": [{"value": "0", "label": "正常", "color": "blue"}, {"value": "1", "label": "禁用", "color": "default"}]}}', 9),
+  ('t_crm_tags', 'customers', 'belongsToMany', 'm2m', '{"target": "t_crm_customer", "through": "t_crm_customerTags", "foreignKey": "tag", "otherKey": "customer", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "关联顾客", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 10),
+  ('t_crm_tags', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 11),
+  ('t_crm_tags', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 12),
 
   -- t_crm_customerTags (Through Collection with surrogate id)
   ('t_crm_customerTags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
@@ -391,8 +398,9 @@ FROM (VALUES
   ('t_meta_spus', 'unitMeasureValue', 'float', 'number', '{"allowNull": false, "field": "unitMeasureValue", "uiSchema": {"type": "number", "title": "最小单元计量数量", "x-component": "InputNumber"}}', 10),
   ('t_meta_spus', 'unitMeasureUnit', 'string', 'input', '{"allowNull": true, "field": "unitMeasureUnit", "uiSchema": {"type": "string", "title": "最小单元计量单位", "x-component": "Input"}}', 11),
   ('t_meta_spus', 'spuDisplayName', 'string', 'input', '{"allowNull": true, "field": "spuDisplayName", "uiSchema": {"type": "string", "title": "SPU展示名", "x-component": "Input"}}', 12),
-  ('t_meta_spus', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 13),
-  ('t_meta_spus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
+  ('t_meta_spus', 'skus', 'hasMany', 'o2m', '{"target": "t_meta_skus", "foreignKey": "spuId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "规格列表(SKU)", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 13),
+  ('t_meta_spus', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 14),
+  ('t_meta_spus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 15),
 
   -- t_meta_skus
   ('t_meta_skus', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
@@ -406,8 +414,9 @@ FROM (VALUES
   ('t_meta_skus', 'saleUnit', 'string', 'input', '{"allowNull": true, "field": "saleUnit", "uiSchema": {"type": "string", "title": "销售单位", "x-component": "Input"}}', 9),
   ('t_meta_skus', 'skuDisplayName', 'text', 'textarea', '{"allowNull": false, "field": "skuDisplayName", "uiSchema": {"type": "string", "title": "SKU展示名", "x-component": "Input.TextArea"}}', 10),
   ('t_meta_skus', 'salePrice', 'float', 'number', '{"allowNull": false, "field": "salePrice", "uiSchema": {"type": "number", "title": "销售单价", "x-component": "InputNumber"}}', 11),
-  ('t_meta_skus', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 12),
-  ('t_meta_skus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
+  ('t_meta_skus', 'orderItems', 'hasMany', 'o2m', '{"target": "t_crm_orderItems", "foreignKey": "skuId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "销售明细", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 12),
+  ('t_meta_skus', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 13),
+  ('t_meta_skus', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
 
   -- t_crm_orders
   ('t_crm_orders', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "订单ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
