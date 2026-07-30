@@ -20,7 +20,7 @@ services:
     image: quay.io/labnow/clash:latest
     container_name: svc-proxy-clash
     hostname: svc-proxy-clash
-    restart: unless-stopped
+    restart: always
     network_mode: host
     init: true
     cap_add:
