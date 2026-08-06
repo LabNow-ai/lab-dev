@@ -118,7 +118,7 @@ case "${1:-all}" in
             1|true|TRUE|True|yes|YES|Yes) insecure="--insecure" ;;
         esac
         echo "[start-hermes] Starting supervisord..."
-        exec supervisord -c /etc/supervisord.conf
+        exec supervisord -c /etc/supervisord/supervisord.conf
         ;;
     gateway)
         shift
