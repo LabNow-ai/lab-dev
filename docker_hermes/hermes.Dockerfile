@@ -77,7 +77,8 @@ RUN set -eux && cd /opt/hermes \
  && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \ 
  && uv pip install ./vendor/*.whl && rm -rf ./vendor \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
- && ln -sf /opt/hermes/start-hermes.sh /opt/hermes/bin/hermes /usr/local/bin/ \
+ && rm -rf /opt/hermes/bin \
+ && ln -sf /opt/hermes/start-hermes.sh /opt/conda/bin/hermes /usr/local/bin/ \
  && . /opt/utils/script-setup-sys.sh && setup_supervisord \
  && mkdir -pv /etc/supervisord/ && mv /opt/hermes/supervisord.conf /etc/supervisord/supervisord.conf \ 
  && install__clean
