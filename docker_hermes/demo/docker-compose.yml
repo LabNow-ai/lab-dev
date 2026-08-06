@@ -7,13 +7,13 @@ services:
     image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
     pull_policy: always
     restart: unless-stopped
+    env_file: [".env.example"]
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       HERMES_HOME: /root/.hermes
       HERMES_DASHBOARD: ${HERMES_DASHBOARD:-true}
       HERMES_DASHBOARD_HOST: ${HERMES_DASHBOARD_HOST:-0.0.0.0}
       HERMES_DASHBOARD_PORT: ${HERMES_DASHBOARD_PORT:-9119}
-      HERMES_DASHBOARD_INSECURE: ${HERMES_DASHBOARD_INSECURE:-false}
       HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-hermes}
       HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-hermes}
       HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH:-}

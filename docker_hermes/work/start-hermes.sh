@@ -113,10 +113,6 @@ case "${1:-all}" in
         healthcheck
         ;;
     all)
-        insecure=""
-        case "${HERMES_DASHBOARD_INSECURE:-}" in
-            1|true|TRUE|True|yes|YES|Yes) insecure="--insecure" ;;
-        esac
         echo "[start-hermes] Starting supervisord..."
         exec supervisord -c /etc/supervisord/supervisord.conf
         ;;
