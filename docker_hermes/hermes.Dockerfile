@@ -24,7 +24,7 @@ RUN set -eux \
  && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
  ## Clone source (full clone for reproducibility; depth 1 for speed)
  && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
- && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/utils/install_list_hermes.apt /opt/hermes/ \
+ && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/utils/install_list_hermes.apt /opt/utils/supervisord.conf /opt/hermes/ \
  ## ---------- hack python-olm for building compatible wheels ----------
  && mkdir -pv /opt/hermes/vendor \
  && mkdir -pv /tmp/olm && cd /tmp/olm \
