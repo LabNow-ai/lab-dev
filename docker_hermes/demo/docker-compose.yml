@@ -5,10 +5,8 @@ services:
     container_name: ${HERMES_CONTAINER_NAME:-svc-hermes}
     hostname: svc-hermes
     image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
-    pull_policy: if_not_present
+    pull_policy: always
     restart: unless-stopped
-    # Keep standalone Compose behavior explicit even if the image CMD changes.
-    command: ["start-hermes.sh", "all"]
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       HERMES_HOME: /root/.hermes
@@ -36,3 +34,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # Keep standalone Compose behavior explicit even if the image CMD changes.
+    # command: ["tail", "-f", "/dev/null"]
+    command: ["start-hermes.sh", "all"]

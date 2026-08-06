@@ -66,7 +66,6 @@ LABEL maintainer="postmaster@labnow.ai"
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
-ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
 ENV HERMES_HOME=/root/.hermes
 ENV HERMES_ALLOW_ROOT_GATEWAY=1 
 # Copy the full hermes install tree from the builder (source + browsers + built frontends)
