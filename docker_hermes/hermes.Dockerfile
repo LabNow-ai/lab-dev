@@ -31,8 +31,7 @@ RUN set -eux \
  && curl -s https://pypi.org/pypi/python-olm/3.2.16/json \
   | jq -r '.urls[] | select(.packagetype=="sdist").url' \
   | xargs curl -L -o python-olm-3.2.16.tar.gz \
- && tar xf python-olm-3.2.16.tar.gz \
- && cd python-olm-3.2.16 \
+ && tar xf python-olm-3.2.16.tar.gz && cd python-olm-3.2.16 \
  && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
  && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
  && mv /tmp/olm/wheels/*olm*.whl /opt/hermes/vendor/ \
@@ -82,6 +81,7 @@ RUN set -eux && cd /opt/hermes \
  && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/ \
  && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/ \
  && . /opt/utils/script-setup-sys.sh && setup_supervisord \
+ && mkdir -pv /etc/supervisord/ && mv /opt/hermes/supervisord.conf /etc/supervisord/supervisord.conf \ 
  && install__clean
 
 # Data persistence is owned by the runtime orchestrator.
@@ -92,5 +92,5 @@ RUN set -eux && cd /opt/hermes \
 WORKDIR /root/.hermes
 CMD ["start-hermes.sh", "all"]
 EXPOSE 9119
-HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=5 \
-  CMD ["/usr/local/bin/healthcheck-hermes.sh"]
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD ["/usr/local/bin/start-hermes.sh", "healthcheck"]
