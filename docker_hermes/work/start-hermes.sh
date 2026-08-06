@@ -2,7 +2,7 @@
 set -eu
 
 HERMES_HOME="${HERMES_HOME:-/root/.hermes}"
-mkdir -p "$HERMES_HOME"
+mkdir -pv "$HERMES_HOME"
 
 # ── healthcheck ────────────────────────────────────────────────────────────────
 healthcheck() {

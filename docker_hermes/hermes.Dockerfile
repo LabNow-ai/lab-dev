@@ -64,11 +64,11 @@ LABEL maintainer="postmaster@labnow.ai"
 
 # Production environment
 ENV NODE_ENV=production
-ENV HERMES_HOME=/root/.hermes
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
 ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
-ENV HOME=/root/.hermes
+ENV HERMES_HOME=/root/.hermes
+ENV HERMES_ALLOW_ROOT_GATEWAY=1 
 # Copy the full hermes install tree from the builder (source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
 
@@ -76,10 +76,9 @@ COPY --from=builder /opt/hermes /opt/hermes
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux && cd /opt/hermes \
  && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \ 
- && uv pip install ./vendor/*.whl \
+ && uv pip install ./vendor/*.whl && rm -rf ./vendor \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
- && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/ \
- && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/ \
+ && ln -sf /opt/hermes/start-hermes.sh /opt/hermes/bin/hermes /usr/local/bin/ \
  && . /opt/utils/script-setup-sys.sh && setup_supervisord \
  && mkdir -pv /etc/supervisord/ && mv /opt/hermes/supervisord.conf /etc/supervisord/supervisord.conf \ 
  && install__clean
