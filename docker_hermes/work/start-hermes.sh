@@ -2,42 +2,44 @@
 set -eu
 
 HERMES_HOME="${HERMES_HOME:-/root/.hermes}"
-mkdir -p "$HERMES_HOME"
+mkdir -pv "$HERMES_HOME"
 
+# ── healthcheck ────────────────────────────────────────────────────────────────
+healthcheck() {
+    port="${HERMES_DASHBOARD_PORT:-9119}"
+    case "${HERMES_DASHBOARD:-true}" in
+        0|false|FALSE|False|no|NO|No) ;;
+        *)
+            if curl -fsS --max-time 3 "http://127.0.0.1:${port}/api/status" >/dev/null 2>&1; then
+                exit 0
+            fi
+            ;;
+    esac
+    pgrep -f '[h]ermes gateway' >/dev/null 2>&1 && exit 0
+    exit 1
+}
+
+# ── bootstrap ─────────────────────────────────────────────────────────────────
 bootstrap_lock_dir="$HERMES_HOME/.hermes-bootstrap.lock"
 bootstrap_marker="$HERMES_HOME/.hermes-bootstrap-v1.complete"
 
 seed_one() {
-    local dest=$1
-    local src=$2
-    if [ ! -f "$HERMES_HOME/$dest" ] && [ -f "/opt/hermes/$src" ]; then
-        cp "/opt/hermes/$src" "$HERMES_HOME/$dest"
-    fi
+    local dest=$1 src=$2
+    [ ! -f "$HERMES_HOME/$dest" ] && [ -f "/opt/hermes/$src" ] && cp "/opt/hermes/$src" "$HERMES_HOME/$dest"
 }
 
 run_bootstrap() {
     for sub in cron sessions logs hooks memories skills skins plans workspace home pairing platforms/pairing logs/gateways; do
-        mkdir -p "$HERMES_HOME/$sub"
+        mkdir -pv "$HERMES_HOME/$sub"
     done
-
     seed_one ".env" ".env.example"
     seed_one "config.yaml" "cli-config.yaml.example"
     seed_one "SOUL.md" "docker/SOUL.md"
-
-    if [ -f "$HERMES_HOME/.env" ]; then
-        chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
-    fi
-
-    # Keep old examples that mounted /opt/data working while standardizing on HERMES_HOME.
-    if [ ! -e /opt/data ]; then
-        ln -s "$HERMES_HOME" /opt/data 2>/dev/null || true
-    fi
+    [ -f "$HERMES_HOME/.env" ] && chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
+    [ ! -e /opt/data ] && ln -s "$HERMES_HOME" /opt/data 2>/dev/null || true
 
     if [ -f "$HERMES_HOME/config.yaml" ]; then
-        if ! python3 -m scripts.docker_config_migrate; then
-            echo "[start-hermes] config migration failed" >&2
-            return 1
-        fi
+        python3 -m scripts.docker_config_migrate || { echo "[start-hermes] config migration failed" >&2; return 1; }
     fi
 
     if [ ! -f "$HERMES_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-}" ]; then
@@ -50,29 +52,20 @@ run_bootstrap() {
     fi
 
     if [ -d "/opt/hermes/skills" ]; then
-        if ! python3 -m tools.skills_sync; then
-            echo "[start-hermes] skills sync failed" >&2
-            return 1
-        fi
+        python3 -m tools.skills_sync || { echo "[start-hermes] skills sync failed" >&2; return 1; }
     fi
-
     touch "$bootstrap_marker"
 }
 
 while [ ! -f "$bootstrap_marker" ]; do
     if mkdir "$bootstrap_lock_dir" 2>/dev/null; then
         printf '%s\n' "$$" > "$bootstrap_lock_dir/pid"
-        if [ ! -f "$bootstrap_marker" ]; then
-            run_bootstrap
-        fi
+        [ ! -f "$bootstrap_marker" ] && run_bootstrap
         rmdir "$bootstrap_lock_dir" 2>/dev/null || true
         break
     fi
-
     lock_pid=""
-    if [ -f "$bootstrap_lock_dir/pid" ]; then
-        lock_pid=$(cat "$bootstrap_lock_dir/pid" 2>/dev/null || true)
-    fi
+    [ -f "$bootstrap_lock_dir/pid" ] && lock_pid=$(cat "$bootstrap_lock_dir/pid" 2>/dev/null || true)
     if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
         rm -rf "$bootstrap_lock_dir"
         continue
@@ -80,41 +73,26 @@ while [ ! -f "$bootstrap_marker" ]; do
     sleep 0.1
 done
 
-# The base image Python version can change. Discover bundled static assets instead
-# of requiring users to pass HERMES_WEB_DIST/HERMES_TUI_DIR manually.
+# ── path detection ────────────────────────────────────────────────────────────
 detect_hermes_path() {
-    local child=$1
-    python3 - "$child" <<'PY' 2>/dev/null || true
-import pathlib
-import sys
-
-child = sys.argv[1]
+    python3 - "$1" <<'PY' 2>/dev/null || true
+import pathlib, sys
 try:
     import hermes_cli
 except Exception:
     raise SystemExit(0)
-
-path = pathlib.Path(hermes_cli.__file__).resolve().parent / child
+path = pathlib.Path(hermes_cli.__file__).resolve().parent / sys.argv[1]
 if path.exists():
     print(path)
 PY
 }
 
 if [ -z "${HERMES_WEB_DIST:-}" ] || [ ! -d "${HERMES_WEB_DIST:-}" ]; then
-    detected_web_dist="$(detect_hermes_path web_dist)"
-    if [ -n "$detected_web_dist" ]; then
-        export HERMES_WEB_DIST="$detected_web_dist"
-    fi
+    d=$(detect_hermes_path web_dist); [ -n "$d" ] && export HERMES_WEB_DIST="$d"
 fi
-
 if [ -z "${HERMES_TUI_DIR:-}" ] || [ ! -d "${HERMES_TUI_DIR:-}" ]; then
-    detected_tui_dir="$(detect_hermes_path tui_dist)"
-    if [ -n "$detected_tui_dir" ]; then
-        export HERMES_TUI_DIR="$detected_tui_dir"
-    fi
+    d=$(detect_hermes_path tui_dist); [ -n "$d" ] && export HERMES_TUI_DIR="$d"
 fi
-
-# Find agent-browser Playwright binary and set env
 if [ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ] && [ -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ] && [ -d "$PLAYWRIGHT_BROWSERS_PATH" ]; then
     browser_bin=$(find "$PLAYWRIGHT_BROWSERS_PATH" -type f -executable \( -name 'chrome' -o -name 'chromium' -o -name 'chrome-headless-shell' -o -name 'headless_shell' -o -name 'chromium-browser' \) 2>/dev/null | head -n 1)
     if [ -n "$browser_bin" ]; then
@@ -123,48 +101,35 @@ if [ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ] && [ -n "${PLAYWRIGHT_BROWSERS_PA
     fi
 fi
 
-# Configure environments for command invocation
 export HOME="${HERMES_HOME}"
 cd "${HERMES_HOME}"
 
-# Explicit service modes allow an outer supervisor (for example labnow-open) to
-# manage Hermes processes directly instead of starting a nested supervisor.
-if [ $# -eq 0 ]; then
-    # The standalone image overrides CMD to use `all`; a direct invocation uses
-    # the single foreground gateway mode, matching the OpenClaw entry contract.
-    set -- gateway
-fi
+# ── dispatch ──────────────────────────────────────────────────────────────────
+dash_host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
+dash_port="${HERMES_DASHBOARD_PORT:-9119}"
 
-case "$1" in
+case "${1:-all}" in
+    healthcheck)
+        healthcheck
+        ;;
     all)
-        if [ $# -ne 1 ]; then
-            echo "[start-hermes] the all mode does not accept extra arguments" >&2
-            exit 2
-        fi
-        exec /opt/hermes/start-hermes-supervisord.sh
+        echo "[start-hermes] Starting supervisord..."
+        exec supervisord -c /etc/supervisord/supervisord.conf
         ;;
     gateway)
         shift
-        if [ $# -eq 0 ]; then
-            set -- run --replace
-        fi
+        [ $# -eq 0 ] && set -- run --replace
         exec hermes gateway "$@"
         ;;
     dashboard)
         shift
-        if [ $# -eq 0 ]; then
-            set -- \
-                --host "${HERMES_DASHBOARD_HOST:-0.0.0.0}" \
-                --port "${HERMES_DASHBOARD_PORT:-9119}" \
-                --no-open
-        fi
+        [ $# -eq 0 ] && set -- --host "$dash_host" --port "$dash_port" --no-open
         exec hermes dashboard "$@"
         ;;
+    *)
+        if command -v "$1" >/dev/null 2>&1; then
+            exec "$@"
+        fi
+        exec hermes "$@"
+        ;;
 esac
-
-# Preserve the generic compatibility behavior for shell commands and direct
-# Hermes CLI invocations used during one-off debugging.
-if command -v "$1" >/dev/null 2>&1; then
-    exec "$@"
-fi
-exec hermes "$@"

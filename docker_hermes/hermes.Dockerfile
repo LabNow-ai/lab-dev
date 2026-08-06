@@ -24,15 +24,14 @@ RUN set -eux \
  && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
  ## Clone source (full clone for reproducibility; depth 1 for speed)
  && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
- && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/utils/install_list_hermes.apt /opt/hermes/ \
+ && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/utils/install_list_hermes.apt /opt/utils/supervisord.conf /opt/hermes/ \
  ## ---------- hack python-olm for building compatible wheels ----------
  && mkdir -pv /opt/hermes/vendor \
  && mkdir -pv /tmp/olm && cd /tmp/olm \
  && curl -s https://pypi.org/pypi/python-olm/3.2.16/json \
   | jq -r '.urls[] | select(.packagetype=="sdist").url' \
   | xargs curl -L -o python-olm-3.2.16.tar.gz \
- && tar xf python-olm-3.2.16.tar.gz \
- && cd python-olm-3.2.16 \
+ && tar xf python-olm-3.2.16.tar.gz && cd python-olm-3.2.16 \
  && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
  && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
  && mv /tmp/olm/wheels/*olm*.whl /opt/hermes/vendor/ \
@@ -65,11 +64,10 @@ LABEL maintainer="postmaster@labnow.ai"
 
 # Production environment
 ENV NODE_ENV=production
-ENV HERMES_HOME=/root/.hermes
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
-ENV PATH="/opt/hermes/bin:/opt/node/bin:/opt/conda/bin:/root/.local/bin:${PATH}"
-ENV HOME=/root/.hermes
+ENV HERMES_HOME=/root/.hermes
+ENV HERMES_ALLOW_ROOT_GATEWAY=1 
 # Copy the full hermes install tree from the builder (source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
 
@@ -77,11 +75,12 @@ COPY --from=builder /opt/hermes /opt/hermes
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux && cd /opt/hermes \
  && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \ 
- && uv pip install ./vendor/*.whl \
+ && uv pip install ./vendor/*.whl && rm -rf ./vendor \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
- && ln -sf /opt/hermes/*hermes*.sh        /usr/local/bin/ \
- && ln -sf /opt/hermes/bin/*hermes*.sh    /usr/local/bin/ \
+ && rm -rf /opt/hermes/bin \
+ && ln -sf /opt/hermes/start-hermes.sh /opt/conda/bin/hermes /usr/local/bin/ \
  && . /opt/utils/script-setup-sys.sh && setup_supervisord \
+ && mkdir -pv /etc/supervisord/ && mv /opt/hermes/supervisord.conf /etc/supervisord/supervisord.conf \ 
  && install__clean
 
 # Data persistence is owned by the runtime orchestrator.
@@ -92,5 +91,5 @@ RUN set -eux && cd /opt/hermes \
 WORKDIR /root/.hermes
 CMD ["start-hermes.sh", "all"]
 EXPOSE 9119
-HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=5 \
-  CMD ["/usr/local/bin/healthcheck-hermes.sh"]
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD ["/usr/local/bin/start-hermes.sh", "healthcheck"]

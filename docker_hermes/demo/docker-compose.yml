@@ -1,24 +1,22 @@
-name: "svc-hermes"
+name: "${PROFILE_ENV:-X}-svc-hermes"
 
 services:
   hermes:
     container_name: ${HERMES_CONTAINER_NAME:-svc-hermes}
     hostname: svc-hermes
     image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
-    pull_policy: if_not_present
+    pull_policy: always
     restart: unless-stopped
-    # Keep standalone Compose behavior explicit even if the image CMD changes.
-    command: ["start-hermes.sh", "all"]
+    env_file: [".env.example"]
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       HERMES_HOME: /root/.hermes
       HERMES_DASHBOARD: ${HERMES_DASHBOARD:-true}
       HERMES_DASHBOARD_HOST: ${HERMES_DASHBOARD_HOST:-0.0.0.0}
       HERMES_DASHBOARD_PORT: ${HERMES_DASHBOARD_PORT:-9119}
-      HERMES_DASHBOARD_INSECURE: ${HERMES_DASHBOARD_INSECURE:-false}
-      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-}
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-hermes}
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-hermes}
       HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH:-}
-      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}
       HERMES_DASHBOARD_BASIC_AUTH_SECRET: ${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}
       HERMES_DASHBOARD_BASIC_AUTH_TTL_SECONDS: ${HERMES_DASHBOARD_BASIC_AUTH_TTL_SECONDS:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -29,16 +27,13 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     ports:
       - "${HERMES_DASHBOARD_PUBLISH_HOST:-127.0.0.1}:${HERMES_DASHBOARD_PORT:-9119}:${HERMES_DASHBOARD_PORT:-9119}"
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/healthcheck-hermes.sh"]
-      interval: 10s
-      timeout: 5s
-      start_period: 20s
-      retries: 3
     volumes:
-      - ${HERMES_DATA_DIR:-../../.data/hermes}:/root/.hermes
+      - ${HERMES_DATA_DIR:-/data/storage/workspace/hermes}:/root/.hermes
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    # Keep standalone Compose behavior explicit even if the image CMD changes.
+    # command: ["tail", "-f", "/dev/null"]
+    command: ["start-hermes.sh", "all"]
