@@ -104,10 +104,30 @@ fi
 export HOME="${HERMES_HOME}"
 cd "${HERMES_HOME}"
 
-# ── dispatch ──────────────────────────────────────────────────────────────────
-dash_host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
-dash_port="${HERMES_DASHBOARD_PORT:-9119}"
+# ── auth configuration ─────────────────────────────────────────────────────────
+# Mirrors OpenCLaw's OPENCLAW_USE_TRUSTED_PROXY_AUTH pattern:
+#   - If HERMES_DASHBOARD_USE_TRUSTED_PROXY_AUTH is "true", configure trusted-proxy
+#     mode so the dashboard reads user identity from oauth2-proxy injected headers.
+#   - Otherwise, use simple basic auth with hermes/hermes defaults.
+configure_auth() {
+    use_trusted_proxy="${HERMES_DASHBOARD_USE_TRUSTED_PROXY_AUTH:-false}"
 
+    if [ "$use_trusted_proxy" = "true" ]; then
+        echo "[start-hermes] Auth mode: trusted-proxy (oauth2-proxy header injection)"
+        export HERMES_DASHBOARD_AUTH_MODE="trusted-proxy"
+        export HERMES_DASHBOARD_TRUSTED_PROXY_USER_HEADER="${HERMES_DASHBOARD_TRUSTED_PROXY_USER_HEADER:-x-auth-request-user}"
+        export dash_host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
+    else
+        echo "[start-hermes] Auth mode: basic (username/password)"
+        export HERMES_DASHBOARD_BASIC_AUTH_USERNAME="${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-hermes}"
+        export HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-hermes}"
+        export dash_host="${HERMES_DASHBOARD_HOST:-127.0.0.1}"
+    fi
+    export dash_port="${HERMES_DASHBOARD_PORT:-9119}"
+}
+
+configure_auth
+# ── dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-all}" in
     healthcheck)
         healthcheck
