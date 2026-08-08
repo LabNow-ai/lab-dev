@@ -41,6 +41,7 @@ services:
   litellm-migrate:
     <<: *litellm-common
     container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
+    profiles: ["migrate"]
     command: ["/bin/bash", "/opt/utils/start-litellm.sh", "--config", "config.migrate.yaml", "--skip_server_startup"]
     healthcheck:
       disable: true
@@ -97,9 +98,6 @@ services:
     profiles: ["single", "ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
-    depends_on:
-      litellm-migrate:
-        condition: service_completed_successfully
 
   litellm-2:
     <<: *litellm-common
@@ -107,9 +105,6 @@ services:
     profiles: ["ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"
-    depends_on:
-      litellm-migrate:
-        condition: service_completed_successfully
 
 volumes:
   litellm_postgres_data:

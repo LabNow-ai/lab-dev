@@ -47,11 +47,20 @@ cp .env.example .env
 docker compose --env-file .env -f docker-compose.litellm.yml --profile single up -d
 ```
 
+迁移与代理启动刻意分离。每次部署先显式运行一次 migration-only job；该命令可安全重复执行。随后启动的代理副本只做 schema 检查，不会并发执行 Prisma migration：
+
+```bash
+./scripts/run-migration.sh
+docker compose --env-file .env -f docker-compose.litellm.yml --profile single up -d litellm-1
+```
+
 双副本测试使用同一 PostgreSQL 与 Redis，但有两个 HTTP 入口：
 
 ```bash
 docker compose --env-file .env -f docker-compose.litellm.yml --profile ha up -d
 ```
+
+HA 启动前同样先运行 `./scripts/run-migration.sh`，再执行上述命令。不要把 migration profile 与代理 profile 放入同一条 `up` 命令。
 
 默认端口只发布在 `127.0.0.1`：副本 1 为 `4000`，副本 2 为 `4001`。PostgreSQL 与 Redis 不发布宿主机端口。停止测试不会删除卷；如需删除测试数据，先人工确认后使用 `docker compose ... down -v`。
 
