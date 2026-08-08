@@ -12,10 +12,6 @@ x-litellm-common: &litellm-common
     REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
     STORE_MODEL_IN_DB: "True"
     LITELLM_LOG: ${LITELLM_LOG:-INFO}
-    # The upstream credentials are optional and must remain in the ignored .env.
-    UPSTREAM_API_KEY: ${UPSTREAM_API_KEY:-}
-    UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-}
-    UPSTREAM_MODEL: ${UPSTREAM_MODEL:-}
   volumes:
     - ./config.yaml:/opt/litellm/config.yaml:ro
   depends_on:

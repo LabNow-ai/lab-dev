@@ -64,9 +64,10 @@ docker compose --env-file .env -f docker-compose.litellm.yml --profile ha up -d
 | `LITELLM_MASTER_KEY` | 是 | 管理面认证 | 仅放在忽略的 `.env` 或部署 Secret |
 | `POSTGRES_PASSWORD` | 是 | PostgreSQL 密码 | 仅限本地测试或部署 Secret |
 | `REDIS_PASSWORD` | 是 | Redis 认证 | 仅限本地测试或部署 Secret |
-| `UPSTREAM_API_KEY` | 真实调用时是 | 上游模型凭据 | 不提交、不打印；缺失时真实调用 smoke 保持待验证 |
+| `UPSTREAM_API_KEY` | 真实调用时是 | 上游模型凭据 | 仅由 smoke 客户端读取；不会注入 LiteLLM 容器、不提交、不打印 |
 | `UPSTREAM_BASE_URL` | 真实调用时是 | OpenAI 兼容上游地址 | 由测试环境决定 |
 | `UPSTREAM_MODEL` | 真实调用时是 | 上游模型名 | 用于创建测试模型 |
+| `LITELLM_REVOCATION_SLO_MS` | `30000` | block/delete 的跨副本拒绝 SLO | smoke 会输出实际传播耗时；仅用于本地验收 |
 
 P1 不把 LiteLLM User/Team 当作产品用户或 Workspace 的事实源；Shell 的用户、绑定和租约业务仍在后续 Phase 实现。
 
@@ -76,11 +77,16 @@ P1 不把 LiteLLM User/Team 当作产品用户或 Workspace 的事实源；Shell
 cd docker_litellm/demo
 ./scripts/smoke-baseline.sh --mode single
 ./scripts/smoke-baseline.sh --mode ha
+./scripts/smoke-baseline.sh --security-check
 ```
 
-脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、创建模型、生成受限虚拟 key、`GET /v1/models`、chat、stream、tool call、usage 查询、block/delete，以及旧 key 在另一副本被拒绝。脚本不输出任何 key；临时响应文件会在退出时删除。
+`--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x` 和 Compose 的上游凭据注入，并检查 0600 临时文件与退出清理约束。
 
-若未设置上游变量，脚本仍验证 LiteLLM readiness、PostgreSQL 连接、从每个 LiteLLM 副本到 Redis 的认证连通性和管理面认证，并以明确的 `PENDING upstream smoke` 退出成功。它不会伪造 chat、stream、tool 或 usage 已通过。
+脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、生成受限虚拟 key、显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。HA 模式会先证明第二副本接受 key，再轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
+
+`LITELLM_MASTER_KEY`、上游 API key 与虚拟 key 不会作为 `curl`、`jq` 或其他子进程的命令参数传递。脚本以 `umask 077` 创建工作目录，所有 header、请求、响应和 key 文件均为 `0600`，退出时删除；创建的 user、credential、model 和两个测试 key 也会清理。上游凭据仅由 smoke 客户端读取，不会注入 LiteLLM Compose 容器。
+
+若未设置上游变量，脚本仍验证 LiteLLM readiness、PostgreSQL 连接、从每个 LiteLLM 副本到 Redis 的认证连通性、管理面认证和 user 清理路径，并以明确的 `PENDING upstream smoke` 退出成功。它不会伪造 chat、stream、tool、usage、block/delete 或撤销传播已通过。
 
 ## Readiness 与 Redis 结论
 
