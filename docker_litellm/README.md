@@ -68,6 +68,7 @@ docker compose --env-file .env -f docker-compose.litellm.yml --profile ha up -d
 | `UPSTREAM_BASE_URL` | 真实调用时是 | OpenAI 兼容上游地址 | 由测试环境决定 |
 | `UPSTREAM_MODEL` | 真实调用时是 | 上游模型名 | 用于创建测试模型 |
 | `LITELLM_REVOCATION_SLO_MS` | `30000` | block/delete 的跨副本拒绝 SLO | smoke 会输出实际传播耗时；仅用于本地验收 |
+| `REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT` | `5` | Redis 断连后的 LiteLLM 缓存恢复探测窗口（秒） | 本地 HA 基线应小于撤销 SLO；恢复期间管理面可能暂时返回 500 |
 
 P1 不把 LiteLLM User/Team 当作产品用户或 Workspace 的事实源；Shell 的用户、绑定和租约业务仍在后续 Phase 实现。
 
@@ -90,7 +91,7 @@ cd docker_litellm/demo
 
 ## Readiness 与 Redis 结论
 
-LiteLLM `v1.97.0-dev.1` 的公开 `/health/readiness` 仅返回服务与数据库连通性，不将 Redis 纳入公开 readiness。因此 Compose 健康检查只能确认 LiteLLM + PostgreSQL；`smoke-baseline.sh` 额外从每个 LiteLLM 容器执行 Redis `PING`。若 Redis 不可用，P1 的多副本认证缓存、限流、Spend counter 与协调结论无效，应将该运行组合标记为 `blocked`，不能降级宣称为高可用。
+LiteLLM `v1.97.0-dev.1` 的公开 `/health/readiness` 仅返回服务与数据库连通性，不将 Redis 纳入公开 readiness。因此 Compose 健康检查只能确认 LiteLLM + PostgreSQL；`smoke-baseline.sh` 额外从每个 LiteLLM 容器执行 Redis `PING`。若 Redis 不可用，P1 的多副本认证缓存、限流、Spend counter 与协调结论无效，应将该运行组合标记为 `blocked`，不能降级宣称为高可用。Redis 恢复后，LiteLLM 的认证缓存 circuit breaker 需要经过 `REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT` 后才会重新探测；P1 默认设为 5 秒，并要求恢复后再次跑 HA smoke。
 
 ## 常见问题
 
