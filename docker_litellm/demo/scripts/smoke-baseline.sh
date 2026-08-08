@@ -14,6 +14,7 @@ SUMMARY_FILE="${LITELLM_SMOKE_SUMMARY_FILE:-}"
 block_elapsed_ms=""
 delete_elapsed_ms=""
 redis_recovery_result="not_run"
+shared_spend_counter_result="not_run"
 
 usage() {
   echo "Usage: $0 [--mode single|ha] [--security-check]" >&2
@@ -323,15 +324,15 @@ write_summary() {
     --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "${LITELLM_IMAGE:-}" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg redis_recovery "$redis_recovery_result" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),redis_recovery:$redis_recovery,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
+    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg redis_recovery "$redis_recovery_result" --arg shared_spend_counter "$shared_spend_counter_result" \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),shared_spend_counter:$shared_spend_counter,redis_recovery:$redis_recovery,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
     > "$SUMMARY_FILE"
   chmod 600 "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
 }
 
 assert_spend() {
-  local spend_file="$tmpdir/spend.json" request_count total_tokens i
+  local spend_file="$tmpdir/spend.json" peer_spend_file="$tmpdir/peer-spend.json" request_count total_tokens peer_request_count peer_total_tokens i
   for i in $(seq 1 30); do
     if request_admin GET "/spend/logs?user_id=$test_user" "" "$spend_file" \
       && jq -e \
@@ -341,6 +342,14 @@ assert_spend() {
         "$spend_file" >/dev/null; then
       request_count="$(jq --rawfile model "$tmpdir/model-name" --rawfile key_hash "$tmpdir/block-key-sha256" 'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | length' "$spend_file")"
       total_tokens="$(jq --rawfile model "$tmpdir/model-name" --rawfile key_hash "$tmpdir/block-key-sha256" 'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | map(.total_tokens // 0) | add' "$spend_file")"
+      if [[ "$MODE" == "ha" ]]; then
+        curl --silent --show-error --fail --max-time 30 --request GET "$PEER_URL/spend/logs?user_id=$test_user" --header "@$admin_headers" --output "$peer_spend_file"
+        peer_request_count="$(jq --rawfile model "$tmpdir/model-name" --rawfile key_hash "$tmpdir/block-key-sha256" 'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | length' "$peer_spend_file")"
+        peer_total_tokens="$(jq --rawfile model "$tmpdir/model-name" --rawfile key_hash "$tmpdir/block-key-sha256" 'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | map(.total_tokens // 0) | add' "$peer_spend_file")"
+        [[ "$request_count/$total_tokens" == "$peer_request_count/$peer_total_tokens" ]] || { echo "shared SpendLog mismatch: primary=$request_count/$total_tokens peer=$peer_request_count/$peer_total_tokens" >&2; return 1; }
+        shared_spend_counter_result="passed"
+        echo "PASS HA shared SpendLog: request_count=$request_count total_tokens=$total_tokens on both replicas."
+      fi
       echo "PASS spend: request_count=$request_count total_tokens=$total_tokens"
       return 0
     fi
@@ -440,6 +449,20 @@ jq -n --rawfile model "$tmpdir/model-name" '{model: ($model | rtrimstr("\n")), m
 chmod 600 "$tmpdir/chat-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/chat.json"
 jq -e '.choices[0].message.content | type == "string"' "$tmpdir/chat.json" >/dev/null
+
+if [[ "$MODE" == "ha" ]]; then
+  peer_completion_ready=false
+  for i in $(seq 1 30); do
+    if request_data_post "$PEER_URL" "$block_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/peer-chat.json" \
+      && jq -e '.choices[0].message.content | type == "string"' "$tmpdir/peer-chat.json" >/dev/null; then
+      peer_completion_ready=true
+      break
+    fi
+    sleep 1
+  done
+  [[ "$peer_completion_ready" == true ]] || { echo "second replica did not load the newly created model for completion" >&2; exit 1; }
+  echo "PASS HA model propagation: second replica completed with the newly created model."
+fi
 
 jq '. + {stream: true}' "$tmpdir/chat-request.json" > "$tmpdir/stream-request.json"
 chmod 600 "$tmpdir/stream-request.json"
