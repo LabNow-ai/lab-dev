@@ -14,8 +14,14 @@ general_settings:
   # Preserve request metadata needed for metering, but do not configure prompt
   # or completion-content logging in this local baseline.
   disable_spend_logs: false
+  # Proxy replicas only check the schema. The dedicated migration job uses
+  # config.migrate.yaml and is the sole process allowed to apply migrations.
+  disable_prisma_schema_update: true
 
 litellm_settings:
+  # LiteLLM 1.97.0 reads this from litellm_settings and redacts request and
+  # response content before standard/spend logging. Metering fields remain.
+  turn_off_message_logging: true
   cache: true
   # Make virtual-key authorization cache state visible to every LiteLLM
   # replica. Without this, each replica keeps an isolated in-memory key cache.

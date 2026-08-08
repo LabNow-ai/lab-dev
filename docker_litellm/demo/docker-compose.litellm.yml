@@ -9,12 +9,17 @@ x-litellm-common: &litellm-common
     DATABASE_URL: postgresql://${POSTGRES_USER:?set in .env}:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/${POSTGRES_DB:-litellm}
     REDIS_HOST: redis
     REDIS_PORT: "6379"
-    REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
+    REDIS_PASSWORD_FILE: /run/secrets/redis_password
     REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}
+    STORE_PROMPTS_IN_SPEND_LOGS: "false"
     STORE_MODEL_IN_DB: "True"
     LITELLM_LOG: ${LITELLM_LOG:-INFO}
   volumes:
     - ./config.yaml:/opt/litellm/config.yaml:ro
+    - ./config.migrate.yaml:/opt/litellm/config.migrate.yaml:ro
+    - ../work/start-litellm.sh:/opt/utils/start-litellm.sh:ro
+  secrets:
+    - redis_password
   depends_on:
     postgres:
       condition: service_healthy
@@ -30,6 +35,21 @@ x-litellm-common: &litellm-common
     start_period: 30s
 
 services:
+  # Run LiteLLM's own migration-only mode once before proxy replicas start.
+  # `service_completed_successfully` serializes migration across single/HA
+  # Compose starts; Prisma's migration table makes repeated jobs idempotent.
+  litellm-migrate:
+    <<: *litellm-common
+    container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
+    command: ["/bin/bash", "/opt/utils/start-litellm.sh", "--config", "config.migrate.yaml", "--skip_server_startup"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: "no"
@@ -50,15 +70,23 @@ services:
   redis:
     image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: "no"
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set in .env}"]
+    secrets:
+      - redis_password
+    tmpfs:
+      - /run/redis:mode=0700
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        umask 077;
+        { printf 'appendonly yes\nrequirepass '; cat /run/secrets/redis_password; printf '\n'; } > /run/redis/redis.conf;
+        exec redis-server /run/redis/redis.conf
     volumes:
       - litellm_redis_data:/data
     networks:
       - litellm-baseline-net
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -qx PONG"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning ping | grep -qx PONG"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -69,6 +97,9 @@ services:
     profiles: ["single", "ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
+    depends_on:
+      litellm-migrate:
+        condition: service_completed_successfully
 
   litellm-2:
     <<: *litellm-common
@@ -76,10 +107,17 @@ services:
     profiles: ["ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"
+    depends_on:
+      litellm-migrate:
+        condition: service_completed_successfully
 
 volumes:
   litellm_postgres_data:
   litellm_redis_data:
+
+secrets:
+  redis_password:
+    environment: REDIS_PASSWORD
 
 networks:
   litellm-baseline-net:

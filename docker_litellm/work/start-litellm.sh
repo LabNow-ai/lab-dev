@@ -9,6 +9,17 @@ export HOME="$HOME_LITELLM"
 export PRISMA_HOME_DIR="${PRISMA_HOME_DIR:-$HOME_LITELLM}"
 cd "$HOME_LITELLM"
 
+# Compose mounts the Redis credential as a Docker secret. Export it only in
+# this process tree so it is absent from Docker inspect and command arguments.
+if [ -n "${REDIS_PASSWORD_FILE:-}" ]; then
+    test -r "$REDIS_PASSWORD_FILE"
+    export REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
+fi
+
+# LiteLLM checks this environment variable while serializing SpendLog payloads.
+# Keep metering enabled in config.yaml, but never persist prompt content.
+export STORE_PROMPTS_IN_SPEND_LOGS="${STORE_PROMPTS_IN_SPEND_LOGS:-false}"
+
 # Default config if not exists. The P1 Compose baseline always mounts an
 # explicit config with PostgreSQL and Redis; this fallback remains only for
 # backwards-compatible standalone use.

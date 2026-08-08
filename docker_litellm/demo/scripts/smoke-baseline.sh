@@ -40,7 +40,10 @@ security_check() {
     || sed '/^security_check() {/,/^}/d' "$0" | rg -n --pcre2 -- '--arg(?:json)?\s+[^[:space:]]*(key|secret|token)' \
     || sed '/^security_check() {/,/^}/d' "$0" | rg -n -- 'set -x' \
     || git diff --no-ext-diff -- . | rg -n --pcre2 '(?:sk-|Bearer\s+)[A-Za-z0-9_-]{24,}' \
-    || rg -n '^    UPSTREAM_(API_KEY|BASE_URL|MODEL):' "$DEMO_DIR/docker-compose.litellm.yml"; then
+    || rg -n '^    UPSTREAM_(API_KEY|BASE_URL|MODEL|PROVIDER):' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || rg -n -- '--requirepass[[:space:]].*\$\{REDIS_PASSWORD|REDIS_PASSWORD:.*\$\{' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'redis_password:' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'REDIS_PASSWORD_FILE: /run/secrets/redis_password' "$DEMO_DIR/docker-compose.litellm.yml"; then
     unsafe=1
   fi
 
@@ -56,7 +59,7 @@ security_check() {
     echo "FAIL security negative check: unsafe secret transport or cleanup invariant" >&2
     return 1
   fi
-  echo "PASS security negative check: no inline process arguments/log tracing/Git secrets, no upstream Compose injection, 0600 cleanup invariant present."
+  echo "PASS security negative check: no inline process arguments/log tracing/Git secrets, no upstream Compose injection, Redis Docker secret and 0600 cleanup invariants present."
 }
 
 if [[ "$SECURITY_CHECK" == true ]]; then
@@ -222,7 +225,7 @@ wait_ready() {
 assert_redis() {
   local service="$1"
   docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T "$service" \
-    python3 -c 'import os, redis; assert redis.Redis(host="redis", port=6379, password=os.environ["REDIS_PASSWORD"]).ping()'
+    python3 -c 'import redis; password=open("/run/secrets/redis_password", encoding="utf-8").read().strip(); assert redis.Redis(host="redis", port=6379, password=password).ping()'
 }
 
 now_ms() {
@@ -348,13 +351,31 @@ if [[ ! -s "$upstream_key_file" || ! -s "$upstream_base_file" || ! -s "$upstream
   exit 0
 fi
 
+# P1 deliberately supports one explicit provider mapping.  Reject incomplete
+# or ambiguous combinations before any upstream-facing request is sent.
+case "${UPSTREAM_PROVIDER:-}" in
+  deepseek)
+    provider_prefix="deepseek"
+    ;;
+  *)
+    echo "invalid UPSTREAM_PROVIDER: supported P1 provider is deepseek (value redacted)" >&2
+    exit 2
+    ;;
+esac
+if ! rg -q '^https://[^[:space:]]+$' "$upstream_base_file" \
+  || ! rg -q '^[A-Za-z0-9._:-]+$' "$upstream_model_file"; then
+  echo "invalid upstream base URL or model identifier (values redacted)" >&2
+  exit 2
+fi
+
 # The upstream key appears only in this 0600 request file. The model itself
 # references the stored credential, never the upstream key directly.
 jq -n \
   --rawfile credential_name "$tmpdir/credential-name" \
   --rawfile api_key "$upstream_key_file" \
   --rawfile api_base "$upstream_base_file" \
-  '{credential_name: ($credential_name | rtrimstr("\n")), credential_values: {api_key: ($api_key | rtrimstr("\n")), api_base: ($api_base | rtrimstr("\n"))}, credential_info: {custom_llm_provider: "deepseek"}}' \
+  --arg provider "$provider_prefix" \
+  '{credential_name: ($credential_name | rtrimstr("\n")), credential_values: {api_key: ($api_key | rtrimstr("\n")), api_base: ($api_base | rtrimstr("\n"))}, credential_info: {custom_llm_provider: $provider}}' \
   > "$tmpdir/credential-create.json"
 chmod 600 "$tmpdir/credential-create.json"
 request_admin POST /credentials "$tmpdir/credential-create.json" "$tmpdir/credential.json"
@@ -364,7 +385,8 @@ jq -n \
   --rawfile model_name "$tmpdir/model-name" \
   --rawfile upstream_model "$upstream_model_file" \
   --rawfile credential_name "$tmpdir/credential-name" \
-  '{model_name: ($model_name | rtrimstr("\n")), litellm_params: {model: ("deepseek/" + ($upstream_model | rtrimstr("\n"))), litellm_credential_name: ($credential_name | rtrimstr("\n"))}, model_info: {mode: "chat"}}' \
+  --arg provider "$provider_prefix" \
+  '{model_name: ($model_name | rtrimstr("\n")), litellm_params: {model: ($provider + "/" + ($upstream_model | rtrimstr("\n"))), litellm_credential_name: ($credential_name | rtrimstr("\n"))}, model_info: {mode: "chat"}}' \
   > "$tmpdir/model-create.json"
 chmod 600 "$tmpdir/model-create.json"
 request_admin POST /model/new "$tmpdir/model-create.json" "$tmpdir/model.json"
