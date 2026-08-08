@@ -146,10 +146,13 @@ model_name=""
 model_id=""
 block_key_created=false
 delete_key_created=false
+rate_key_created=false
 block_key_file="$tmpdir/block.key"
 delete_key_file="$tmpdir/delete.key"
+rate_key_file="$tmpdir/rate.key"
 block_headers="$tmpdir/block.headers"
 delete_headers="$tmpdir/delete.headers"
+rate_headers="$tmpdir/rate.headers"
 
 request_admin() {
   local method="$1" path="$2" payload_file="$3" output_file="$4"
@@ -174,6 +177,9 @@ cleanup() {
   set +e
   if [[ "$delete_key_created" == true ]]; then
     cleanup_request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json"
+  fi
+  if [[ "$rate_key_created" == true ]]; then
+    cleanup_request_admin POST /key/delete "$tmpdir/rate-key-cleanup.json"
   fi
   if [[ "$block_key_created" == true ]]; then
     cleanup_request_admin POST /key/delete "$tmpdir/block-key-cleanup.json"
@@ -317,7 +323,7 @@ write_summary() {
     --arg image_id "$(docker image inspect "${LITELLM_IMAGE:-}" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
     > "$SUMMARY_FILE"
   chmod 600 "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
@@ -447,6 +453,22 @@ if ! jq -e '.choices[0].message.tool_calls | type == "array" and length > 0' "$t
   exit 1
 fi
 assert_spend
+
+if [[ "$MODE" == "ha" ]]; then
+  # One request reaches replica 1; the same key must be RPM-limited on replica 2.
+  write_private_value "$tmpdir/rate-key-alias" "p1-smoke-rate-$suffix"
+  make_key_payload "$tmpdir/rate-key-alias" "$tmpdir/rate-key-create.json"
+  jq '.rpm_limit = 1' "$tmpdir/rate-key-create.json" > "$tmpdir/rate-key-limited.json"
+  chmod 600 "$tmpdir/rate-key-limited.json"
+  request_admin POST /key/generate "$tmpdir/rate-key-limited.json" "$tmpdir/rate-key.json"
+  make_key_header "$tmpdir/rate-key.json" "$rate_key_file" "$rate_headers"
+  rate_key_created=true
+  make_key_action_payload delete "$rate_key_file" "$tmpdir/rate-key-cleanup.json"
+  request_data_post "$BASE_URL" "$rate_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/rate-first.json"
+  rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
+  [[ "$rate_code" == "429" ]] || { echo "shared RPM limit was bypassed by peer: http=$rate_code" >&2; exit 1; }
+  echo "PASS HA shared RPM: peer rejected the second request with 429."
+fi
 
 make_key_action_payload block "$block_key_file" "$tmpdir/block-key.json"
 request_admin POST /key/block "$tmpdir/block-key.json" "$tmpdir/block-response.json"
