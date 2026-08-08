@@ -57,7 +57,7 @@ docker compose --env-file .env -f docker-compose.litellm.yml --profile ha up -d
 
 ## 配置与安全边界
 
-`config.yaml` 从环境变量读取管理面 `LITELLM_MASTER_KEY`、`DATABASE_URL` 与 Redis 凭据。管理面 key 仅用于 `/user/new`、`/credentials`、`/model/new`、`/key/generate`、`/key/block` 和 `/key/delete` 等管理接口；smoke 生成的数据面虚拟 key 是短期、模型白名单、TTL、预算、RPM、TPM 与 `llm_api` 路由限制的独立 key。
+`config.yaml` 从环境变量读取管理面 `LITELLM_MASTER_KEY`、`DATABASE_URL` 与 Redis 凭据。管理面 key 仅用于 `/user/new`、`/credentials`、`/model/new`、`/key/generate`、`/key/block` 和 `/key/delete` 等管理接口；smoke 生成的数据面虚拟 key 是短期、模型白名单、TTL、预算、RPM、TPM 与 `llm_api` 路由限制的独立 key。双副本基线启用 `enable_redis_auth_cache`，并将 `user_api_key_cache_ttl` 设为 1 秒，以使撤销在 30 秒 smoke SLO 内经共享 Redis 重新校验。
 
 | 变量 | 是否必填 | 作用 | 风险说明 |
 | --- | ---: | --- | --- |
@@ -82,7 +82,7 @@ cd docker_litellm/demo
 
 `--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x` 和 Compose 的上游凭据注入，并检查 0600 临时文件与退出清理约束。
 
-脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、生成受限虚拟 key、显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。HA 模式会先证明第二副本接受 key，再轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
+脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、生成受限虚拟 key、显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。DeepSeek V4 使用 `deepseek/<UPSTREAM_MODEL>` 的原生 provider，避免被通用 OpenAI provider 丢弃 `thinking` 参数。HA 模式会先证明第二副本接受 key，再轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
 
 `LITELLM_MASTER_KEY`、上游 API key 与虚拟 key 不会作为 `curl`、`jq` 或其他子进程的命令参数传递。脚本以 `umask 077` 创建工作目录，所有 header、请求、响应和 key 文件均为 `0600`，退出时删除；创建的 user、credential、model 和两个测试 key 也会清理。上游凭据仅由 smoke 客户端读取，不会注入 LiteLLM Compose 容器。
 

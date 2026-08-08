@@ -8,12 +8,18 @@ general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
   store_model_in_db: true
+  # Keep per-replica virtual-key authorization state short-lived so a revoked
+  # key is revalidated through the shared cache within the 30 s smoke SLO.
+  user_api_key_cache_ttl: 1
   # Preserve request metadata needed for metering, but do not configure prompt
   # or completion-content logging in this local baseline.
   disable_spend_logs: false
 
 litellm_settings:
   cache: true
+  # Make virtual-key authorization cache state visible to every LiteLLM
+  # replica. Without this, each replica keeps an isolated in-memory key cache.
+  enable_redis_auth_cache: true
   cache_params:
     type: redis
     host: os.environ/REDIS_HOST

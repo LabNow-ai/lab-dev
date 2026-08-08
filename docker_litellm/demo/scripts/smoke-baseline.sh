@@ -248,6 +248,14 @@ make_key_header() {
   make_header_file "$header_file" "$key_file"
 }
 
+hash_key_file() {
+  local key_file="$1" hash_file="$2"
+  private_file "$hash_file"
+  python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read().rstrip(b"\r\n")).hexdigest())' \
+    < "$key_file" > "$hash_file"
+  assert_private_file "$hash_file"
+}
+
 make_key_action_payload() {
   local action="$1" key_file="$2" payload_file="$3"
   if [[ "$action" == block ]]; then
@@ -259,7 +267,8 @@ make_key_action_payload() {
 }
 
 wait_model_access() {
-  local url="$1" header_file="$2" label="$3" output_file="$tmpdir/$label-models.json" i
+  local url="$1" header_file="$2" label="$3" output_file i
+  output_file="$tmpdir/$label-models.json"
   for i in $(seq 1 30); do
     if request_data_get "$url" "$header_file" /v1/models "$output_file" \
       && jq -e --rawfile model "$tmpdir/model-name" '.data[] | select(.id == ($model | rtrimstr("\n")))' "$output_file" >/dev/null; then
@@ -298,11 +307,11 @@ assert_spend() {
     if request_admin GET "/spend/logs?user_id=$test_user" "" "$spend_file" \
       && jq -e \
         --rawfile model "$tmpdir/model-name" \
-        --rawfile alias "$tmpdir/block-key-alias" \
-        'def metadata_alias: if (.metadata | type) == "object" then (.metadata.user_api_key_alias // .metadata.key_alias // "") else "" end; [ .[] | select(.model == ($model | rtrimstr("\n")) and metadata_alias == ($alias | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] as $logs | ($logs | length) >= 3 and (($logs | map(.total_tokens // 0) | add) > 0)' \
+        --rawfile key_hash "$tmpdir/block-key-sha256" \
+        'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] as $logs | ($logs | length) >= 3 and (($logs | map(.total_tokens // 0) | add) > 0)' \
         "$spend_file" >/dev/null; then
-      request_count="$(jq --rawfile model "$tmpdir/model-name" --rawfile alias "$tmpdir/block-key-alias" 'def metadata_alias: if (.metadata | type) == "object" then (.metadata.user_api_key_alias // .metadata.key_alias // "") else "" end; [ .[] | select(.model == ($model | rtrimstr("\n")) and metadata_alias == ($alias | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | length' "$spend_file")"
-      total_tokens="$(jq --rawfile model "$tmpdir/model-name" --rawfile alias "$tmpdir/block-key-alias" 'def metadata_alias: if (.metadata | type) == "object" then (.metadata.user_api_key_alias // .metadata.key_alias // "") else "" end; [ .[] | select(.model == ($model | rtrimstr("\n")) and metadata_alias == ($alias | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | map(.total_tokens // 0) | add' "$spend_file")"
+      request_count="$(jq --rawfile model "$tmpdir/model-name" --rawfile key_hash "$tmpdir/block-key-sha256" 'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | length' "$spend_file")"
+      total_tokens="$(jq --rawfile model "$tmpdir/model-name" --rawfile key_hash "$tmpdir/block-key-sha256" 'def logs: if type == "array" then . else (.data // []) end; [ logs[] | select((.model == ($model | rtrimstr("\n")) or .model_group == ($model | rtrimstr("\n"))) and .api_key == ($key_hash | rtrimstr("\n")) and ((.total_tokens // 0) > 0)) ] | map(.total_tokens // 0) | add' "$spend_file")"
       echo "PASS spend: request_count=$request_count total_tokens=$total_tokens"
       return 0
     fi
@@ -345,7 +354,7 @@ jq -n \
   --rawfile credential_name "$tmpdir/credential-name" \
   --rawfile api_key "$upstream_key_file" \
   --rawfile api_base "$upstream_base_file" \
-  '{credential_name: ($credential_name | rtrimstr("\n")), credential_values: {api_key: ($api_key | rtrimstr("\n")), api_base: ($api_base | rtrimstr("\n"))}, credential_info: {custom_llm_provider: "openai"}}' \
+  '{credential_name: ($credential_name | rtrimstr("\n")), credential_values: {api_key: ($api_key | rtrimstr("\n")), api_base: ($api_base | rtrimstr("\n"))}, credential_info: {custom_llm_provider: "deepseek"}}' \
   > "$tmpdir/credential-create.json"
 chmod 600 "$tmpdir/credential-create.json"
 request_admin POST /credentials "$tmpdir/credential-create.json" "$tmpdir/credential.json"
@@ -355,7 +364,7 @@ jq -n \
   --rawfile model_name "$tmpdir/model-name" \
   --rawfile upstream_model "$upstream_model_file" \
   --rawfile credential_name "$tmpdir/credential-name" \
-  '{model_name: ($model_name | rtrimstr("\n")), litellm_params: {model: ("openai/" + ($upstream_model | rtrimstr("\n"))), litellm_credential_name: ($credential_name | rtrimstr("\n"))}, model_info: {mode: "chat"}}' \
+  '{model_name: ($model_name | rtrimstr("\n")), litellm_params: {model: ("deepseek/" + ($upstream_model | rtrimstr("\n"))), litellm_credential_name: ($credential_name | rtrimstr("\n"))}, model_info: {mode: "chat"}}' \
   > "$tmpdir/model-create.json"
 chmod 600 "$tmpdir/model-create.json"
 request_admin POST /model/new "$tmpdir/model-create.json" "$tmpdir/model.json"
@@ -368,6 +377,7 @@ write_private_value "$tmpdir/block-key-alias" "p1-smoke-block-$suffix"
 make_key_payload "$tmpdir/block-key-alias" "$tmpdir/block-key-create.json"
 request_admin POST /key/generate "$tmpdir/block-key-create.json" "$tmpdir/block-key.json"
 make_key_header "$tmpdir/block-key.json" "$block_key_file" "$block_headers"
+hash_key_file "$block_key_file" "$tmpdir/block-key-sha256"
 block_key_created=true
 make_key_action_payload delete "$block_key_file" "$tmpdir/block-key-cleanup.json"
 
@@ -388,10 +398,13 @@ chmod 600 "$tmpdir/stream-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/stream-request.json" "$tmpdir/stream.txt"
 rg -q '^data: ' "$tmpdir/stream.txt"
 
-jq -n --rawfile model "$tmpdir/model-name" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: "Use the supplied function to answer 2+2."}], tools: [{type: "function", function: {name: "answer", description: "Return the answer.", parameters: {type: "object", properties: {answer: {type: "integer"}}, required: ["answer"]}}}], tool_choice: {type: "function", function: {name: "answer"}}, max_tokens: 32}' > "$tmpdir/tool-request.json"
+jq -n --rawfile model "$tmpdir/model-name" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: "Use the supplied function to answer 2+2."}], tools: [{type: "function", function: {name: "answer", description: "Return the answer.", parameters: {type: "object", properties: {answer: {type: "integer"}}, required: ["answer"]}}}], tool_choice: {type: "function", function: {name: "answer"}}, thinking: {type: "disabled"}, max_tokens: 32}' > "$tmpdir/tool-request.json"
 chmod 600 "$tmpdir/tool-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/tool-request.json" "$tmpdir/tool.json"
-jq -e '.choices[0].message.tool_calls | type == "array"' "$tmpdir/tool.json" >/dev/null
+if ! jq -e '.choices[0].message.tool_calls | type == "array" and length > 0' "$tmpdir/tool.json" >/dev/null; then
+  echo "tool request returned no tool_calls" >&2
+  exit 1
+fi
 assert_spend
 
 make_key_action_payload block "$block_key_file" "$tmpdir/block-key.json"
