@@ -17,6 +17,8 @@ redis_recovery_result="not_run"
 shared_spend_counter_result="not_run"
 redis_container=""
 redis_network=""
+smoke_phase="initializing"
+smoke_exit_code=""
 
 usage() {
   echo "Usage: $0 [--mode single|ha] [--security-check]" >&2
@@ -200,6 +202,8 @@ cleanup() {
   if [[ -n "$test_user" ]]; then
     cleanup_request_admin POST /user/delete "$tmpdir/user-delete.json"
   fi
+  smoke_exit_code="$exit_code"
+  write_summary || true
   unset master_key_file upstream_key_file upstream_base_file upstream_model_file
   rm -rf "$tmpdir"
   [[ ! -e "$tmpdir" ]] || { echo "temporary smoke directory cleanup failed" >&2; exit 1; }
@@ -329,8 +333,8 @@ write_summary() {
     --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "${LITELLM_IMAGE:-}" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg redis_recovery "$redis_recovery_result" --arg shared_spend_counter "$shared_spend_counter_result" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),shared_spend_counter:$shared_spend_counter,redis_recovery:$redis_recovery,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
+    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg redis_recovery "$redis_recovery_result" --arg shared_spend_counter "$shared_spend_counter_result" --arg phase "$smoke_phase" --arg exit_code "$smoke_exit_code" \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,result:(if $exit_code == "0" then "passed" else "failed" end),phase:$phase,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),shared_spend_counter:$shared_spend_counter,redis_recovery:$redis_recovery,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
     > "$SUMMARY_FILE"
   chmod 600 "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
@@ -482,6 +486,7 @@ if ! jq -e '.choices[0].message.tool_calls | type == "array" and length > 0' "$t
   exit 1
 fi
 assert_spend
+smoke_phase="shared_limit_and_redis_recovery"
 
 if [[ "$MODE" == "ha" ]]; then
   # One request reaches replica 1; the same key must be RPM-limited on replica 2.
@@ -521,6 +526,7 @@ if [[ "$MODE" == "ha" ]]; then
 fi
 
 make_key_action_payload block "$block_key_file" "$tmpdir/block-key.json"
+smoke_phase="revocation"
 request_admin POST /key/block "$tmpdir/block-key.json" "$tmpdir/block-response.json"
 wait_for_rejection "$block_headers" block
 
@@ -539,5 +545,7 @@ fi
 request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json" "$tmpdir/delete-response.json"
 wait_for_rejection "$delete_headers" delete
 
+smoke_phase="completed"
+smoke_exit_code="0"
 write_summary
 echo "PASS complete: user/credential/model/key cleanup, explicit GET models, chat/stream/tool, token-bearing spend, and independent block/delete propagation."
