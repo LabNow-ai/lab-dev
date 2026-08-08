@@ -13,6 +13,7 @@ REVOCATION_SLO_MS="${LITELLM_REVOCATION_SLO_MS:-30000}"
 SUMMARY_FILE="${LITELLM_SMOKE_SUMMARY_FILE:-}"
 block_elapsed_ms=""
 delete_elapsed_ms=""
+redis_recovery_result="not_run"
 
 usage() {
   echo "Usage: $0 [--mode single|ha] [--security-check]" >&2
@@ -234,7 +235,7 @@ wait_ready() {
 assert_redis() {
   local service="$1"
   docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T "$service" \
-    python3 -c 'import redis; password=open("/run/secrets/redis_password", encoding="utf-8").read().strip(); assert redis.Redis(host="redis", port=6379, password=password).ping()'
+    python3 -c 'import redis; password=open("/run/secrets/redis_password", encoding="utf-8").read().strip(); assert redis.Redis(host="redis", port=6379, password=password, socket_connect_timeout=2, socket_timeout=2).ping()'
 }
 
 now_ms() {
@@ -322,8 +323,8 @@ write_summary() {
     --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "${LITELLM_IMAGE:-}" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
+    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg redis_recovery "$redis_recovery_result" \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),redis_recovery:$redis_recovery,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
     > "$SUMMARY_FILE"
   chmod 600 "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
@@ -468,6 +469,27 @@ if [[ "$MODE" == "ha" ]]; then
   rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
   [[ "$rate_code" == "429" ]] || { echo "shared RPM limit was bypassed by peer: http=$rate_code" >&2; exit 1; }
   echo "PASS HA shared RPM: peer rejected the second request with 429."
+
+  redis_container="$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)"
+  [[ -n "$redis_container" ]] || { echo "Redis container not found" >&2; exit 1; }
+  redis_network="$(docker inspect -f '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}' "$redis_container")"
+  [[ -n "$redis_network" ]] || { echo "Redis network not found" >&2; exit 1; }
+  # Disconnecting the Redis endpoint keeps LiteLLM processes runnable, so the
+  # bounded probes can prove failure without docker exec freezing on a paused
+  # target container.
+  docker network disconnect "$redis_network" "$redis_container"
+  if assert_redis litellm-1 >/dev/null 2>&1 || assert_redis litellm-2 >/dev/null 2>&1; then
+    docker network connect --alias redis "$redis_network" "$redis_container" >/dev/null || true
+    echo "Redis interruption did not fail both bounded probes" >&2
+    exit 1
+  fi
+  docker network connect --alias redis "$redis_network" "$redis_container"
+  sleep $(( ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5} + 1 ))
+  assert_redis litellm-1
+  assert_redis litellm-2
+  wait_model_access "$PEER_URL" "$block_headers" post-redis-recovery
+  redis_recovery_result="passed"
+  echo "PASS HA Redis recovery: both probes and peer key authorization recovered."
 fi
 
 make_key_action_payload block "$block_key_file" "$tmpdir/block-key.json"
