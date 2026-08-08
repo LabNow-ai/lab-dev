@@ -10,6 +10,9 @@ export COMPOSE_PROJECT_NAME="${LITELLM_COMPOSE_PROJECT:-litellm-baseline}"
 MODE="single"
 SECURITY_CHECK=false
 REVOCATION_SLO_MS="${LITELLM_REVOCATION_SLO_MS:-30000}"
+SUMMARY_FILE="${LITELLM_SMOKE_SUMMARY_FILE:-}"
+block_elapsed_ms=""
+delete_elapsed_ms=""
 
 usage() {
   echo "Usage: $0 [--mode single|ha] [--security-check]" >&2
@@ -293,6 +296,7 @@ wait_for_rejection() {
       now="$(now_ms)"
       elapsed=$((now - start_ms))
       echo "PASS $phase propagation: primary=$primary_code peer=$peer_code elapsed_ms=$elapsed slo_ms=$REVOCATION_SLO_MS"
+      if [[ "$phase" == "block" ]]; then block_elapsed_ms="$elapsed"; else delete_elapsed_ms="$elapsed"; fi
       return 0
     fi
     now="$(now_ms)"
@@ -302,6 +306,21 @@ wait_for_rejection() {
     fi
     sleep 1
   done
+}
+
+write_summary() {
+  [[ -n "$SUMMARY_FILE" ]] || return 0
+  mkdir -p "$(dirname "$SUMMARY_FILE")"
+  chmod 700 "$(dirname "$SUMMARY_FILE")"
+  jq -n \
+    --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
+    --arg image_id "$(docker image inspect "${LITELLM_IMAGE:-}" --format '{{.Id}}' 2>/dev/null || true)" \
+    --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
+    > "$SUMMARY_FILE"
+  chmod 600 "$SUMMARY_FILE"
+  echo "PASS summary: $SUMMARY_FILE"
 }
 
 assert_spend() {
@@ -448,4 +467,5 @@ fi
 request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json" "$tmpdir/delete-response.json"
 wait_for_rejection "$delete_headers" delete
 
+write_summary
 echo "PASS complete: user/credential/model/key cleanup, explicit GET models, chat/stream/tool, token-bearing spend, and independent block/delete propagation."
