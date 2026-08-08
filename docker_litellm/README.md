@@ -12,7 +12,7 @@ P1 默认不构建 LiteLLM Dashboard 静态资源：固定源码在当前构建�
 | FastAPI | `0.136.3` | 固定到该 LiteLLM commit 仍使用 `get_flat_dependant` 的兼容版本 |
 | Prisma Python client | `0.15.0` | LiteLLM 连接 PostgreSQL 所需客户端，兼容基础镜像的 Python 3.13 |
 
-镜像构建会对 wheel 自带的 LiteLLM Prisma schema 运行 `prisma generate`；没有该步骤，代理会在 PostgreSQL startup 时报缺少 Prisma binaries。
+镜像构建会对 wheel 自带的 LiteLLM Prisma schema 运行 `prisma generate`，并把生成的查询引擎固定在 `/opt/litellm/.cache`；没有该步骤，或将该缓存随 `/root/.cache` 清理，代理会在 PostgreSQL startup 时报缺少 Prisma binaries 或无法连接查询引擎。
 | 本地产物镜像 | `quay.io/labnow/litellm:1.97.0-ead62528e607` | P1 Compose 的唯一 LiteLLM 默认镜像 |
 | PostgreSQL | `postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193` | 用户、凭证、模型、虚拟 key 与 spend 持久化 |
 | Redis | `redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2` | 副本共享认证缓存、限流、Spend counter 和协调缓存 |

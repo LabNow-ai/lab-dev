@@ -62,7 +62,10 @@ RUN set -eux \
  && python3 -c 'from fastapi.dependencies.utils import get_flat_dependant; import prisma' \
  && PRISMA_SCHEMA="$(python3 -c 'import pathlib, litellm; print(pathlib.Path(litellm.__file__).parent / "proxy" / "schema.prisma")')" \
  && test -f "${PRISMA_SCHEMA}" \
- && prisma generate --schema "${PRISMA_SCHEMA}" \
+ # Keep the generated query engine outside /root: install__clean removes
+ # root-owned caches, while the runtime starts with HOME=/opt/litellm.
+ && PRISMA_HOME_DIR="${HOME_LITELLM}" prisma generate --schema "${PRISMA_SCHEMA}" \
+ && test -d "${HOME_LITELLM}/.cache/prisma-python" \
  ## Install supervisord (Go version) if needed or use simple entrypoint
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  && source /opt/utils/script-utils.sh && install__clean \

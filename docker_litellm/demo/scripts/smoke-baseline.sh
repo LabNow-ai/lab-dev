@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${LITELLM_SMOKE_ENV_FILE:-${DEMO_DIR}/.env}"
+export COMPOSE_PROJECT_NAME="${LITELLM_COMPOSE_PROJECT:-litellm-baseline}"
 MODE="single"
 
 usage() {

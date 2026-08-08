@@ -6,6 +6,7 @@ HOME_LITELLM="${HOME_LITELLM:-/opt/litellm}"
 mkdir -p "$HOME_LITELLM"
 
 export HOME="$HOME_LITELLM"
+export PRISMA_HOME_DIR="${PRISMA_HOME_DIR:-$HOME_LITELLM}"
 cd "$HOME_LITELLM"
 
 # Default config if not exists. The P1 Compose baseline always mounts an
