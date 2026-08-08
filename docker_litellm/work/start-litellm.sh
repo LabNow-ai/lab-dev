@@ -8,7 +8,9 @@ mkdir -p "$HOME_LITELLM"
 export HOME="$HOME_LITELLM"
 cd "$HOME_LITELLM"
 
-# Default config if not exists
+# Default config if not exists. The P1 Compose baseline always mounts an
+# explicit config with PostgreSQL and Redis; this fallback remains only for
+# backwards-compatible standalone use.
 if [ ! -f "config.yaml" ]; then
     echo "Creating default config.yaml..."
     cat <<EOF > config.yaml
@@ -21,7 +23,7 @@ fi
 
 # If no arguments are passed, start litellm proxy with defaults
 if [ $# -eq 0 ]; then
-    set -- --config config.yaml --port 4000 --host 0.0.0.0
+    set -- --config config.yaml --port "${LITELLM_PORT:-4000}" --host "${LITELLM_HOST:-0.0.0.0}"
 fi
 
 # Route execution: run command directly if it exists, otherwise wrap with litellm

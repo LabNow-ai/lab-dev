@@ -1,19 +1,89 @@
+name: litellm-baseline
+
+x-litellm-common: &litellm-common
+  image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
+  restart: "no"
+  environment:
+    TZ: ${TZ:-Asia/Hong_Kong}
+    LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set a local-only management key in .env}
+    DATABASE_URL: postgresql://${POSTGRES_USER:?set in .env}:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/${POSTGRES_DB:-litellm}
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
+    STORE_MODEL_IN_DB: "True"
+    LITELLM_LOG: ${LITELLM_LOG:-INFO}
+    # The upstream credentials are optional and must remain in the ignored .env.
+    UPSTREAM_API_KEY: ${UPSTREAM_API_KEY:-}
+    UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-}
+    UPSTREAM_MODEL: ${UPSTREAM_MODEL:-}
+  volumes:
+    - ./config.yaml:/opt/litellm/config.yaml:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - litellm-baseline-net
+  healthcheck:
+    test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness', timeout=3)\""]
+    interval: 10s
+    timeout: 5s
+    retries: 18
+    start_period: 30s
+
 services:
-  svc-litellm:
-    container_name: svc-litellm
-    image: quay.io/labnow/litellm:latest
-    restart: unless-stopped
-    # networks: ["net-litellm"]
-    ports:
-      - "4000:4000"
+  postgres:
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: "no"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
     volumes:
-      - ./data:/root/workspace
-    # environment:
-    #   - LITELLM_MASTER_KEY=sk-1234
-    #   - OPENAI_API_KEY=your-openai-key
-    #   - GEMINI_API_KEY=your-gemini-key
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - litellm_postgres_data:/var/lib/postgresql/data
+    networks:
+      - litellm-baseline-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    restart: "no"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set in .env}"]
+    volumes:
+      - litellm_redis_data:/data
+    networks:
+      - litellm-baseline-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -qx PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  litellm-1:
+    <<: *litellm-common
+    container_name: ${LITELLM_1_CONTAINER_NAME:-svc-litellm-1}
+    profiles: ["single", "ha"]
+    ports:
+      - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
+
+  litellm-2:
+    <<: *litellm-common
+    container_name: ${LITELLM_2_CONTAINER_NAME:-svc-litellm-2}
+    profiles: ["ha"]
+    ports:
+      - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"
+
+volumes:
+  litellm_postgres_data:
+  litellm_redis_data:
+
+networks:
+  litellm-baseline-net:
+    name: litellm-baseline-net

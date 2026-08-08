@@ -1,0 +1,21 @@
+# P1 runtime configuration. Secrets only come from environment variables.
+# The management API persists users, credentials, model records and virtual keys
+# in PostgreSQL. Redis is the shared cache/co-ordination backend for replicas.
+
+model_list: []
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true
+  # Preserve request metadata needed for metering, but do not configure prompt
+  # or completion-content logging in this local baseline.
+  disable_spend_logs: false
+
+litellm_settings:
+  cache: true
+  cache_params:
+    type: redis
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+    password: os.environ/REDIS_PASSWORD
