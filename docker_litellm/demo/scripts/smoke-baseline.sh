@@ -15,6 +15,8 @@ block_elapsed_ms=""
 delete_elapsed_ms=""
 redis_recovery_result="not_run"
 shared_spend_counter_result="not_run"
+redis_container=""
+redis_network=""
 
 usage() {
   echo "Usage: $0 [--mode single|ha] [--security-check]" >&2
@@ -177,6 +179,9 @@ cleanup_request_admin() {
 cleanup() {
   local exit_code=$?
   set +e
+  if [[ -n "$redis_container" && -n "$redis_network" ]]; then
+    docker network connect --alias redis "$redis_network" "$redis_container" >/dev/null 2>&1 || true
+  fi
   if [[ "$delete_key_created" == true ]]; then
     cleanup_request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json"
   fi
