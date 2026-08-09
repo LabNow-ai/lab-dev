@@ -42,8 +42,9 @@ cleanup() {
     docker network connect --alias redis "$network" "$container" >/dev/null 2>&1 || true
   fi
   if (( exit_code != 0 )); then result="failed"; fi
-  write_summary
+  write_summary || exit_code=1
   [[ -z "$tmpdir" ]] || rm -rf "$tmpdir"
+  return "$exit_code"
 }
 trap cleanup EXIT
 

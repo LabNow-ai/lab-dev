@@ -269,7 +269,7 @@ cleanup() {
   elif [[ "$result" != skipped ]]; then
     result="failed"
   fi
-  write_summary
+  write_summary || exit_code=1
   exit "$exit_code"
 }
 trap cleanup EXIT
