@@ -65,7 +65,8 @@ verification_invalidate_report "$SUMMARY_FILE"
 # It invalidates any stale report and writes a non-passing, redacted result.
 early_failure_cleanup() {
   local exit_code=$?
-  trap - EXIT
+  # Ignore any nested EXIT delivery while preserving the report just written.
+  trap '' EXIT
   if command -v jq >/dev/null; then
     umask 077
     mkdir -p "$(dirname "$SUMMARY_FILE")"
@@ -264,7 +265,8 @@ cleanup() {
   local cleanup_ok=true
   [[ "$cleanup_running" == false ]] || return "$exit_code"
   cleanup_running=true
-  trap - EXIT
+  # Ignore any nested EXIT delivery while preserving the report just written.
+  trap '' EXIT
   set +e
   if [[ -n "$redis_container" && -n "$redis_network" ]]; then
     docker network connect --alias redis "$redis_network" "$redis_container" >/dev/null 2>&1 || true
