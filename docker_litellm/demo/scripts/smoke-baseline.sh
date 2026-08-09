@@ -445,8 +445,12 @@ assert_proxy_limiter_response() {
 }
 
 write_summary() {
+  local summary_tmp
   mkdir -p "$(dirname "$SUMMARY_FILE")"
   chmod 700 "$(dirname "$SUMMARY_FILE")"
+  summary_tmp="${SUMMARY_FILE}.tmp.$$"
+  : > "$summary_tmp"
+  chmod 600 "$summary_tmp"
   jq -n \
     --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
@@ -454,8 +458,9 @@ write_summary() {
     --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg phase "$smoke_phase" --arg exit_code "$smoke_exit_code" \
     --arg run_id "$verification_run_id" --arg result "$result" --arg migration "$migration_result" --arg chat "$chat_result" --arg stream "$stream_result" --arg tool "$tool_result" --arg usage "$usage_result" --arg block "$block_result" --arg delete "$delete_result" --arg shared_rpm "$shared_rpm_limit_result" --arg shared_tpm "$shared_tpm_limit_result" --arg shared_spend "$shared_spend_counter_result" --arg limiter_source "$limiter_source" --arg idempotency "$idempotency_recovery_result" --arg cleanup "$cleanup_result" --arg security "$security_scan_result" --arg content_logging "$content_logging_scan_result" \
     '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,result:$result,phase:$phase,exit_code:($exit_code|tonumber?),migration:$migration,chat:$chat,stream:$stream,tool:$tool,usage:$usage,block:$block,delete:$delete,shared_rpm_limit:$shared_rpm,shared_tpm_limit:$shared_tpm,shared_spend_log_visibility:$shared_spend,limiter_source:$limiter_source,idempotency_recovery:$idempotency,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:$cleanup,security_scan:$security,content_logging_scan:$content_logging,content_redacted:true}' \
-    > "$SUMMARY_FILE"
-  chmod 600 "$SUMMARY_FILE"
+    > "$summary_tmp"
+  chmod 600 "$summary_tmp"
+  mv "$summary_tmp" "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
 }
 
