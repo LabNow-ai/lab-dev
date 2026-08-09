@@ -99,22 +99,6 @@ security_scan_result="static_passed"
 
 [[ -f "$ENV_FILE" ]] || { echo "missing local environment file: $ENV_FILE (copy .env.example)" >&2; exit 2; }
 
-# Do not use `set -a`: sourced values must not leak to child processes.
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-: "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in local environment file}"
-: "${LITELLM_IMAGE:?missing LITELLM_IMAGE in local environment file}"
-image_ref="$LITELLM_IMAGE"
-# Provider selection is smoke-client-only. The explicit override is useful
-# when a legacy ignored Compose env has an old provider label; it never enters
-# the LiteLLM container and is not a credential.
-upstream_provider="${LITELLM_SMOKE_UPSTREAM_PROVIDER:-${UPSTREAM_PROVIDER:-}}"
-
-# An `.env` may use `export NAME=...`; remove that export attribute before
-# mktemp, chmod, tr, curl, jq, or any other child process is started.
-export -n LITELLM_IMAGE LITELLM_MASTER_KEY UPSTREAM_API_KEY UPSTREAM_BASE_URL UPSTREAM_MODEL UPSTREAM_PROVIDER \
-  POSTGRES_PASSWORD REDIS_PASSWORD DATABASE_URL 2>/dev/null || true
-
 if [[ "$MODE" == "single" ]]; then
   BASE_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}"
   PEER_URL="$BASE_URL"
@@ -126,6 +110,27 @@ fi
 umask 077
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-smoke.XXXXXX")"
 chmod 700 "$tmpdir"
+
+# Compose's dotenv grammar is not Bash's grammar.  Reading it with `source`
+# can change quoted/special-character management keys and create a false 403.
+# Ask Compose for its effective environment into a 0600 file and never print it.
+compose_environment="$tmpdir/compose.environment"
+docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" config --environment > "$compose_environment"
+chmod 600 "$compose_environment"
+effective_env() {
+  local name="$1"
+  awk -F= -v name="$name" '$1 == name {sub(/^[^=]*=/, ""); print; exit}' "$compose_environment"
+}
+LITELLM_MASTER_KEY="$(effective_env LITELLM_MASTER_KEY)"
+LITELLM_IMAGE="$(effective_env LITELLM_IMAGE)"
+UPSTREAM_API_KEY="$(effective_env UPSTREAM_API_KEY)"
+UPSTREAM_BASE_URL="$(effective_env UPSTREAM_BASE_URL)"
+UPSTREAM_MODEL="$(effective_env UPSTREAM_MODEL)"
+UPSTREAM_PROVIDER="$(effective_env UPSTREAM_PROVIDER)"
+: "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in effective Compose environment}"
+: "${LITELLM_IMAGE:?missing LITELLM_IMAGE in effective Compose environment}"
+image_ref="$LITELLM_IMAGE"
+upstream_provider="${LITELLM_SMOKE_UPSTREAM_PROVIDER:-${UPSTREAM_PROVIDER:-}}"
 
 private_file() {
   : > "$1"
