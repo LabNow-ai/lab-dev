@@ -57,18 +57,22 @@ rg -Fq 'PAYLOAD=$(touch ' "$tmpdir/effective.env"
 # The aggregate gate must also reject structurally plausible but incomplete
 # evidence: a missing timestamp, a failed migration, or a forged limiter claim.
 started_at="2026-01-01T00:00:00Z"
+current_commit="$(git -C "$demo_dir/../.." rev-parse HEAD)"
 make_reports() {
-  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
-    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",content_redacted:true,proxy_replicas_started:false}' > "$tmpdir/p1-migration-summary.json"
-  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
-    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"single",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-single-summary.json"
-  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
-    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"ha",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",shared_rpm_limit:"passed",shared_tpm_limit:"passed",shared_spend_log_visibility:"passed",idempotency_recovery:"passed",limiter_source:"litellm_proxy",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-ha-summary.json"
-  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
-    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"ha",result:"passed",phase:"completed",redis_recovery:"passed",content_redacted:true,security_scan:"passed"}' > "$tmpdir/p1-redis-recovery.json"
+  jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",content_redacted:true,proxy_replicas_started:false}' > "$tmpdir/p1-migration-summary.json"
+  jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",concurrent_migration:true,content_redacted:true}' > "$tmpdir/p1-migration-concurrency.json"
+  jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"single",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-single-summary.json"
+  jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"ha",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",shared_rpm_limit:"passed",shared_tpm_limit:"passed",shared_spend_log_visibility:"passed",idempotency_recovery:"passed",limiter_source:"litellm_proxy",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-ha-summary.json"
+  jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"ha",result:"passed",phase:"completed",redis_recovery:"passed",content_redacted:true,security_scan:"passed"}' > "$tmpdir/p1-redis-recovery.json"
 }
-# These are deliberately rejected before any report can become final. They use
-# a synthetic commit, so the current checkout mismatch is an additional guard.
+# These are deliberately rejected before any report can become final. The
+# fixtures use the real checkout commit so each mutation exercises its named
+# gate rather than merely the unrelated commit-mismatch guard.
 make_reports
 jq 'del(.tested_at)' "$tmpdir/p1-single-summary.json" > "$tmpdir/single.tmp" && mv "$tmpdir/single.tmp" "$tmpdir/p1-single-summary.json"
 if VERIFICATION_RUN_ID="$run_id" VERIFICATION_STARTED_AT="$started_at" LITELLM_ARTIFACTS_DIR="$tmpdir" "$script_dir/aggregate-verification-summary.sh" >/dev/null 2>&1; then

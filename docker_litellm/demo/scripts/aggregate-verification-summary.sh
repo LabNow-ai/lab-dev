@@ -79,10 +79,10 @@ mkdir -p "$(dirname "$output")"
 chmod 700 "$(dirname "$output")"
 jq -n \
   --arg run_id "$run_id" --arg commit "$commit" --arg image_id "$image_id" \
-  --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --slurpfile migration "$migration_report" --slurpfile single "$single_report" \
   --slurpfile ha "$ha_report" --slurpfile redis "$redis_report" \
-  '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,generated_at:$generated_at,result:"passed",phase:"completed",migration:$migration[0],single:$single[0],ha:$ha[0],redis_recovery:$redis[0],content_redacted:true,local_only:true}' \
+  '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,generated_at:$tested_at,result:"passed",phase:"completed",migration:$migration[0],single:$single[0],ha:$ha[0],redis_recovery:$redis[0],content_redacted:true,local_only:true}' \
   > "$output"
 chmod 600 "$output"
 echo "PASS aggregate summary: $output"

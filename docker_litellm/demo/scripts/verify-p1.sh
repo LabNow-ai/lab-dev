@@ -16,7 +16,7 @@ cleanup_stack() { "${compose[@]}" --profile single --profile ha --profile migrat
 trap cleanup_stack EXIT
 
 cleanup_stack
-for report in p1-migration-summary.json p1-single-summary.json p1-ha-summary.json p1-redis-recovery.json p1-final-summary.json; do
+for report in p1-migration-summary.json p1-migration-concurrency.json p1-single-summary.json p1-ha-summary.json p1-redis-recovery.json p1-final-summary.json; do
   verification_invalidate_report "${demo_dir}/artifacts/${report}"
 done
 "${script_dir}/test-verification-gates.sh"
