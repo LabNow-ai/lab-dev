@@ -4,8 +4,10 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 demo_dir="$(cd "${script_dir}/.." && pwd)"
+source "${script_dir}/verification-lib.sh"
 env_file="${LITELLM_SMOKE_ENV_FILE:-${demo_dir}/.env}"
 summary_file="${LITELLM_REDIS_SUMMARY_FILE:-${demo_dir}/artifacts/p1-redis-recovery.json}"
+verification_run_id="${VERIFICATION_RUN_ID:-standalone}"
 recovery_timeout="${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}"
 container=""
 network=""
@@ -14,32 +16,9 @@ result="failed"
 security_scan="not_run"
 post_recovery_call="not_run"
 tmpdir=""
+image_ref=""
 
-[[ -f "$env_file" ]] || { echo "missing ignored local environment file" >&2; exit 2; }
-# shellcheck disable=SC1090
-source "$env_file"
-: "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in ignored local environment file}"
-: "${LITELLM_IMAGE:?missing LITELLM_IMAGE in ignored local environment file}"
-image_ref="$LITELLM_IMAGE"
-# Keep the recovery proof aligned with the same optional host-port overrides
-# that Compose uses for the two proxy replicas. These are non-secret routing
-# values; credentials remain in the private header file below.
-publish_host="${LITELLM_PUBLISH_HOST:-127.0.0.1}"
-litellm_1_port="${LITELLM_1_PORT:-4000}"
-litellm_2_port="${LITELLM_2_PORT:-4001}"
-umask 077
-tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-redis-recovery.XXXXXX")"
-chmod 700 "$tmpdir"
-master_file="$tmpdir/master-key"
-headers_file="$tmpdir/admin.headers"
-printf '%s' "$LITELLM_MASTER_KEY" > "$master_file"
-chmod 600 "$master_file"
-{ printf 'Authorization: Bearer '; tr -d '\r\n' < "$master_file"; printf '\n'; } > "$headers_file"
-chmod 600 "$headers_file"
-export -n LITELLM_MASTER_KEY POSTGRES_PASSWORD REDIS_PASSWORD UPSTREAM_API_KEY \
-  UPSTREAM_BASE_URL UPSTREAM_MODEL 2>/dev/null || true
-unset LITELLM_MASTER_KEY POSTGRES_PASSWORD REDIS_PASSWORD UPSTREAM_API_KEY \
-  UPSTREAM_BASE_URL UPSTREAM_MODEL
+verification_invalidate_report "$summary_file"
 
 write_summary() {
   umask 077
@@ -49,9 +28,9 @@ write_summary() {
     --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg result "$result" --arg phase "$phase" --arg security_scan "$security_scan" \
+    --arg run_id "$verification_run_id" --arg result "$result" --arg phase "$phase" --arg security_scan "$security_scan" \
     --arg post_recovery_call "$post_recovery_call" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:"ha",result:$result,phase:$phase,redis_recovery:$result,post_recovery_call:$post_recovery_call,security_scan:$security_scan,content_redacted:true}' \
+    '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:"ha",result:$result,phase:$phase,redis_recovery:$result,post_recovery_call:$post_recovery_call,security_scan:$security_scan,content_redacted:true}' \
     > "$summary_file"
   chmod 600 "$summary_file"
 }
@@ -62,12 +41,34 @@ cleanup() {
   if [[ -n "$container" && -n "$network" ]]; then
     docker network connect --alias redis "$network" "$container" >/dev/null 2>&1 || true
   fi
-  rm -rf "$tmpdir"
-  [[ ! -e "$tmpdir" ]] || { result="failed"; phase="temporary_cleanup_failed"; }
   if (( exit_code != 0 )); then result="failed"; fi
   write_summary
+  [[ -z "$tmpdir" ]] || rm -rf "$tmpdir"
 }
 trap cleanup EXIT
+
+[[ -f "$env_file" ]] || { echo "missing ignored local environment file" >&2; exit 2; }
+umask 077
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-redis-recovery.XXXXXX")"
+chmod 700 "$tmpdir"
+verification_prepare_environment "$env_file" "${demo_dir}/docker-compose.litellm.yml" "$tmpdir"
+master_key="$(verification_env LITELLM_MASTER_KEY)"
+image_ref="$(verification_env LITELLM_IMAGE)"
+: "${master_key:?missing LITELLM_MASTER_KEY in effective Compose environment}"
+: "${image_ref:?missing LITELLM_IMAGE in effective Compose environment}"
+# Keep the recovery proof aligned with the same optional host-port overrides
+# that Compose uses for the two proxy replicas. These are non-secret routing
+# values; credentials remain in the private header file below.
+publish_host="$(verification_env LITELLM_PUBLISH_HOST)"
+litellm_1_port="$(verification_env LITELLM_1_PORT)"
+litellm_2_port="$(verification_env LITELLM_2_PORT)"
+master_file="$tmpdir/master-key"
+headers_file="$tmpdir/admin.headers"
+printf '%s' "$master_key" > "$master_file"
+chmod 600 "$master_file"
+{ printf 'Authorization: Bearer '; tr -d '\r\n' < "$master_file"; printf '\n'; } > "$headers_file"
+chmod 600 "$headers_file"
+unset master_key
 
 probe() {
   docker exec "$1" python3 -c 'import redis; p=open("/run/secrets/redis_password").read().strip(); assert redis.Redis(host="redis", password=p, socket_connect_timeout=2, socket_timeout=2).ping()'

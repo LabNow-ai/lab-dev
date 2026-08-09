@@ -5,12 +5,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${SCRIPT_DIR}/verification-lib.sh"
 ENV_FILE="${LITELLM_SMOKE_ENV_FILE:-${DEMO_DIR}/.env}"
 export COMPOSE_PROJECT_NAME="${LITELLM_COMPOSE_PROJECT:-litellm-baseline}"
 MODE="single"
 SECURITY_CHECK=false
 REVOCATION_SLO_MS="${LITELLM_REVOCATION_SLO_MS:-30000}"
 SUMMARY_FILE="${LITELLM_SMOKE_SUMMARY_FILE:-}"
+verification_run_id="${VERIFICATION_RUN_ID:-standalone}"
 block_elapsed_ms=""
 delete_elapsed_ms=""
 result="failed"
@@ -21,11 +23,13 @@ usage_result="not_run"
 block_result="not_run"
 delete_result="not_run"
 shared_rpm_limit_result="not_applicable"
-shared_enforcement_result="not_applicable"
+shared_tpm_limit_result="not_applicable"
 shared_spend_counter_result="not_applicable"
+limiter_source="not_applicable"
 idempotency_recovery_result="not_applicable"
 migration_result="not_run"
 security_scan_result="not_run"
+content_logging_scan_result="not_run"
 cleanup_result="not_run"
 redis_container=""
 redis_network=""
@@ -48,6 +52,7 @@ done
 if [[ -z "$SUMMARY_FILE" ]]; then
   SUMMARY_FILE="$DEMO_DIR/artifacts/p1-${MODE}-summary.json"
 fi
+verification_invalidate_report "$SUMMARY_FILE"
 
 need() { command -v "$1" >/dev/null || { echo "required command missing: $1" >&2; exit 2; }; }
 need curl; need jq; need rg
@@ -211,11 +216,18 @@ request_admin() {
 
 cleanup_request_admin() {
   local method="$1" path="$2" payload_file="$3"
-  local curl_args=(--silent --show-error --max-time 15 --request "$method" "$BASE_URL$path" --header "@$admin_headers" --output /dev/null)
+  local curl_args=(--silent --show-error --fail --max-time 15 --request "$method" "$BASE_URL$path" --header "@$admin_headers" --output /dev/null)
   if [[ -n "$payload_file" ]]; then
     curl_args+=(--data-binary "@$payload_file")
   fi
   curl "${curl_args[@]}" >/dev/null 2>&1
+}
+
+assert_test_resources_removed() {
+  local counts_file="$tmpdir/cleanup-counts.txt" counts
+  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "SELECT (SELECT count(*) FROM \"LiteLLM_UserTable\" WHERE user_id LIKE '\''p1-smoke-user-%'\''), (SELECT count(*) FROM \"LiteLLM_CredentialsTable\" WHERE credential_name LIKE '\''p1-smoke-upstream-%'\''), (SELECT count(*) FROM \"LiteLLM_ProxyModelTable\" WHERE model_name LIKE '\''p1-smoke-model-%'\''), (SELECT count(*) FROM \"LiteLLM_VerificationToken\" WHERE key_alias LIKE '\''p1-smoke-%'\'');"' > "$counts_file"
+  counts="$(tr -d '[:space:]' < "$counts_file")"
+  [[ "$counts" == "0|0|0|0" ]]
 }
 
 cleanup() {
@@ -246,6 +258,7 @@ cleanup() {
   if [[ -n "$test_user" ]]; then
     cleanup_request_admin POST /user/delete "$tmpdir/user-delete.json" || cleanup_ok=false
   fi
+  assert_test_resources_removed || cleanup_ok=false
   if [[ "$cleanup_ok" == true ]]; then cleanup_result="passed"; else cleanup_result="failed"; exit_code=1; fi
   unset master_key_file upstream_key_file upstream_base_file upstream_model_file upstream_provider_file
   rm -rf "$tmpdir"
@@ -256,7 +269,7 @@ cleanup() {
   elif [[ "$result" != skipped ]]; then
     result="failed"
   fi
-  write_summary || true
+  write_summary
   exit "$exit_code"
 }
 trap cleanup EXIT
@@ -307,9 +320,9 @@ assert_migration_evidence() {
   commit="$(git -C "$DEMO_DIR/../.." rev-parse HEAD)"
   image_id="$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)"
   [[ -f "$report" ]] || { echo "missing current migration report: $report" >&2; return 1; }
-  jq -e --arg commit "$commit" --arg image_id "$image_id" '
+  jq -e --arg commit "$commit" --arg image_id "$image_id" --arg run_id "$verification_run_id" '
     .mode == "migration" and .result == "passed" and .phase == "completed" and
-    .commit == $commit and .image_id == $image_id and .proxy_replicas_started == false and
+    .verification_run_id == $run_id and .commit == $commit and .image_id == $image_id and .proxy_replicas_started == false and
     .content_redacted == true
   ' "$report" >/dev/null
 }
@@ -328,8 +341,10 @@ runtime_security_check() {
     ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$process_file" &&
     ! rg -q --file "$tmpdir/prompt-marker" "$logs_file" &&
     ! rg -q --file "$tmpdir/tool-marker" "$logs_file" &&
+    ! rg -q --file "$tmpdir/response-marker" "$logs_file" &&
     ! rg -q --file "$tmpdir/prompt-marker" "$db_content_file" &&
     ! rg -q --file "$tmpdir/tool-marker" "$db_content_file" &&
+    ! rg -q --file "$tmpdir/response-marker" "$db_content_file" &&
     ! git ls-files -z | xargs -0 rg -n --pcre2 '(?:sk-|Bearer[[:space:]]+)[A-Za-z0-9_-]{24,}' -- >/dev/null 2>&1 &&
     [[ "$(stat -f '%Lp' "$admin_headers" 2>/dev/null || stat -c '%a' "$admin_headers")" == "600" ]]
 }
@@ -423,6 +438,12 @@ wait_for_rejection() {
   done
 }
 
+assert_proxy_limiter_response() {
+  local response_file="$1" header_file="$2" limit_kind="$3"
+  [[ "$2" == "429" ]] &&
+    jq -e --arg kind "$limit_kind" '(.error // .detail // .message // "") | tostring | test("litellm|" + $kind + ".*(limit|rate)|rate.*" + $kind; "i")' "$response_file" >/dev/null
+}
+
 write_summary() {
   mkdir -p "$(dirname "$SUMMARY_FILE")"
   chmod 700 "$(dirname "$SUMMARY_FILE")"
@@ -431,8 +452,8 @@ write_summary() {
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg phase "$smoke_phase" --arg exit_code "$smoke_exit_code" \
-    --arg result "$result" --arg migration "$migration_result" --arg chat "$chat_result" --arg stream "$stream_result" --arg tool "$tool_result" --arg usage "$usage_result" --arg block "$block_result" --arg delete "$delete_result" --arg shared_rpm "$shared_rpm_limit_result" --arg shared_enforcement "$shared_enforcement_result" --arg shared_spend "$shared_spend_counter_result" --arg idempotency "$idempotency_recovery_result" --arg cleanup "$cleanup_result" --arg security "$security_scan_result" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,result:$result,phase:$phase,exit_code:($exit_code|tonumber?),migration:$migration,chat:$chat,stream:$stream,tool:$tool,usage:$usage,block:$block,delete:$delete,shared_rpm_limit:$shared_rpm,shared_enforcement:$shared_enforcement,shared_spend_counter:$shared_spend,idempotency_recovery:$idempotency,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:$cleanup,security_scan:$security,content_redacted:true}' \
+    --arg run_id "$verification_run_id" --arg result "$result" --arg migration "$migration_result" --arg chat "$chat_result" --arg stream "$stream_result" --arg tool "$tool_result" --arg usage "$usage_result" --arg block "$block_result" --arg delete "$delete_result" --arg shared_rpm "$shared_rpm_limit_result" --arg shared_tpm "$shared_tpm_limit_result" --arg shared_spend "$shared_spend_counter_result" --arg limiter_source "$limiter_source" --arg idempotency "$idempotency_recovery_result" --arg cleanup "$cleanup_result" --arg security "$security_scan_result" --arg content_logging "$content_logging_scan_result" \
+    '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,result:$result,phase:$phase,exit_code:($exit_code|tonumber?),migration:$migration,chat:$chat,stream:$stream,tool:$tool,usage:$usage,block:$block,delete:$delete,shared_rpm_limit:$shared_rpm,shared_tpm_limit:$shared_tpm,shared_spend_log_visibility:$shared_spend,limiter_source:$limiter_source,idempotency_recovery:$idempotency,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:$cleanup,security_scan:$security,content_logging_scan:$content_logging,content_redacted:true}' \
     > "$SUMMARY_FILE"
   chmod 600 "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
@@ -483,6 +504,7 @@ write_private_value "$tmpdir/credential-name" "$credential_name"
 write_private_value "$tmpdir/model-name" "$model_name"
 write_private_value "$tmpdir/prompt-marker" "p1-redaction-prompt-$suffix"
 write_private_value "$tmpdir/tool-marker" "p1-redaction-tool-$suffix"
+write_private_value "$tmpdir/response-marker" "p1-redaction-response-$suffix"
 # This identifier is intentionally non-sensitive. LiteLLM 1.97.0 may emit a
 # parser warning with a function name when an upstream tool call is malformed;
 # the sensitive marker stays in the tool schema body, which the scan verifies
@@ -580,10 +602,10 @@ if [[ "$MODE" == "ha" ]]; then
   echo "PASS HA pre-revocation: second replica accepted the virtual key."
 fi
 
-jq -n --rawfile model "$tmpdir/model-name" --rawfile prompt "$tmpdir/prompt-marker" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: ($prompt | rtrimstr("\n"))}], max_tokens: 16}' > "$tmpdir/chat-request.json"
+jq -n --rawfile model "$tmpdir/model-name" --rawfile prompt "$tmpdir/prompt-marker" --rawfile response_marker "$tmpdir/response-marker" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: (($prompt | rtrimstr("\n")) + " Return exactly this marker: " + ($response_marker | rtrimstr("\n")))}], max_tokens: 32}' > "$tmpdir/chat-request.json"
 chmod 600 "$tmpdir/chat-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/chat.json"
-jq -e '.choices[0].message.content | type == "string"' "$tmpdir/chat.json" >/dev/null
+jq -e --rawfile response_marker "$tmpdir/response-marker" '.choices[0].message.content | type == "string" and contains($response_marker | rtrimstr("\n"))' "$tmpdir/chat.json" >/dev/null
 chat_result="passed"
 
 if [[ "$MODE" == "ha" ]]; then
@@ -630,8 +652,9 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_action_payload delete "$rate_key_file" "$tmpdir/rate-key-cleanup.json"
   request_data_post "$BASE_URL" "$rate_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/rate-first.json"
   rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
-  [[ "$rate_code" == "429" ]] || { echo "shared RPM limit was bypassed by peer: http=$rate_code" >&2; exit 1; }
+  assert_proxy_limiter_response "$tmpdir/rate-second.json" "$rate_code" rpm || { echo "shared RPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
   shared_rpm_limit_result="passed"
+  limiter_source="litellm_proxy"
   echo "PASS HA shared RPM: peer rejected the second request with 429."
 
   # Budget is enforced after the first real request. The second request goes
@@ -649,8 +672,8 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_action_payload delete "$enforcement_key_file" "$tmpdir/enforcement-key-cleanup.json"
   request_data_post "$BASE_URL" "$enforcement_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/budget-first.json"
   budget_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$enforcement_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/budget-second.json" --write-out '%{http_code}' || true)"
-  [[ "$budget_code" == "429" ]] || { echo "shared TPM limit was bypassed by peer: http=$budget_code" >&2; exit 1; }
-  shared_enforcement_result="passed"
+  assert_proxy_limiter_response "$tmpdir/budget-second.json" "$budget_code" tpm || { echo "shared TPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
+  shared_tpm_limit_result="passed"
   echo "PASS HA shared TPM enforcement: peer rejected the second request with 429."
 fi
 
@@ -679,5 +702,6 @@ delete_result="passed"
 
 runtime_security_check
 security_scan_result="passed"
+content_logging_scan_result="passed"
 smoke_phase="completed"
 echo "PASS complete: user/credential/model/key cleanup, explicit GET models, chat/stream/tool, token-bearing spend, and independent block/delete propagation."
