@@ -304,7 +304,7 @@ cleanup() {
     result="failed"
   fi
   write_summary || exit_code=1
-  exit "$exit_code"
+  return "$exit_code"
 }
 trap cleanup EXIT
 
@@ -540,7 +540,7 @@ assert_migration_evidence
 migration_result="passed"
 echo "PASS readiness: PostgreSQL connected; Redis independently reachable from LiteLLM replica(s)."
 
-suffix="$(date +%s)-$RANDOM"
+suffix="$(date +%s)-$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
 test_prefix="p1-smoke-${verification_run_id#p1-}-$suffix"
 test_user="${test_prefix}-user"
 credential_name="${test_prefix}-upstream"
