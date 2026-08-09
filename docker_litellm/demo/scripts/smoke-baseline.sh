@@ -233,6 +233,7 @@ assert_test_resources_removed() {
 cleanup() {
   local exit_code=$?
   local cleanup_ok=true
+  trap - EXIT
   set +e
   if [[ -n "$redis_container" && -n "$redis_network" ]]; then
     docker network connect --alias redis "$redis_network" "$redis_container" >/dev/null 2>&1 || true

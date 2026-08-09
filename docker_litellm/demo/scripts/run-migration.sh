@@ -18,6 +18,7 @@ verification_run_id="${VERIFICATION_RUN_ID:-standalone}"
 verification_invalidate_report "$summary_file"
 cleanup() {
   local exit_code=$?
+  trap - EXIT
   umask 077
   mkdir -p "$(dirname "$summary_file")"
   chmod 700 "$(dirname "$summary_file")"

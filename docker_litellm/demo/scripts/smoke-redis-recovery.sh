@@ -37,6 +37,7 @@ write_summary() {
 
 cleanup() {
   local exit_code=$?
+  trap - EXIT
   set +e
   if [[ -n "$container" && -n "$network" ]]; then
     docker network connect --alias redis "$network" "$container" >/dev/null 2>&1 || true
