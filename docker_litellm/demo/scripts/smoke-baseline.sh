@@ -225,7 +225,7 @@ cleanup_request_admin() {
 
 assert_test_resources_removed() {
   local counts_file="$tmpdir/cleanup-counts.txt" counts
-  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "SELECT (SELECT count(*) FROM \"LiteLLM_UserTable\" WHERE user_id LIKE '\''p1-smoke-user-%'\''), (SELECT count(*) FROM \"LiteLLM_CredentialsTable\" WHERE credential_name LIKE '\''p1-smoke-upstream-%'\''), (SELECT count(*) FROM \"LiteLLM_ProxyModelTable\" WHERE model_name LIKE '\''p1-smoke-model-%'\''), (SELECT count(*) FROM \"LiteLLM_VerificationToken\" WHERE key_alias LIKE '\''p1-smoke-%'\'');"' > "$counts_file"
+  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T -e P1_CLEANUP_PREFIX="$test_prefix" postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "SELECT (SELECT count(*) FROM \"LiteLLM_UserTable\" WHERE user_id LIKE \$\$${P1_CLEANUP_PREFIX}%\$\$), (SELECT count(*) FROM \"LiteLLM_CredentialsTable\" WHERE credential_name LIKE \$\$${P1_CLEANUP_PREFIX}%\$\$), (SELECT count(*) FROM \"LiteLLM_ProxyModelTable\" WHERE model_name LIKE \$\$${P1_CLEANUP_PREFIX}%\$\$), (SELECT count(*) FROM \"LiteLLM_VerificationToken\" WHERE key_alias LIKE \$\$${P1_CLEANUP_PREFIX}%\$\$);"' > "$counts_file"
   counts="$(tr -d '[:space:]' < "$counts_file")"
   [[ "$counts" == "0|0|0|0" ]]
 }
@@ -496,9 +496,10 @@ migration_result="passed"
 echo "PASS readiness: PostgreSQL connected; Redis independently reachable from LiteLLM replica(s)."
 
 suffix="$(date +%s)-$RANDOM"
-test_user="p1-smoke-user-$suffix"
-credential_name="p1-smoke-upstream-$suffix"
-model_name="p1-smoke-model-$suffix"
+test_prefix="p1-smoke-${verification_run_id#p1-}-$suffix"
+test_user="${test_prefix}-user"
+credential_name="${test_prefix}-upstream"
+model_name="${test_prefix}-model"
 write_private_value "$tmpdir/test-user" "$test_user"
 write_private_value "$tmpdir/credential-name" "$credential_name"
 write_private_value "$tmpdir/model-name" "$model_name"
@@ -572,7 +573,7 @@ write_private_value "$tmpdir/model-id" "$model_id"
 jq -n --rawfile id "$tmpdir/model-id" '{id: ($id | rtrimstr("\n"))}' > "$tmpdir/model-delete.json"
 chmod 600 "$tmpdir/model-delete.json"
 
-write_private_value "$tmpdir/block-key-alias" "p1-smoke-block-$suffix"
+write_private_value "$tmpdir/block-key-alias" "${test_prefix}-block"
 private_file "$block_key_file"
 python3 -c 'import secrets; print("sk-p1-" + secrets.token_urlsafe(32))' > "$block_key_file"
 assert_private_file "$block_key_file"
@@ -642,7 +643,7 @@ smoke_phase="shared_limit_and_redis_recovery"
 
 if [[ "$MODE" == "ha" ]]; then
   # One request reaches replica 1; the same key must be RPM-limited on replica 2.
-  write_private_value "$tmpdir/rate-key-alias" "p1-smoke-rate-$suffix"
+  write_private_value "$tmpdir/rate-key-alias" "${test_prefix}-rate"
   make_key_payload "$tmpdir/rate-key-alias" "$tmpdir/rate-key-create.json"
   jq '.rpm_limit = 1' "$tmpdir/rate-key-create.json" > "$tmpdir/rate-key-limited.json"
   chmod 600 "$tmpdir/rate-key-limited.json"
@@ -657,9 +658,9 @@ if [[ "$MODE" == "ha" ]]; then
   limiter_source="litellm_proxy"
   echo "PASS HA shared RPM: peer rejected the second request with 429."
 
-  # Budget is enforced after the first real request. The second request goes
-  # to the other replica, so a 429 proves the counter is not replica-local.
-  write_private_value "$tmpdir/enforcement-key-alias" "p1-smoke-budget-$suffix"
+  # The second TPM-limited request goes to the other replica, so its 429 proves
+  # that the Redis-backed limiter is not replica-local.
+  write_private_value "$tmpdir/enforcement-key-alias" "${test_prefix}-tpm"
   make_key_payload "$tmpdir/enforcement-key-alias" "$tmpdir/enforcement-key-create.json"
   # Use a separate shared TPM gate. It is enforced by the Redis-backed limiter
   # before the second replica accepts a request, unlike asynchronous SpendLog
@@ -684,7 +685,7 @@ wait_for_rejection "$block_headers" block
 block_result="passed"
 
 # Delete is validated with a different, previously unblocked key.
-write_private_value "$tmpdir/delete-key-alias" "p1-smoke-delete-$suffix"
+write_private_value "$tmpdir/delete-key-alias" "${test_prefix}-delete"
 make_key_payload "$tmpdir/delete-key-alias" "$tmpdir/delete-key-create.json"
 request_admin POST /key/generate "$tmpdir/delete-key-create.json" "$tmpdir/delete-key.json"
 make_key_header "$tmpdir/delete-key.json" "$delete_key_file" "$delete_headers"
