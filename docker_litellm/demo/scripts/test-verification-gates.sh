@@ -57,6 +57,73 @@ rg -q -- 'curl_args=\(--silent --show-error --fail' "$script_dir/smoke-baseline.
 ! rg -n -- 'source "\$env_file"|source "\$\{env_file\}"' "$script_dir/run-migration.sh" "$script_dir/smoke-redis-recovery.sh"
 rg -q 'config --environment > "\$verification_environment_file"' "$script_dir/verification-lib.sh"
 
+# Exercise the exact limiter-source predicate used by smoke-baseline.sh. The
+# fixture replaces only `docker compose ... logs`; no service, .env, or
+# upstream call is involved. This keeps a provider 429 from being mistaken for
+# the proxy's Redis-backed RPM/TPM limiter.
+load_smoke_limiter_predicate() {
+  # Keep this extraction intentionally narrow: the production function remains
+  # the single source of truth, while the fixture provides its log dependency.
+  local predicate_file="$tmpdir/smoke-limiter-predicate.sh"
+  sed -n '/^assert_proxy_limiter_response() {/,/^}$/p' "$script_dir/smoke-baseline.sh" > "$predicate_file"
+  chmod 600 "$predicate_file"
+  source "$predicate_file"
+}
+
+fixture_docker() {
+  # assert_proxy_limiter_response only asks Docker for a bounded Compose log
+  # stream. Do not forward any fixture argument to a real Docker process.
+  cat "$limiter_fixture_log"
+}
+
+assert_limiter_fixture() {
+  local fixture_name="$1" response_file="$2" headers_file="$3" limit_kind="$4" expected_result="$5"
+  local limiter_fixture_log="$tmpdir/${fixture_name}.logs"
+  local ENV_FILE="$tmpdir/fixture.env" DEMO_DIR="$demo_dir"
+  printf '%s\n' 'POST /v1/chat/completions HTTP/1.1" 429' > "$limiter_fixture_log"
+  docker() { fixture_docker "$@"; }
+  load_smoke_limiter_predicate
+  if assert_proxy_limiter_response "$response_file" "$headers_file" 429 "$limit_kind" '2026-01-01T00:00:00Z'; then
+    [[ "$expected_result" == pass ]] || { echo "accepted $fixture_name fixture" >&2; exit 1; }
+  else
+    [[ "$expected_result" == reject ]] || { echo "rejected valid $fixture_name fixture" >&2; exit 1; }
+  fi
+  unset -f docker
+}
+
+# A fake provider/upstream response has a conventional 429 body and headers,
+# even with an otherwise matching local access-log line. It lacks LiteLLM's
+# proxy-only rate_limit_type and Limit type evidence and must be rejected.
+upstream_body="$tmpdir/upstream-429.json"
+upstream_headers="$tmpdir/upstream-429.headers"
+printf '%s\n' '{"error":{"message":"upstream provider rate limit exceeded","type":"rate_limit_error"}}' > "$upstream_body"
+printf '%s\n' 'HTTP/1.1 429 Too Many Requests' 'retry-after: 1' 'x-ratelimit-remaining-requests: 0' > "$upstream_headers"
+assert_limiter_fixture upstream-429 "$upstream_body" "$upstream_headers" rpm reject
+
+# LiteLLM's proxy limiter fixture has the stable matching header and detail;
+# this proves the fixture harness accepts the same positive RPM evidence that
+# the real HA smoke requires.
+proxy_body="$tmpdir/litellm-proxy-429.json"
+proxy_headers="$tmpdir/litellm-proxy-429.headers"
+printf '%s\n' '{"detail":"Rate limit exceeded. Limit type: requests"}' > "$proxy_body"
+printf '%s\n' 'HTTP/1.1 429 Too Many Requests' 'rate_limit_type: requests' > "$proxy_headers"
+assert_limiter_fixture litellm-proxy-429 "$proxy_body" "$proxy_headers" rpm pass
+
+# RPM and TPM evidence are type-specific. A 429 with a valid-looking proxy
+# shape but the wrong type must not satisfy either opposite limiter assertion.
+rpm_mismatch_body="$tmpdir/rpm-type-mismatch.json"
+rpm_mismatch_headers="$tmpdir/rpm-type-mismatch.headers"
+printf '%s\n' '{"detail":"Rate limit exceeded. Limit type: tokens"}' > "$rpm_mismatch_body"
+printf '%s\n' 'HTTP/1.1 429 Too Many Requests' 'rate_limit_type: tokens' > "$rpm_mismatch_headers"
+assert_limiter_fixture rpm-type-mismatch "$rpm_mismatch_body" "$rpm_mismatch_headers" rpm reject
+
+tpm_mismatch_body="$tmpdir/tpm-type-mismatch.json"
+tpm_mismatch_headers="$tmpdir/tpm-type-mismatch.headers"
+printf '%s\n' '{"detail":"Rate limit exceeded. Limit type: requests"}' > "$tpm_mismatch_body"
+printf '%s\n' 'HTTP/1.1 429 Too Many Requests' 'rate_limit_type: requests' > "$tpm_mismatch_headers"
+assert_limiter_fixture tpm-type-mismatch "$tpm_mismatch_body" "$tpm_mismatch_headers" tpm reject
+echo "PASS limiter-source fixtures: upstream 429 and RPM/TPM type mismatches rejected; LiteLLM proxy 429 accepted."
+
 # Compose's dotenv parser must not evaluate shell substitutions. This isolated
 # Compose file uses no project secrets and verifies the same config command
 # that the runtime scripts use.
