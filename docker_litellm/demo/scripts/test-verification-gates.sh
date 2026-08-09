@@ -54,6 +54,37 @@ docker compose --env-file "$tmpdir/malicious.env" -f "$tmpdir/compose.yml" confi
 [[ ! -e "$marker" ]] || { echo "dotenv command substitution executed" >&2; exit 1; }
 rg -Fq 'PAYLOAD=$(touch ' "$tmpdir/effective.env"
 
+# The aggregate gate must also reject structurally plausible but incomplete
+# evidence: a missing timestamp, a failed migration, or a forged limiter claim.
+started_at="2026-01-01T00:00:00Z"
+make_reports() {
+  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",content_redacted:true,proxy_replicas_started:false}' > "$tmpdir/p1-migration-summary.json"
+  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"single",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-single-summary.json"
+  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"ha",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",shared_rpm_limit:"passed",shared_tpm_limit:"passed",shared_spend_log_visibility:"passed",idempotency_recovery:"passed",limiter_source:"litellm_proxy",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-ha-summary.json"
+  jq -n --arg run_id "$run_id" --arg started_at "$started_at" \
+    '{verification_run_id:$run_id,commit:"head",image_id:"image",tested_at:$started_at,mode:"ha",result:"passed",phase:"completed",redis_recovery:"passed",content_redacted:true,security_scan:"passed"}' > "$tmpdir/p1-redis-recovery.json"
+}
+# These are deliberately rejected before any report can become final. They use
+# a synthetic commit, so the current checkout mismatch is an additional guard.
+make_reports
+jq 'del(.tested_at)' "$tmpdir/p1-single-summary.json" > "$tmpdir/single.tmp" && mv "$tmpdir/single.tmp" "$tmpdir/p1-single-summary.json"
+if VERIFICATION_RUN_ID="$run_id" VERIFICATION_STARTED_AT="$started_at" LITELLM_ARTIFACTS_DIR="$tmpdir" "$script_dir/aggregate-verification-summary.sh" >/dev/null 2>&1; then
+  echo "aggregate accepted a report without tested_at" >&2; exit 1
+fi
+make_reports
+jq '.result="failed"' "$tmpdir/p1-migration-summary.json" > "$tmpdir/migration.tmp" && mv "$tmpdir/migration.tmp" "$tmpdir/p1-migration-summary.json"
+if VERIFICATION_RUN_ID="$run_id" VERIFICATION_STARTED_AT="$started_at" LITELLM_ARTIFACTS_DIR="$tmpdir" "$script_dir/aggregate-verification-summary.sh" >/dev/null 2>&1; then
+  echo "aggregate accepted a failed migration" >&2; exit 1
+fi
+make_reports
+jq '.limiter_source="provider"' "$tmpdir/p1-ha-summary.json" > "$tmpdir/ha.tmp" && mv "$tmpdir/ha.tmp" "$tmpdir/p1-ha-summary.json"
+if VERIFICATION_RUN_ID="$run_id" VERIFICATION_STARTED_AT="$started_at" LITELLM_ARTIFACTS_DIR="$tmpdir" "$script_dir/aggregate-verification-summary.sh" >/dev/null 2>&1; then
+  echo "aggregate accepted a forged limiter claim" >&2; exit 1
+fi
+
 if [[ "$with_running_stack" == true ]]; then
   negative_summary="$tmpdir/cleanup-negative.json"
   if VERIFICATION_RUN_ID="$run_id" LITELLM_SMOKE_SUMMARY_FILE="$negative_summary" \

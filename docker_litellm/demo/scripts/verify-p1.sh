@@ -4,8 +4,10 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 demo_dir="$(cd "${script_dir}/.." && pwd)"
-run_id="${VERIFICATION_RUN_ID:-$(python3 -c 'import secrets; print("p1-" + secrets.token_hex(16))')}"
+source "${script_dir}/verification-lib.sh"
+run_id="$(verification_new_run_id)"
 export VERIFICATION_RUN_ID="$run_id"
+export VERIFICATION_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # P1's documented local provider mapping is explicit. It is non-secret and
 # prevents a template/default mismatch from silently selecting another SDK.
 export LITELLM_SMOKE_UPSTREAM_PROVIDER="${LITELLM_SMOKE_UPSTREAM_PROVIDER:-deepseek}"
@@ -14,7 +16,12 @@ cleanup_stack() { "${compose[@]}" --profile single --profile ha --profile migrat
 trap cleanup_stack EXIT
 
 cleanup_stack
+for report in p1-migration-summary.json p1-single-summary.json p1-ha-summary.json p1-redis-recovery.json p1-final-summary.json; do
+  verification_invalidate_report "${demo_dir}/artifacts/${report}"
+done
+"${script_dir}/test-verification-gates.sh"
 "${script_dir}/run-migration.sh"
+"${script_dir}/verify-migration-concurrency.sh"
 "${script_dir}/run-migration.sh"
 "${compose[@]}" --profile single up -d --wait postgres redis litellm-1
 "${script_dir}/smoke-baseline.sh" --mode single

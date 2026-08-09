@@ -59,7 +59,6 @@ done
 if [[ -z "$SUMMARY_FILE" ]]; then
   SUMMARY_FILE="$DEMO_DIR/artifacts/p1-${MODE}-summary.json"
 fi
-verification_invalidate_report "$SUMMARY_FILE"
 
 # Covers precondition failures before the resource-aware cleanup trap is ready.
 # It invalidates any stale report and writes a non-passing, redacted result.
@@ -125,6 +124,10 @@ if [[ "$SECURITY_CHECK" == true ]]; then
   trap - EXIT
   exit 0
 fi
+
+# A real producer invalidates its old result before all remaining preconditions.
+# `--security-check` is read-only and must never touch an existing summary.
+verification_invalidate_report "$SUMMARY_FILE"
 
 # Run the static negative checks in every real smoke too. A successful report
 # cannot claim a security result that was not actually executed.
@@ -488,14 +491,13 @@ wait_for_rejection() {
 }
 
 assert_proxy_limiter_response() {
-  local response_file="$1" http_code="$2" limit_kind="$3"
+  local response_file="$1" http_code="$2" limit_kind="$3" since="$4" expected_type
+  if [[ "$limit_kind" == rpm ]]; then expected_type=requests; else expected_type=tokens; fi
   [[ "$http_code" == "429" ]] &&
-    jq -e --arg kind "$limit_kind" '
-      (.error // .detail // .message // "") | tostring | ascii_downcase |
-      test("rate limit exceeded") and
-      (if $kind == "rpm" then test("requests|rpm") else test("tokens|tpm") end)
+    jq -e --arg expected_type "$expected_type" '
+      [(.error.rate_limit_type? // .rate_limit_type? // empty)] | index($expected_type) != null
     ' "$response_file" >/dev/null &&
-    docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-1 litellm-2 |
+    docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color --since "$since" litellm-1 litellm-2 |
       rg -q 'parallel_request_limiter_v3|ProxyRateLimitError'
 }
 
@@ -717,9 +719,10 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_header "$tmpdir/rate-key.json" "$rate_key_file" "$rate_headers"
   rate_key_created=true
   make_key_action_payload delete "$rate_key_file" "$tmpdir/rate-key-cleanup.json"
+  rate_limiter_since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   request_data_post "$BASE_URL" "$rate_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/rate-first.json"
   rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
-  assert_proxy_limiter_response "$tmpdir/rate-second.json" "$rate_code" rpm || { echo "shared RPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
+  assert_proxy_limiter_response "$tmpdir/rate-second.json" "$rate_code" rpm "$rate_limiter_since" || { echo "shared RPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
   shared_rpm_limit_result="passed"
   limiter_source="litellm_proxy"
   echo "PASS HA shared RPM: peer rejected the second request with 429."
@@ -737,9 +740,10 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_header "$tmpdir/enforcement-key.json" "$enforcement_key_file" "$enforcement_headers"
   enforcement_key_created=true
   make_key_action_payload delete "$enforcement_key_file" "$tmpdir/enforcement-key-cleanup.json"
+  tpm_limiter_since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   request_data_post "$BASE_URL" "$enforcement_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/budget-first.json"
   tpm_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$enforcement_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/tpm-second.json" --write-out '%{http_code}' || true)"
-  assert_proxy_limiter_response "$tmpdir/tpm-second.json" "$tpm_code" tpm || { echo "shared TPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
+  assert_proxy_limiter_response "$tmpdir/tpm-second.json" "$tpm_code" tpm "$tpm_limiter_since" || { echo "shared TPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
   shared_tpm_limit_result="passed"
   echo "PASS HA shared TPM enforcement: peer rejected the second request with 429."
 fi
