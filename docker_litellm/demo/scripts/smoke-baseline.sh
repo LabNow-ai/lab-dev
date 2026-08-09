@@ -315,16 +315,21 @@ assert_migration_evidence() {
 }
 
 runtime_security_check() {
-  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt"
+  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt" db_content_file="$tmpdir/spendlog-db-content.txt"
   docker inspect svc-litellm-1 > "$inspect_file"
   if [[ "$MODE" == ha ]]; then docker inspect svc-litellm-2 >> "$inspect_file"; fi
   docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-1 > "$logs_file" 2>&1
   if [[ "$MODE" == ha ]]; then docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-2 >> "$logs_file" 2>&1; fi
   docker exec "$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)" ps -eo args > "$process_file"
+  # Query only P1 test SpendLog content into the private work directory. This
+  # validates the database representation independently of the API response.
+  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT coalesce(messages::text, '\''\'') || coalesce(response::text, '\''\'') || coalesce(proxy_server_request::text, '\''\'') FROM \"LiteLLM_SpendLogs\" WHERE \"user\" LIKE '\''p1-smoke-user-%'\'';"' > "$db_content_file"
   ! rg -q 'UPSTREAM_(API_KEY|BASE_URL|MODEL)=' "$inspect_file" &&
     ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$process_file" &&
     ! rg -q --file "$tmpdir/prompt-marker" "$logs_file" &&
     ! rg -q --file "$tmpdir/tool-marker" "$logs_file" &&
+    ! rg -q --file "$tmpdir/prompt-marker" "$db_content_file" &&
+    ! rg -q --file "$tmpdir/tool-marker" "$db_content_file" &&
     ! git ls-files -z | xargs -0 rg -n --pcre2 '(?:sk-|Bearer[[:space:]]+)[A-Za-z0-9_-]{24,}' -- >/dev/null 2>&1 &&
     [[ "$(stat -f '%Lp' "$admin_headers" 2>/dev/null || stat -c '%a' "$admin_headers")" == "600" ]]
 }
@@ -478,6 +483,11 @@ write_private_value "$tmpdir/credential-name" "$credential_name"
 write_private_value "$tmpdir/model-name" "$model_name"
 write_private_value "$tmpdir/prompt-marker" "p1-redaction-prompt-$suffix"
 write_private_value "$tmpdir/tool-marker" "p1-redaction-tool-$suffix"
+# This identifier is intentionally non-sensitive. LiteLLM 1.97.0 may emit a
+# parser warning with a function name when an upstream tool call is malformed;
+# the sensitive marker stays in the tool schema body, which the scan verifies
+# is never persisted or logged.
+write_private_value "$tmpdir/tool-name" "p1_smoke_tool"
 
 jq -n --rawfile user "$tmpdir/test-user" '{user_id: ($user | rtrimstr("\n")), auto_create_key: false, user_role: "internal_user"}' > "$tmpdir/user-create.json"
 chmod 600 "$tmpdir/user-create.json"
@@ -596,13 +606,14 @@ request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/str
 rg -q '^data: ' "$tmpdir/stream.txt"
 stream_result="passed"
 
-jq -n --rawfile model "$tmpdir/model-name" --rawfile prompt "$tmpdir/prompt-marker" --rawfile tool "$tmpdir/tool-marker" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: ($prompt | rtrimstr("\n"))}], tools: [{type: "function", function: {name: ($tool | rtrimstr("\n")), description: "Return one integer.", parameters: {type: "object", properties: {answer: {type: "integer"}}, required: ["answer"]}}}], tool_choice: {type: "function", function: {name: ($tool | rtrimstr("\n"))}}, thinking: {type: "disabled"}, max_tokens: 32}' > "$tmpdir/tool-request.json"
+jq -n --rawfile model "$tmpdir/model-name" --rawfile prompt "$tmpdir/prompt-marker" --rawfile tool_name "$tmpdir/tool-name" --rawfile tool_marker "$tmpdir/tool-marker" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: ($prompt | rtrimstr("\n"))}], tools: [{type: "function", function: {name: ($tool_name | rtrimstr("\n")), description: ($tool_marker | rtrimstr("\n")), parameters: {type: "object", properties: {answer: {type: "integer", description: ($tool_marker | rtrimstr("\n"))}}, required: ["answer"]}}}], tool_choice: {type: "function", function: {name: ($tool_name | rtrimstr("\n"))}}, thinking: {type: "disabled"}, max_tokens: 32}' > "$tmpdir/tool-request.json"
 chmod 600 "$tmpdir/tool-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/tool-request.json" "$tmpdir/tool.json"
 if ! jq -e '.choices[0].message.tool_calls | type == "array" and length > 0' "$tmpdir/tool.json" >/dev/null; then
   echo "tool request returned no tool_calls" >&2
   exit 1
 fi
+tool_result="passed"
 assert_spend
 usage_result="passed"
 smoke_phase="shared_limit_and_redis_recovery"
