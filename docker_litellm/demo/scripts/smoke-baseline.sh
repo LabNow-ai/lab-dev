@@ -478,7 +478,8 @@ fi
 
 # P1 deliberately supports one explicit provider mapping.  Reject incomplete
 # or ambiguous combinations before any upstream-facing request is sent.
-case "$upstream_provider" in
+provider_normalized="$(printf '%s' "$upstream_provider" | tr '[:upper:]' '[:lower:]')"
+case "$provider_normalized" in
   deepseek)
     provider_prefix="deepseek"
     ;;
