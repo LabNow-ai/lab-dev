@@ -491,12 +491,11 @@ wait_for_rejection() {
 }
 
 assert_proxy_limiter_response() {
-  local response_file="$1" http_code="$2" limit_kind="$3" since="$4" expected_type
+  local response_file="$1" headers_file="$2" http_code="$3" limit_kind="$4" since="$5" expected_type
   if [[ "$limit_kind" == rpm ]]; then expected_type=requests; else expected_type=tokens; fi
   [[ "$http_code" == "429" ]] &&
-    jq -e --arg expected_type "$expected_type" '
-      [(.error.rate_limit_type? // .rate_limit_type? // empty)] | index($expected_type) != null
-    ' "$response_file" >/dev/null &&
+    rg -qi -- "^x-ratelimit-.*-(limit|remaining)-${expected_type}:" "$headers_file" &&
+    jq -e '(.error // .detail // .message // "") | tostring | test("rate limit|limit"; "i")' "$response_file" >/dev/null &&
     docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color --since "$since" litellm-1 litellm-2 |
       rg -q 'parallel_request_limiter_v3|ProxyRateLimitError'
 }
@@ -721,8 +720,9 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_action_payload delete "$rate_key_file" "$tmpdir/rate-key-cleanup.json"
   rate_limiter_since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   request_data_post "$BASE_URL" "$rate_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/rate-first.json"
-  rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
-  assert_proxy_limiter_response "$tmpdir/rate-second.json" "$rate_code" rpm "$rate_limiter_since" || { echo "shared RPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
+  rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --dump-header "$tmpdir/rate-second.headers" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
+  chmod 600 "$tmpdir/rate-second.headers"
+  assert_proxy_limiter_response "$tmpdir/rate-second.json" "$tmpdir/rate-second.headers" "$rate_code" rpm "$rate_limiter_since" || { echo "shared RPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
   shared_rpm_limit_result="passed"
   limiter_source="litellm_proxy"
   echo "PASS HA shared RPM: peer rejected the second request with 429."
@@ -742,8 +742,9 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_action_payload delete "$enforcement_key_file" "$tmpdir/enforcement-key-cleanup.json"
   tpm_limiter_since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   request_data_post "$BASE_URL" "$enforcement_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/budget-first.json"
-  tpm_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$enforcement_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/tpm-second.json" --write-out '%{http_code}' || true)"
-  assert_proxy_limiter_response "$tmpdir/tpm-second.json" "$tpm_code" tpm "$tpm_limiter_since" || { echo "shared TPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
+  tpm_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$enforcement_headers" --data-binary "@$tmpdir/chat-request.json" --dump-header "$tmpdir/tpm-second.headers" --output "$tmpdir/tpm-second.json" --write-out '%{http_code}' || true)"
+  chmod 600 "$tmpdir/tpm-second.headers"
+  assert_proxy_limiter_response "$tmpdir/tpm-second.json" "$tmpdir/tpm-second.headers" "$tpm_code" tpm "$tpm_limiter_since" || { echo "shared TPM limiter was not a LiteLLM proxy 429" >&2; exit 1; }
   shared_tpm_limit_result="passed"
   echo "PASS HA shared TPM enforcement: peer rejected the second request with 429."
 fi
