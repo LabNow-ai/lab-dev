@@ -21,6 +21,12 @@ source "$env_file"
 : "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in ignored local environment file}"
 : "${LITELLM_IMAGE:?missing LITELLM_IMAGE in ignored local environment file}"
 image_ref="$LITELLM_IMAGE"
+# Keep the recovery proof aligned with the same optional host-port overrides
+# that Compose uses for the two proxy replicas. These are non-secret routing
+# values; credentials remain in the private header file below.
+publish_host="${LITELLM_PUBLISH_HOST:-127.0.0.1}"
+litellm_1_port="${LITELLM_1_PORT:-4000}"
+litellm_2_port="${LITELLM_2_PORT:-4001}"
 umask 077
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-redis-recovery.XXXXXX")"
 chmod 700 "$tmpdir"
@@ -96,9 +102,9 @@ probe svc-litellm-1
 probe svc-litellm-2
 
 # This is an authenticated LiteLLM call after recovery, not only a socket PING.
-curl --silent --show-error --fail --max-time 20 --request GET http://127.0.0.1:4000/v1/models \
+curl --silent --show-error --fail --max-time 20 --request GET "http://${publish_host}:${litellm_1_port}/v1/models" \
   --header "@$headers_file" --output "$tmpdir/models-1.json"
-curl --silent --show-error --fail --max-time 20 --request GET http://127.0.0.1:4001/v1/models \
+curl --silent --show-error --fail --max-time 20 --request GET "http://${publish_host}:${litellm_2_port}/v1/models" \
   --header "@$headers_file" --output "$tmpdir/models-2.json"
 jq -e '.data | type == "array"' "$tmpdir/models-1.json" "$tmpdir/models-2.json" >/dev/null
 post_recovery_call="passed"
