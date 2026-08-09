@@ -105,7 +105,10 @@ source "$ENV_FILE"
 : "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in local environment file}"
 : "${LITELLM_IMAGE:?missing LITELLM_IMAGE in local environment file}"
 image_ref="$LITELLM_IMAGE"
-upstream_provider="${UPSTREAM_PROVIDER:-}"
+# Provider selection is smoke-client-only. The explicit override is useful
+# when a legacy ignored Compose env has an old provider label; it never enters
+# the LiteLLM container and is not a credential.
+upstream_provider="${LITELLM_SMOKE_UPSTREAM_PROVIDER:-${UPSTREAM_PROVIDER:-}}"
 
 # An `.env` may use `export NAME=...`; remove that export attribute before
 # mktemp, chmod, tr, curl, jq, or any other child process is started.
