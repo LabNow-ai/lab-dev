@@ -480,7 +480,7 @@ fi
 # or ambiguous combinations before any upstream-facing request is sent.
 provider_normalized="$(printf '%s' "$upstream_provider" | tr '[:upper:]' '[:lower:]')"
 case "$provider_normalized" in
-  deepseek|deepseek-direct|deepseek_direct)
+  deepseek|deepseek-direct|deepseek_direct|deepseek-v4|deepseek_v4|deepseek-v4-flash|deepseek_v4_flash)
     provider_prefix="deepseek"
     ;;
   *)
