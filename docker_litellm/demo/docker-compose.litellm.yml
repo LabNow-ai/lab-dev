@@ -35,9 +35,10 @@ x-litellm-common: &litellm-common
     start_period: 30s
 
 services:
-  # Run LiteLLM's own migration-only mode once before proxy replicas start.
-  # `service_completed_successfully` serializes migration across single/HA
-  # Compose starts; Prisma's migration table makes repeated jobs idempotent.
+  # Run LiteLLM's own migration-only mode explicitly before proxy replicas.
+  # Replicas intentionally do not depend on this profile service: the deploy
+  # workflow calls scripts/run-migration.sh after postgres/redis are healthy.
+  # Prisma's migration table makes repeated one-shot jobs idempotent.
   litellm-migrate:
     <<: *litellm-common
     container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}

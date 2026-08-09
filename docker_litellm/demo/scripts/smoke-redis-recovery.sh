@@ -11,22 +11,70 @@ container=""
 network=""
 phase="initializing"
 result="failed"
+security_scan="not_run"
+post_recovery_call="not_run"
+tmpdir=""
+
+[[ -f "$env_file" ]] || { echo "missing ignored local environment file" >&2; exit 2; }
+# shellcheck disable=SC1090
+source "$env_file"
+: "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in ignored local environment file}"
+: "${LITELLM_IMAGE:?missing LITELLM_IMAGE in ignored local environment file}"
+image_ref="$LITELLM_IMAGE"
+umask 077
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-redis-recovery.XXXXXX")"
+chmod 700 "$tmpdir"
+master_file="$tmpdir/master-key"
+headers_file="$tmpdir/admin.headers"
+printf '%s' "$LITELLM_MASTER_KEY" > "$master_file"
+chmod 600 "$master_file"
+{ printf 'Authorization: Bearer '; tr -d '\r\n' < "$master_file"; printf '\n'; } > "$headers_file"
+chmod 600 "$headers_file"
+export -n LITELLM_MASTER_KEY POSTGRES_PASSWORD REDIS_PASSWORD UPSTREAM_API_KEY \
+  UPSTREAM_BASE_URL UPSTREAM_MODEL 2>/dev/null || true
+unset LITELLM_MASTER_KEY POSTGRES_PASSWORD REDIS_PASSWORD UPSTREAM_API_KEY \
+  UPSTREAM_BASE_URL UPSTREAM_MODEL
+
+write_summary() {
+  umask 077
+  mkdir -p "$(dirname "$summary_file")"
+  chmod 700 "$(dirname "$summary_file")"
+  jq -n \
+    --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" \
+    --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
+    --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg result "$result" --arg phase "$phase" --arg security_scan "$security_scan" \
+    --arg post_recovery_call "$post_recovery_call" \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:"ha",result:$result,phase:$phase,redis_recovery:$result,post_recovery_call:$post_recovery_call,security_scan:$security_scan,content_redacted:true}' \
+    > "$summary_file"
+  chmod 600 "$summary_file"
+}
 
 cleanup() {
+  local exit_code=$?
   set +e
   if [[ -n "$container" && -n "$network" ]]; then
     docker network connect --alias redis "$network" "$container" >/dev/null 2>&1 || true
   fi
-  mkdir -p "$(dirname "$summary_file")"
-  chmod 700 "$(dirname "$summary_file")"
-  jq -n --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg result "$result" --arg phase "$phase" \
-    '{commit:$commit,tested_at:$tested_at,redis_recovery:$result,phase:$phase,credentials_or_content:false}' > "$summary_file"
-  chmod 600 "$summary_file"
+  rm -rf "$tmpdir"
+  [[ ! -e "$tmpdir" ]] || { result="failed"; phase="temporary_cleanup_failed"; }
+  if (( exit_code != 0 )); then result="failed"; fi
+  write_summary
 }
 trap cleanup EXIT
 
 probe() {
   docker exec "$1" python3 -c 'import redis; p=open("/run/secrets/redis_password").read().strip(); assert redis.Redis(host="redis", password=p, socket_connect_timeout=2, socket_timeout=2).ping()'
+}
+
+runtime_security_check() {
+  docker inspect "$container" > "$tmpdir/redis-inspect.json"
+  docker inspect svc-litellm-1 svc-litellm-2 > "$tmpdir/litellm-inspect.json"
+  docker exec "$container" ps -eo args > "$tmpdir/redis-processes.txt"
+  ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$tmpdir/redis-processes.txt" &&
+    ! rg -q 'UPSTREAM_(API_KEY|BASE_URL|MODEL)=' "$tmpdir/litellm-inspect.json" &&
+    rg -q '/run/secrets/redis_password' "$tmpdir/redis-inspect.json" &&
+    [[ "$(stat -f '%Lp' "$headers_file" 2>/dev/null || stat -c '%a' "$headers_file")" == "600" ]]
 }
 
 container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q redis)"
@@ -46,6 +94,17 @@ docker network connect --alias redis "$network" "$container"
 sleep $((recovery_timeout + 1))
 probe svc-litellm-1
 probe svc-litellm-2
-result="passed"
+
+# This is an authenticated LiteLLM call after recovery, not only a socket PING.
+curl --silent --show-error --fail --max-time 20 --request GET http://127.0.0.1:4000/v1/models \
+  --header "@$headers_file" --output "$tmpdir/models-1.json"
+curl --silent --show-error --fail --max-time 20 --request GET http://127.0.0.1:4001/v1/models \
+  --header "@$headers_file" --output "$tmpdir/models-2.json"
+jq -e '.data | type == "array"' "$tmpdir/models-1.json" "$tmpdir/models-2.json" >/dev/null
+post_recovery_call="passed"
+
+runtime_security_check
+security_scan="passed"
 phase="completed"
-echo "PASS Redis recovery: both bounded probes failed during outage and recovered afterward."
+result="passed"
+echo "PASS Redis recovery: both bounded probes failed during outage, recovered, and both LiteLLM replicas served an authenticated GET afterward."

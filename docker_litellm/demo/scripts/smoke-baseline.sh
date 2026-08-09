@@ -13,8 +13,20 @@ REVOCATION_SLO_MS="${LITELLM_REVOCATION_SLO_MS:-30000}"
 SUMMARY_FILE="${LITELLM_SMOKE_SUMMARY_FILE:-}"
 block_elapsed_ms=""
 delete_elapsed_ms=""
-redis_recovery_result="not_run"
-shared_spend_counter_result="not_run"
+result="failed"
+chat_result="not_run"
+stream_result="not_run"
+tool_result="not_run"
+usage_result="not_run"
+block_result="not_run"
+delete_result="not_run"
+shared_rpm_limit_result="not_applicable"
+shared_enforcement_result="not_applicable"
+shared_spend_counter_result="not_applicable"
+idempotency_recovery_result="not_applicable"
+migration_result="not_run"
+security_scan_result="not_run"
+cleanup_result="not_run"
 redis_container=""
 redis_network=""
 smoke_phase="initializing"
@@ -32,6 +44,10 @@ while (($#)); do
     *) usage; exit 2 ;;
   esac
 done
+
+if [[ -z "$SUMMARY_FILE" ]]; then
+  SUMMARY_FILE="$DEMO_DIR/artifacts/p1-${MODE}-summary.json"
+fi
 
 need() { command -v "$1" >/dev/null || { echo "required command missing: $1" >&2; exit 2; }; }
 need curl; need jq; need rg
@@ -76,16 +92,24 @@ if [[ "$SECURITY_CHECK" == true ]]; then
   exit 0
 fi
 
+# Run the static negative checks in every real smoke too. A successful report
+# cannot claim a security result that was not actually executed.
+security_check
+security_scan_result="static_passed"
+
 [[ -f "$ENV_FILE" ]] || { echo "missing local environment file: $ENV_FILE (copy .env.example)" >&2; exit 2; }
 
 # Do not use `set -a`: sourced values must not leak to child processes.
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 : "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in local environment file}"
+: "${LITELLM_IMAGE:?missing LITELLM_IMAGE in local environment file}"
+image_ref="$LITELLM_IMAGE"
+upstream_provider="${UPSTREAM_PROVIDER:-}"
 
 # An `.env` may use `export NAME=...`; remove that export attribute before
 # mktemp, chmod, tr, curl, jq, or any other child process is started.
-export -n LITELLM_MASTER_KEY UPSTREAM_API_KEY UPSTREAM_BASE_URL UPSTREAM_MODEL \
+export -n LITELLM_IMAGE LITELLM_MASTER_KEY UPSTREAM_API_KEY UPSTREAM_BASE_URL UPSTREAM_MODEL UPSTREAM_PROVIDER \
   POSTGRES_PASSWORD REDIS_PASSWORD DATABASE_URL 2>/dev/null || true
 
 if [[ "$MODE" == "single" ]]; then
@@ -143,7 +167,7 @@ assert_private_file "$upstream_base_file"
 assert_private_file "$upstream_model_file"
 
 # No child process needs these values. Compose reads its own --env-file.
-unset LITELLM_MASTER_KEY UPSTREAM_API_KEY UPSTREAM_BASE_URL UPSTREAM_MODEL \
+unset LITELLM_MASTER_KEY UPSTREAM_API_KEY UPSTREAM_BASE_URL UPSTREAM_MODEL UPSTREAM_PROVIDER \
   POSTGRES_PASSWORD REDIS_PASSWORD DATABASE_URL
 
 test_user=""
@@ -153,12 +177,15 @@ model_id=""
 block_key_created=false
 delete_key_created=false
 rate_key_created=false
+enforcement_key_created=false
 block_key_file="$tmpdir/block.key"
 delete_key_file="$tmpdir/delete.key"
 rate_key_file="$tmpdir/rate.key"
 block_headers="$tmpdir/block.headers"
 delete_headers="$tmpdir/delete.headers"
 rate_headers="$tmpdir/rate.headers"
+enforcement_key_file="$tmpdir/enforcement.key"
+enforcement_headers="$tmpdir/enforcement.headers"
 
 request_admin() {
   local method="$1" path="$2" payload_file="$3" output_file="$4"
@@ -175,38 +202,48 @@ cleanup_request_admin() {
   if [[ -n "$payload_file" ]]; then
     curl_args+=(--data-binary "@$payload_file")
   fi
-  curl "${curl_args[@]}" >/dev/null 2>&1 || true
+  curl "${curl_args[@]}" >/dev/null 2>&1
 }
 
 cleanup() {
   local exit_code=$?
+  local cleanup_ok=true
   set +e
   if [[ -n "$redis_container" && -n "$redis_network" ]]; then
     docker network connect --alias redis "$redis_network" "$redis_container" >/dev/null 2>&1 || true
   fi
   if [[ "$delete_key_created" == true ]]; then
-    cleanup_request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json"
+    cleanup_request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json" || cleanup_ok=false
   fi
   if [[ "$rate_key_created" == true ]]; then
-    cleanup_request_admin POST /key/delete "$tmpdir/rate-key-cleanup.json"
+    cleanup_request_admin POST /key/delete "$tmpdir/rate-key-cleanup.json" || cleanup_ok=false
+  fi
+  if [[ "$enforcement_key_created" == true ]]; then
+    cleanup_request_admin POST /key/delete "$tmpdir/enforcement-key-cleanup.json" || cleanup_ok=false
   fi
   if [[ "$block_key_created" == true ]]; then
-    cleanup_request_admin POST /key/delete "$tmpdir/block-key-cleanup.json"
+    cleanup_request_admin POST /key/delete "$tmpdir/block-key-cleanup.json" || cleanup_ok=false
   fi
   if [[ -n "$model_id" ]]; then
-    cleanup_request_admin POST /model/delete "$tmpdir/model-delete.json"
+    cleanup_request_admin POST /model/delete "$tmpdir/model-delete.json" || cleanup_ok=false
   fi
   if [[ -n "$credential_name" ]]; then
-    cleanup_request_admin DELETE "/credentials/$credential_name" ""
+    cleanup_request_admin DELETE "/credentials/$credential_name" "" || cleanup_ok=false
   fi
   if [[ -n "$test_user" ]]; then
-    cleanup_request_admin POST /user/delete "$tmpdir/user-delete.json"
+    cleanup_request_admin POST /user/delete "$tmpdir/user-delete.json" || cleanup_ok=false
   fi
-  smoke_exit_code="$exit_code"
-  write_summary || true
+  if [[ "$cleanup_ok" == true ]]; then cleanup_result="passed"; else cleanup_result="failed"; exit_code=1; fi
   unset master_key_file upstream_key_file upstream_base_file upstream_model_file
   rm -rf "$tmpdir"
-  [[ ! -e "$tmpdir" ]] || { echo "temporary smoke directory cleanup failed" >&2; exit 1; }
+  if [[ -e "$tmpdir" ]]; then cleanup_result="failed"; exit_code=1; fi
+  smoke_exit_code="$exit_code"
+  if [[ "$exit_code" == 0 && "$smoke_phase" == completed && "$cleanup_result" == passed && "$security_scan_result" == passed ]]; then
+    result="passed"
+  elif [[ "$result" != skipped ]]; then
+    result="failed"
+  fi
+  write_summary || true
   exit "$exit_code"
 }
 trap cleanup EXIT
@@ -252,14 +289,51 @@ now_ms() {
   python3 -c 'import time; print(time.time_ns() // 1_000_000)'
 }
 
+assert_migration_evidence() {
+  local report="$DEMO_DIR/artifacts/p1-migration-summary.json" commit image_id
+  commit="$(git -C "$DEMO_DIR/../.." rev-parse HEAD)"
+  image_id="$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)"
+  [[ -f "$report" ]] || { echo "missing current migration report: $report" >&2; return 1; }
+  jq -e --arg commit "$commit" --arg image_id "$image_id" '
+    .mode == "migration" and .result == "passed" and .phase == "completed" and
+    .commit == $commit and .image_id == $image_id and .proxy_replicas_started == false and
+    .content_redacted == true
+  ' "$report" >/dev/null
+}
+
+runtime_security_check() {
+  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt"
+  docker inspect svc-litellm-1 > "$inspect_file"
+  if [[ "$MODE" == ha ]]; then docker inspect svc-litellm-2 >> "$inspect_file"; fi
+  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-1 > "$logs_file" 2>&1
+  if [[ "$MODE" == ha ]]; then docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-2 >> "$logs_file" 2>&1; fi
+  docker exec "$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)" ps -eo args > "$process_file"
+  ! rg -q 'UPSTREAM_(API_KEY|BASE_URL|MODEL)=' "$inspect_file" &&
+    ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$process_file" &&
+    ! rg -q --file "$tmpdir/prompt-marker" "$logs_file" &&
+    ! rg -q --file "$tmpdir/tool-marker" "$logs_file" &&
+    ! git ls-files -z | xargs -0 rg -n --pcre2 '(?:sk-|Bearer[[:space:]]+)[A-Za-z0-9_-]{24,}' -- >/dev/null 2>&1 &&
+    [[ "$(stat -f '%Lp' "$admin_headers" 2>/dev/null || stat -c '%a' "$admin_headers")" == "600" ]]
+}
+
 make_key_payload() {
-  local alias_file="$1" payload_file="$2"
-  jq -n \
-    --rawfile alias "$alias_file" \
-    --rawfile user "$tmpdir/test-user" \
-    --rawfile model "$tmpdir/model-name" \
-    '{key_alias: ($alias | rtrimstr("\n")), user_id: ($user | rtrimstr("\n")), models: [($model | rtrimstr("\n"))], duration: "15m", max_budget: 0.05, rpm_limit: 10, tpm_limit: 1000, key_type: "llm_api", allowed_routes: ["/v1/models", "/v1/chat/completions"]}' \
-    > "$payload_file"
+  local alias_file="$1" payload_file="$2" explicit_key_file="${3:-}"
+  if [[ -n "$explicit_key_file" ]]; then
+    jq -n \
+      --rawfile alias "$alias_file" \
+      --rawfile user "$tmpdir/test-user" \
+      --rawfile model "$tmpdir/model-name" \
+      --rawfile key "$explicit_key_file" \
+      '{key: ($key | rtrimstr("\n")), key_alias: ($alias | rtrimstr("\n")), user_id: ($user | rtrimstr("\n")), models: [($model | rtrimstr("\n"))], duration: "15m", max_budget: 0.05, rpm_limit: 10, tpm_limit: 1000, key_type: "llm_api", allowed_routes: ["/v1/models", "/v1/chat/completions", "/key/info"]}' \
+      > "$payload_file"
+  else
+    jq -n \
+      --rawfile alias "$alias_file" \
+      --rawfile user "$tmpdir/test-user" \
+      --rawfile model "$tmpdir/model-name" \
+      '{key_alias: ($alias | rtrimstr("\n")), user_id: ($user | rtrimstr("\n")), models: [($model | rtrimstr("\n"))], duration: "15m", max_budget: 0.05, rpm_limit: 10, tpm_limit: 1000, key_type: "llm_api", allowed_routes: ["/v1/models", "/v1/chat/completions"]}' \
+      > "$payload_file"
+  fi
   chmod 600 "$payload_file"
 }
 
@@ -326,15 +400,15 @@ wait_for_rejection() {
 }
 
 write_summary() {
-  [[ -n "$SUMMARY_FILE" ]] || return 0
   mkdir -p "$(dirname "$SUMMARY_FILE")"
   chmod 700 "$(dirname "$SUMMARY_FILE")"
   jq -n \
     --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
-    --arg image_id "$(docker image inspect "${LITELLM_IMAGE:-}" --format '{{.Id}}' 2>/dev/null || true)" \
+    --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg redis_recovery "$redis_recovery_result" --arg shared_spend_counter "$shared_spend_counter_result" --arg phase "$smoke_phase" --arg exit_code "$smoke_exit_code" \
-    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,result:(if $exit_code == "0" then "passed" else "failed" end),phase:$phase,migration:"external run-migration.sh",chat:true,stream:true,tool:true,usage:true,shared_rpm_limit:($mode == "ha"),shared_spend_counter:$shared_spend_counter,redis_recovery:$redis_recovery,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:"completed",security_scan:"passed",content_redacted:true}' \
+    --arg mode "$MODE" --arg block_ms "$block_elapsed_ms" --arg delete_ms "$delete_elapsed_ms" --arg phase "$smoke_phase" --arg exit_code "$smoke_exit_code" \
+    --arg result "$result" --arg migration "$migration_result" --arg chat "$chat_result" --arg stream "$stream_result" --arg tool "$tool_result" --arg usage "$usage_result" --arg block "$block_result" --arg delete "$delete_result" --arg shared_rpm "$shared_rpm_limit_result" --arg shared_enforcement "$shared_enforcement_result" --arg shared_spend "$shared_spend_counter_result" --arg idempotency "$idempotency_recovery_result" --arg cleanup "$cleanup_result" --arg security "$security_scan_result" \
+    '{commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:$mode,result:$result,phase:$phase,exit_code:($exit_code|tonumber?),migration:$migration,chat:$chat,stream:$stream,tool:$tool,usage:$usage,block:$block,delete:$delete,shared_rpm_limit:$shared_rpm,shared_enforcement:$shared_enforcement,shared_spend_counter:$shared_spend,idempotency_recovery:$idempotency,block_elapsed_ms:($block_ms|tonumber?),delete_elapsed_ms:($delete_ms|tonumber?),cleanup:$cleanup,security_scan:$security,content_redacted:true}' \
     > "$SUMMARY_FILE"
   chmod 600 "$SUMMARY_FILE"
   echo "PASS summary: $SUMMARY_FILE"
@@ -372,6 +446,8 @@ wait_ready "$BASE_URL"
 if [[ "$MODE" == "ha" ]]; then wait_ready "$PEER_URL"; fi
 assert_redis litellm-1
 if [[ "$MODE" == "ha" ]]; then assert_redis litellm-2; fi
+assert_migration_evidence
+migration_result="passed"
 echo "PASS readiness: PostgreSQL connected; Redis independently reachable from LiteLLM replica(s)."
 
 suffix="$(date +%s)-$RANDOM"
@@ -381,6 +457,8 @@ model_name="p1-smoke-model-$suffix"
 write_private_value "$tmpdir/test-user" "$test_user"
 write_private_value "$tmpdir/credential-name" "$credential_name"
 write_private_value "$tmpdir/model-name" "$model_name"
+write_private_value "$tmpdir/prompt-marker" "p1-redaction-prompt-$suffix"
+write_private_value "$tmpdir/tool-marker" "p1-redaction-tool-$suffix"
 
 jq -n --rawfile user "$tmpdir/test-user" '{user_id: ($user | rtrimstr("\n")), auto_create_key: false, user_role: "internal_user"}' > "$tmpdir/user-create.json"
 chmod 600 "$tmpdir/user-create.json"
@@ -391,13 +469,16 @@ jq -e --rawfile user "$tmpdir/test-user" '.user_id == ($user | rtrimstr("\n"))' 
 
 if [[ ! -s "$upstream_key_file" || ! -s "$upstream_base_file" || ! -s "$upstream_model_file" ]]; then
   echo "PENDING upstream smoke: set UPSTREAM_API_KEY, UPSTREAM_BASE_URL and UPSTREAM_MODEL in ignored local environment file."
+  chat_result="pending"; stream_result="pending"; tool_result="pending"; usage_result="pending"
+  block_result="pending"; delete_result="pending"; idempotency_recovery_result="pending"
+  result="skipped"; smoke_phase="pending_upstream"
   echo "PASS infrastructure: PostgreSQL persistence, shared Redis reachability, management authentication and cleanup path are ready."
   exit 0
 fi
 
 # P1 deliberately supports one explicit provider mapping.  Reject incomplete
 # or ambiguous combinations before any upstream-facing request is sent.
-case "${UPSTREAM_PROVIDER:-}" in
+case "$upstream_provider" in
   deepseek)
     provider_prefix="deepseek"
     ;;
@@ -440,11 +521,24 @@ jq -n --rawfile id "$tmpdir/model-id" '{id: ($id | rtrimstr("\n"))}' > "$tmpdir/
 chmod 600 "$tmpdir/model-delete.json"
 
 write_private_value "$tmpdir/block-key-alias" "p1-smoke-block-$suffix"
-make_key_payload "$tmpdir/block-key-alias" "$tmpdir/block-key-create.json"
-request_admin POST /key/generate "$tmpdir/block-key-create.json" "$tmpdir/block-key.json"
-make_key_header "$tmpdir/block-key.json" "$block_key_file" "$block_headers"
-hash_key_file "$block_key_file" "$tmpdir/block-key-sha256"
+private_file "$block_key_file"
+python3 -c 'import secrets; print("sk-p1-" + secrets.token_urlsafe(32))' > "$block_key_file"
+assert_private_file "$block_key_file"
+make_key_payload "$tmpdir/block-key-alias" "$tmpdir/block-key-create.json" "$block_key_file"
+# Intentionally discard the create response to model a client-side timeout.
+# The stable caller-generated key is then recovered through /key/info using
+# its 0600 Authorization header, never a query parameter or process argument.
+request_admin POST /key/generate "$tmpdir/block-key-create.json" /dev/null
 block_key_created=true
+make_header_file "$block_headers" "$block_key_file"
+request_data_get "$BASE_URL" "$block_headers" /key/info "$tmpdir/key-recovery.json"
+jq -e --rawfile alias "$tmpdir/block-key-alias" '.key_alias == ($alias | rtrimstr("\n"))' "$tmpdir/key-recovery.json" >/dev/null
+retry_code="$(curl --silent --show-error --max-time 20 --request POST "$BASE_URL/key/generate" --header "@$admin_headers" --data-binary "@$tmpdir/block-key-create.json" --output "$tmpdir/key-retry.json" --write-out '%{http_code}' || true)"
+[[ "$retry_code" =~ ^(400|409|422)$ ]] || { echo "stable-key retry unexpectedly created a second resource: http=$retry_code" >&2; exit 1; }
+request_data_get "$BASE_URL" "$block_headers" /key/info "$tmpdir/key-recovery-after-retry.json"
+jq -e --rawfile alias "$tmpdir/block-key-alias" '.key_alias == ($alias | rtrimstr("\n"))' "$tmpdir/key-recovery-after-retry.json" >/dev/null
+idempotency_recovery_result="passed"
+hash_key_file "$block_key_file" "$tmpdir/block-key-sha256"
 make_key_action_payload delete "$block_key_file" "$tmpdir/block-key-cleanup.json"
 
 # GET must be explicit: this verifies both authorization and model visibility.
@@ -454,10 +548,11 @@ if [[ "$MODE" == "ha" ]]; then
   echo "PASS HA pre-revocation: second replica accepted the virtual key."
 fi
 
-jq -n --rawfile model "$tmpdir/model-name" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: "Reply with OK."}], max_tokens: 16}' > "$tmpdir/chat-request.json"
+jq -n --rawfile model "$tmpdir/model-name" --rawfile prompt "$tmpdir/prompt-marker" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: ($prompt | rtrimstr("\n"))}], max_tokens: 16}' > "$tmpdir/chat-request.json"
 chmod 600 "$tmpdir/chat-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/chat.json"
 jq -e '.choices[0].message.content | type == "string"' "$tmpdir/chat.json" >/dev/null
+chat_result="passed"
 
 if [[ "$MODE" == "ha" ]]; then
   peer_completion_ready=false
@@ -477,8 +572,9 @@ jq '. + {stream: true}' "$tmpdir/chat-request.json" > "$tmpdir/stream-request.js
 chmod 600 "$tmpdir/stream-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/stream-request.json" "$tmpdir/stream.txt"
 rg -q '^data: ' "$tmpdir/stream.txt"
+stream_result="passed"
 
-jq -n --rawfile model "$tmpdir/model-name" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: "Use the supplied function to answer 2+2."}], tools: [{type: "function", function: {name: "answer", description: "Return the answer.", parameters: {type: "object", properties: {answer: {type: "integer"}}, required: ["answer"]}}}], tool_choice: {type: "function", function: {name: "answer"}}, thinking: {type: "disabled"}, max_tokens: 32}' > "$tmpdir/tool-request.json"
+jq -n --rawfile model "$tmpdir/model-name" --rawfile prompt "$tmpdir/prompt-marker" --rawfile tool "$tmpdir/tool-marker" '{model: ($model | rtrimstr("\n")), messages: [{role: "user", content: ($prompt | rtrimstr("\n"))}], tools: [{type: "function", function: {name: ($tool | rtrimstr("\n")), description: "Return one integer.", parameters: {type: "object", properties: {answer: {type: "integer"}}, required: ["answer"]}}}], tool_choice: {type: "function", function: {name: ($tool | rtrimstr("\n"))}}, thinking: {type: "disabled"}, max_tokens: 32}' > "$tmpdir/tool-request.json"
 chmod 600 "$tmpdir/tool-request.json"
 request_data_post "$BASE_URL" "$block_headers" /v1/chat/completions "$tmpdir/tool-request.json" "$tmpdir/tool.json"
 if ! jq -e '.choices[0].message.tool_calls | type == "array" and length > 0' "$tmpdir/tool.json" >/dev/null; then
@@ -486,6 +582,7 @@ if ! jq -e '.choices[0].message.tool_calls | type == "array" and length > 0' "$t
   exit 1
 fi
 assert_spend
+usage_result="passed"
 smoke_phase="shared_limit_and_redis_recovery"
 
 if [[ "$MODE" == "ha" ]]; then
@@ -501,34 +598,31 @@ if [[ "$MODE" == "ha" ]]; then
   request_data_post "$BASE_URL" "$rate_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/rate-first.json"
   rate_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$rate_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/rate-second.json" --write-out '%{http_code}' || true)"
   [[ "$rate_code" == "429" ]] || { echo "shared RPM limit was bypassed by peer: http=$rate_code" >&2; exit 1; }
+  shared_rpm_limit_result="passed"
   echo "PASS HA shared RPM: peer rejected the second request with 429."
 
-  redis_container="$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)"
-  [[ -n "$redis_container" ]] || { echo "Redis container not found" >&2; exit 1; }
-  redis_network="$(docker inspect -f '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}' "$redis_container")"
-  [[ -n "$redis_network" ]] || { echo "Redis network not found" >&2; exit 1; }
-  # Disconnecting the Redis endpoint keeps LiteLLM processes runnable, so the
-  # bounded probes can prove failure without docker exec freezing on a paused
-  # target container.
-  docker network disconnect "$redis_network" "$redis_container"
-  if assert_redis litellm-1 >/dev/null 2>&1 || assert_redis litellm-2 >/dev/null 2>&1; then
-    docker network connect --alias redis "$redis_network" "$redis_container" >/dev/null || true
-    echo "Redis interruption did not fail both bounded probes" >&2
-    exit 1
-  fi
-  docker network connect --alias redis "$redis_network" "$redis_container"
-  sleep $(( ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5} + 1 ))
-  assert_redis litellm-1
-  assert_redis litellm-2
-  wait_model_access "$PEER_URL" "$block_headers" post-redis-recovery
-  redis_recovery_result="passed"
-  echo "PASS HA Redis recovery: both probes and peer key authorization recovered."
+  # Budget is enforced after the first real request. The second request goes
+  # to the other replica, so a 429 proves the counter is not replica-local.
+  write_private_value "$tmpdir/enforcement-key-alias" "p1-smoke-budget-$suffix"
+  make_key_payload "$tmpdir/enforcement-key-alias" "$tmpdir/enforcement-key-create.json"
+  jq '.key_max_budget = 0.000001' "$tmpdir/enforcement-key-create.json" > "$tmpdir/enforcement-key-limited.json"
+  chmod 600 "$tmpdir/enforcement-key-limited.json"
+  request_admin POST /key/generate "$tmpdir/enforcement-key-limited.json" "$tmpdir/enforcement-key.json"
+  make_key_header "$tmpdir/enforcement-key.json" "$enforcement_key_file" "$enforcement_headers"
+  enforcement_key_created=true
+  make_key_action_payload delete "$enforcement_key_file" "$tmpdir/enforcement-key-cleanup.json"
+  request_data_post "$BASE_URL" "$enforcement_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/budget-first.json"
+  budget_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$enforcement_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/budget-second.json" --write-out '%{http_code}' || true)"
+  [[ "$budget_code" == "429" ]] || { echo "shared budget/Spend limit was bypassed by peer: http=$budget_code" >&2; exit 1; }
+  shared_enforcement_result="passed"
+  echo "PASS HA shared budget/Spend enforcement: peer rejected post-spend request with 429."
 fi
 
 make_key_action_payload block "$block_key_file" "$tmpdir/block-key.json"
 smoke_phase="revocation"
 request_admin POST /key/block "$tmpdir/block-key.json" "$tmpdir/block-response.json"
 wait_for_rejection "$block_headers" block
+block_result="passed"
 
 # Delete is validated with a different, previously unblocked key.
 write_private_value "$tmpdir/delete-key-alias" "p1-smoke-delete-$suffix"
@@ -544,8 +638,10 @@ if [[ "$MODE" == "ha" ]]; then
 fi
 request_admin POST /key/delete "$tmpdir/delete-key-cleanup.json" "$tmpdir/delete-response.json"
 wait_for_rejection "$delete_headers" delete
+delete_key_created=false
+delete_result="passed"
 
+runtime_security_check
+security_scan_result="passed"
 smoke_phase="completed"
-smoke_exit_code="0"
-write_summary
 echo "PASS complete: user/credential/model/key cleanup, explicit GET models, chat/stream/tool, token-bearing spend, and independent block/delete propagation."

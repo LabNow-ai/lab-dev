@@ -12,7 +12,15 @@ CI_PROJECT_SPACE=$(echo "${CI_PROJECT_BRANCH}" | cut -f1 -d'/')
 
 # If on the main branch, image namespace will be same as CI_PROJECT_NAME's name space;
 # else (not main branch), image namespace = {CI_PROJECT_NAME's name space} + "0" + {1st substr before / in CI_PROJECT_SPACE}.
-[ "${CI_PROJECT_BRANCH}" = "main" ] && NAMESPACE_SUFFIX="" || NAMESPACE_SUFFIX="0${CI_PROJECT_SPACE}" ;
+# A local LabNow service build is an intentionally local-only artifact, but it
+# must keep the stable `labnow` namespace used by each service's Compose file.
+# CI keeps the historical branch-suffixed namespace behaviour unchanged. This
+# avoids pretending a development branch is `main` just to obtain its tag.
+if [ "${GITHUB_ACTIONS:-false}" = "true" ] && [ "${CI_PROJECT_BRANCH}" != "main" ]; then
+    NAMESPACE_SUFFIX="0${CI_PROJECT_SPACE}"
+else
+    NAMESPACE_SUFFIX=""
+fi
 export CI_PROJECT_NAMESPACE="$(dirname ${CI_PROJECT_NAME})${NAMESPACE_SUFFIX}" ;
 
 export IMG_NAMESPACE=$(echo "${CI_PROJECT_NAMESPACE}" | awk '{print tolower($0)}')

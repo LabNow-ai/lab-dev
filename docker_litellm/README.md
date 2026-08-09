@@ -51,13 +51,18 @@ docker compose --env-file .env -f docker-compose.litellm.yml --profile single up
 
 ```bash
 ./scripts/run-migration.sh
-docker compose --env-file .env -f docker-compose.litellm.yml --profile single up -d litellm-1
+docker compose --env-file .env -f docker-compose.litellm.yml --profile single up -d --wait
+./scripts/smoke-baseline.sh --mode single
 ```
 
 双副本测试使用同一 PostgreSQL 与 Redis，但有两个 HTTP 入口：
 
 ```bash
-docker compose --env-file .env -f docker-compose.litellm.yml --profile ha up -d
+./scripts/run-migration.sh
+docker compose --env-file .env -f docker-compose.litellm.yml --profile ha up -d --wait
+./scripts/smoke-baseline.sh --mode ha
+./scripts/smoke-redis-recovery.sh
+./scripts/aggregate-verification-summary.sh
 ```
 
 HA 启动前同样先运行 `./scripts/run-migration.sh`，再执行上述命令。不要把 migration profile 与代理 profile 放入同一条 `up` 命令。
@@ -93,15 +98,17 @@ cd docker_litellm/demo
 ./scripts/smoke-baseline.sh --security-check
 ```
 
+在全新 checkout 中按以下顺序执行时，脚本自己生成而非复用历史文件：`p1-migration-summary.json`、`p1-single-summary.json`、`p1-ha-summary.json`、`p1-redis-recovery.json` 与最终 `p1-final-summary.json`（均在被忽略的 `artifacts/`）。聚合脚本只接受当前 `HEAD`、相同 image ID、`result=passed`、`phase=completed` 且脱敏的四份输入；任何缺失、失败、跳过或模式不符都会被拒绝。
+
 `--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x`、Compose 上游凭据注入和 Redis 密码命令行展开，并检查 Docker Secret、0600 临时文件与退出清理约束。
 
-`smoke-redis-recovery.sh` 在已启动的 HA 栈中临时断开 Redis 网络端点，验证两个副本的有界认证探针均失败，再恢复 `redis` alias、等待 breaker 窗口并确认探针恢复。它有独立的恢复 trap，不会让故障测试影响主 smoke 的资源清理。`aggregate-verification-summary.sh` 将主 HA 与 Redis 独立报告组合为不含密钥、密码、提示词和响应正文的最终 JSON 摘要。
+`smoke-redis-recovery.sh` 在已启动的 HA 栈中临时断开 Redis 网络端点，验证两个副本的有界认证探针均失败，再恢复 `redis` alias、等待 breaker 窗口并确认认证后的 `GET /v1/models` 恢复。它有独立的恢复 trap，不会让故障测试影响主 smoke 的资源清理。`aggregate-verification-summary.sh` 将 migration、single、HA 与 Redis 独立报告组合为不含密钥、密码、提示词和响应正文的最终 JSON 摘要。
 
-脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、生成受限虚拟 key、显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。DeepSeek V4 使用 `deepseek/<UPSTREAM_MODEL>` 的原生 provider，避免被通用 OpenAI provider 丢弃 `thinking` 参数。HA 模式会先证明第二副本接受 key，再轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
+脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、由调用方生成稳定高熵 virtual key 并故意丢弃首次创建响应，再用该 key 的 0600 Authorization header 调用 `/key/info` 恢复、验证相同 key 重试被拒绝而不会创建第二资源；随后显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。DeepSeek V4 使用 `deepseek/<UPSTREAM_MODEL>` 的原生 provider，避免被通用 OpenAI provider 丢弃 `thinking` 参数。HA 模式会先证明第二副本接受 key，再验证跨副本 RPM 和 post-spend budget 限制均返回 `429`，最后轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
 
 `LITELLM_MASTER_KEY`、上游 API key 与虚拟 key 不会作为 `curl`、`jq` 或其他子进程的命令参数传递。脚本以 `umask 077` 创建工作目录，所有 header、请求、响应和 key 文件均为 `0600`，退出时删除；创建的 user、credential、model 和两个测试 key 也会清理。上游凭据仅由 smoke 客户端读取，不会注入 LiteLLM Compose 容器。
 
-若未设置上游变量，脚本仍验证 LiteLLM readiness、PostgreSQL 连接、从每个 LiteLLM 副本到 Redis 的认证连通性、管理面认证和 user 清理路径，并以明确的 `PENDING upstream smoke` 退出成功。它不会伪造 chat、stream、tool、usage、block/delete 或撤销传播已通过。
+若未设置上游变量，脚本仍验证 LiteLLM readiness、PostgreSQL 连接、从每个 LiteLLM 副本到 Redis 的认证连通性、migration 证据和 user 清理路径，并以明确的 `result=skipped` / `phase=pending_upstream` 报告退出。它不会伪造 chat、stream、tool、usage、block/delete 或撤销传播已通过，最终聚合也会拒绝该报告。
 
 ## Readiness 与 Redis 结论
 
