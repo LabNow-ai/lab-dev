@@ -376,6 +376,12 @@ make_key_action_payload() {
   chmod 600 "$payload_file"
 }
 
+make_key_info_payload() {
+  local key_file="$1" payload_file="$2"
+  jq -n --rawfile key "$key_file" '{keys: [($key | rtrimstr("\n"))]}' > "$payload_file"
+  chmod 600 "$payload_file"
+}
+
 wait_model_access() {
   local url="$1" header_file="$2" label="$3" output_file i
   output_file="$tmpdir/$label-models.json"
@@ -540,20 +546,22 @@ python3 -c 'import secrets; print("sk-p1-" + secrets.token_urlsafe(32))' > "$blo
 assert_private_file "$block_key_file"
 make_key_payload "$tmpdir/block-key-alias" "$tmpdir/block-key-create.json" "$block_key_file"
 # Intentionally discard the create response to model a client-side timeout.
-# The stable caller-generated key is then recovered through /key/info using
-# its 0600 Authorization header, never a query parameter or process argument.
+# The stable caller-generated key is then recovered through LiteLLM 1.97.0's
+# admin-only /v2/key/info endpoint. The key stays in a 0600 request body;
+# it never appears in a query parameter, process argument or report.
 request_admin POST /key/generate "$tmpdir/block-key-create.json" /dev/null
 block_key_created=true
 make_header_file "$block_headers" "$block_key_file"
-request_data_get "$BASE_URL" "$block_headers" /key/info "$tmpdir/key-recovery.json"
-jq -e --rawfile alias "$tmpdir/block-key-alias" '.key_alias == ($alias | rtrimstr("\n"))' "$tmpdir/key-recovery.json" >/dev/null
+make_key_action_payload delete "$block_key_file" "$tmpdir/block-key-cleanup.json"
+make_key_info_payload "$block_key_file" "$tmpdir/key-recovery-request.json"
+request_admin POST /v2/key/info "$tmpdir/key-recovery-request.json" "$tmpdir/key-recovery.json"
+jq -e --rawfile alias "$tmpdir/block-key-alias" '.info | length == 1 and .[0].key_alias == ($alias | rtrimstr("\n"))' "$tmpdir/key-recovery.json" >/dev/null
 retry_code="$(curl --silent --show-error --max-time 20 --request POST "$BASE_URL/key/generate" --header "@$admin_headers" --data-binary "@$tmpdir/block-key-create.json" --output "$tmpdir/key-retry.json" --write-out '%{http_code}' || true)"
 [[ "$retry_code" =~ ^(400|409|422)$ ]] || { echo "stable-key retry unexpectedly created a second resource: http=$retry_code" >&2; exit 1; }
-request_data_get "$BASE_URL" "$block_headers" /key/info "$tmpdir/key-recovery-after-retry.json"
-jq -e --rawfile alias "$tmpdir/block-key-alias" '.key_alias == ($alias | rtrimstr("\n"))' "$tmpdir/key-recovery-after-retry.json" >/dev/null
+request_admin POST /v2/key/info "$tmpdir/key-recovery-request.json" "$tmpdir/key-recovery-after-retry.json"
+jq -e --rawfile alias "$tmpdir/block-key-alias" '.info | length == 1 and .[0].key_alias == ($alias | rtrimstr("\n"))' "$tmpdir/key-recovery-after-retry.json" >/dev/null
 idempotency_recovery_result="passed"
 hash_key_file "$block_key_file" "$tmpdir/block-key-sha256"
-make_key_action_payload delete "$block_key_file" "$tmpdir/block-key-cleanup.json"
 
 # GET must be explicit: this verifies both authorization and model visibility.
 wait_model_access "$BASE_URL" "$block_headers" primary
