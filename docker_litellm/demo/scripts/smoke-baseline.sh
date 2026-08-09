@@ -323,15 +323,13 @@ cleanup() {
     result="failed"
   fi
   write_summary || exit_code=1
-  # Bash may re-enter EXIT processing when `exit` is called from an EXIT
-  # handler, which previously truncated a just-written failed report. A failed
-  # cleanup terminates the shell with the default TERM action after disabling
-  # the handler; the persisted JSON remains the authoritative failure record.
+  # A failed cleanup must return non-zero after the atomic report is durable.
+  # Disable the EXIT handler first: sending TERM here also terminates callers
+  # of the real cleanup-negative gate in some Bash execution modes.
   if (( exit_code != 0 )); then
-    # Ensure the atomic rename is durably visible before the deliberate signal.
     sync "$SUMMARY_FILE" 2>/dev/null || sync
     trap - EXIT
-    kill -TERM "$$"
+    exit "$exit_code"
   fi
   return "$exit_code"
 }
