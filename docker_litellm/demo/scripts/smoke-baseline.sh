@@ -314,6 +314,8 @@ cleanup() {
   # cleanup terminates the shell with the default TERM action after disabling
   # the handler; the persisted JSON remains the authoritative failure record.
   if (( exit_code != 0 )); then
+    # Ensure the atomic rename is durably visible before the deliberate signal.
+    sync "$SUMMARY_FILE" 2>/dev/null || sync
     trap - EXIT
     kill -TERM "$$"
   fi
