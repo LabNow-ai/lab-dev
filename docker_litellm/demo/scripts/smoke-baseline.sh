@@ -323,7 +323,7 @@ runtime_security_check() {
   docker exec "$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)" ps -eo args > "$process_file"
   # Query only P1 test SpendLog content into the private work directory. This
   # validates the database representation independently of the API response.
-  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT coalesce(messages::text, '\''\'') || coalesce(response::text, '\''\'') || coalesce(proxy_server_request::text, '\''\'') FROM \"LiteLLM_SpendLogs\" WHERE \"user\" LIKE '\''p1-smoke-user-%'\'';"' > "$db_content_file"
+  docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT concat(messages::text, response::text, proxy_server_request::text) FROM \"LiteLLM_SpendLogs\" WHERE position(\$p\$p1-smoke-user-\$p\$ in \"user\") = 1;"' > "$db_content_file"
   ! rg -q 'UPSTREAM_(API_KEY|BASE_URL|MODEL)=' "$inspect_file" &&
     ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$process_file" &&
     ! rg -q --file "$tmpdir/prompt-marker" "$logs_file" &&
