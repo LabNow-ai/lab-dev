@@ -13,8 +13,8 @@ migration_report="${artifacts_dir}/p1-migration-summary.json"
 output="${LITELLM_AGGREGATE_SUMMARY_FILE:-${artifacts_dir}/p1-final-summary.json}"
 commit="$(git -C "$demo_dir/../.." rev-parse HEAD)"
 run_id="${VERIFICATION_RUN_ID:-}"
-[[ "$run_id" =~ ^p1-[a-f0-9]{32}$ ]] || { echo "missing verification run id" >&2; exit 2; }
 rm -f "$output"
+[[ "$run_id" =~ ^p1-[a-f0-9]{32}$ ]] || { echo "missing verification run id" >&2; exit 2; }
 
 for report in "$single_report" "$ha_report" "$redis_report" "$migration_report"; do
   [[ -f "$report" ]] || { echo "missing required report: $report" >&2; exit 2; }

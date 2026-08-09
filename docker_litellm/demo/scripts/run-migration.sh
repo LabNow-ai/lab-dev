@@ -17,19 +17,22 @@ tmpdir=""
 verification_run_id="${VERIFICATION_RUN_ID:-standalone}"
 verification_invalidate_report "$summary_file"
 cleanup() {
-  local exit_code=$?
+  local exit_code=$? summary_tmp
   trap - EXIT
   umask 077
   mkdir -p "$(dirname "$summary_file")"
   chmod 700 "$(dirname "$summary_file")"
+  summary_tmp="${summary_file}.tmp.$$"
   jq -n \
     --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg run_id "$verification_run_id" --arg result "$result" --arg phase "$phase" --argjson exit_code "$exit_code" \
     '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:"migration",result:$result,phase:$phase,exit_code:$exit_code,proxy_replicas_started:false,content_redacted:true}' \
-    > "$summary_file" || exit_code=1
-  chmod 600 "$summary_file" || exit_code=1
+    > "$summary_tmp" && chmod 600 "$summary_tmp" && mv "$summary_tmp" "$summary_file" || {
+      rm -f "$summary_tmp"
+      exit_code=1
+    }
   [[ -z "$tmpdir" ]] || rm -rf "$tmpdir"
   return "$exit_code"
 }

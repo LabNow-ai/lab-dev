@@ -6,6 +6,9 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 demo_dir="$(cd "${script_dir}/.." && pwd)"
 run_id="${VERIFICATION_RUN_ID:-$(python3 -c 'import secrets; print("p1-" + secrets.token_hex(16))')}"
 export VERIFICATION_RUN_ID="$run_id"
+# P1's documented local provider mapping is explicit. It is non-secret and
+# prevents a template/default mismatch from silently selecting another SDK.
+export LITELLM_SMOKE_UPSTREAM_PROVIDER="${LITELLM_SMOKE_UPSTREAM_PROVIDER:-deepseek}"
 compose=(docker compose --env-file "${demo_dir}/.env" -f "${demo_dir}/docker-compose.litellm.yml")
 cleanup_stack() { "${compose[@]}" --profile single --profile ha --profile migrate down >/dev/null 2>&1 || true; }
 trap cleanup_stack EXIT

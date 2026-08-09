@@ -8,7 +8,7 @@ source "${script_dir}/verification-lib.sh"
 env_file="${LITELLM_SMOKE_ENV_FILE:-${demo_dir}/.env}"
 summary_file="${LITELLM_REDIS_SUMMARY_FILE:-${demo_dir}/artifacts/p1-redis-recovery.json}"
 verification_run_id="${VERIFICATION_RUN_ID:-standalone}"
-recovery_timeout="${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}"
+recovery_timeout=""
 container=""
 network=""
 phase="initializing"
@@ -21,9 +21,11 @@ image_ref=""
 verification_invalidate_report "$summary_file"
 
 write_summary() {
+  local summary_tmp
   umask 077
   mkdir -p "$(dirname "$summary_file")"
   chmod 700 "$(dirname "$summary_file")"
+  summary_tmp="${summary_file}.tmp.$$"
   jq -n \
     --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
@@ -31,8 +33,7 @@ write_summary() {
     --arg run_id "$verification_run_id" --arg result "$result" --arg phase "$phase" --arg security_scan "$security_scan" \
     --arg post_recovery_call "$post_recovery_call" \
     '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,mode:"ha",result:$result,phase:$phase,redis_recovery:$result,post_recovery_call:$post_recovery_call,security_scan:$security_scan,content_redacted:true}' \
-    > "$summary_file"
-  chmod 600 "$summary_file"
+    > "$summary_tmp" && chmod 600 "$summary_tmp" && mv "$summary_tmp" "$summary_file"
 }
 
 cleanup() {
@@ -61,9 +62,12 @@ image_ref="$(verification_env LITELLM_IMAGE)"
 # Keep the recovery proof aligned with the same optional host-port overrides
 # that Compose uses for the two proxy replicas. These are non-secret routing
 # values; credentials remain in the private header file below.
-publish_host="$(verification_env LITELLM_PUBLISH_HOST)"
-litellm_1_port="$(verification_env LITELLM_1_PORT)"
-litellm_2_port="$(verification_env LITELLM_2_PORT)"
+  publish_host="$(verification_env LITELLM_PUBLISH_HOST)"
+  litellm_1_port="$(verification_env LITELLM_1_PORT)"
+  litellm_2_port="$(verification_env LITELLM_2_PORT)"
+  recovery_timeout="$(verification_env REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT)"
+  recovery_timeout="${recovery_timeout:-5}"
+  [[ "$recovery_timeout" =~ ^[0-9]+$ ]] || { echo "invalid Redis recovery timeout" >&2; exit 2; }
 master_file="$tmpdir/master-key"
 headers_file="$tmpdir/admin.headers"
 printf '%s' "$master_key" > "$master_file"

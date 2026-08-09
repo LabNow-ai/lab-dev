@@ -5,6 +5,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 demo_dir="$(cd "${script_dir}/.." && pwd)"
+with_running_stack=false
+[[ "${1:-}" != "--with-running-stack" ]] || with_running_stack=true
+[[ $# -eq 0 || "$with_running_stack" == true ]] || { echo "Usage: $0 [--with-running-stack]" >&2; exit 2; }
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-gates.XXXXXX")"
 chmod 700 "$tmpdir"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -21,6 +24,17 @@ if VERIFICATION_RUN_ID="$run_id" LITELLM_ARTIFACTS_DIR="$tmpdir" LITELLM_AGGREGA
   echo "aggregate accepted stale PASS reports" >&2
   exit 1
 fi
+[[ ! -e "$tmpdir/final.json" ]] || { echo "aggregate left a stale final report" >&2; exit 1; }
+
+# A producer must overwrite a pre-existing PASS before even checking a missing
+# environment file. The resulting report is explicitly non-passing.
+jq -n --arg run_id "$run_id" '{verification_run_id:$run_id,result:"passed",phase:"completed"}' > "$tmpdir/precondition.json"
+if VERIFICATION_RUN_ID="$run_id" LITELLM_SMOKE_ENV_FILE="$tmpdir/absent.env" LITELLM_SMOKE_SUMMARY_FILE="$tmpdir/precondition.json" \
+  "$script_dir/smoke-baseline.sh" --mode single >/dev/null 2>&1; then
+  echo "smoke unexpectedly accepted a missing environment file" >&2
+  exit 1
+fi
+jq -e '.result == "failed" and .phase == "precondition_failed"' "$tmpdir/precondition.json" >/dev/null
 
 # Cleanup failures must never be normalized to PASS. This checks the curl
 # transport invariant directly without sending a request.
@@ -28,4 +42,25 @@ rg -q 'cleanup_request_admin.*\(\)' "$script_dir/smoke-baseline.sh"
 rg -q -- 'curl_args=\(--silent --show-error --fail' "$script_dir/smoke-baseline.sh"
 ! rg -n -- 'source "\$env_file"|source "\$\{env_file\}"' "$script_dir/run-migration.sh" "$script_dir/smoke-redis-recovery.sh"
 rg -q 'config --environment > "\$verification_environment_file"' "$script_dir/verification-lib.sh"
-echo "PASS verification gates: stale reports and cleanup HTTP failure cannot pass."
+
+# Compose's dotenv parser must not evaluate shell substitutions. This isolated
+# Compose file uses no project secrets and verifies the same config command
+# that the runtime scripts use.
+marker="$tmpdir/dotenv-command-substitution-ran"
+printf '%s\n' 'services:' '  proof:' '    image: alpine:3.21' '    environment:' '      PROOF: ${PAYLOAD:?missing}' > "$tmpdir/compose.yml"
+printf 'PAYLOAD=$(touch %s)\n' "$marker" > "$tmpdir/malicious.env"
+docker compose --env-file "$tmpdir/malicious.env" -f "$tmpdir/compose.yml" config --environment > "$tmpdir/effective.env"
+[[ ! -e "$marker" ]] || { echo "dotenv command substitution executed" >&2; exit 1; }
+rg -Fq 'PAYLOAD=$(touch ' "$tmpdir/effective.env"
+
+if [[ "$with_running_stack" == true ]]; then
+  negative_summary="$tmpdir/cleanup-negative.json"
+  if VERIFICATION_RUN_ID="$run_id" LITELLM_SMOKE_SUMMARY_FILE="$negative_summary" \
+    "$script_dir/smoke-baseline.sh" --mode single --cleanup-negative-test >/dev/null 2>&1; then
+    echo "cleanup negative test unexpectedly passed" >&2
+    exit 1
+  fi
+  jq -e '.result == "failed" and .cleanup == "failed" and .phase == "cleanup_negative_test"' "$negative_summary" >/dev/null
+fi
+
+echo "PASS verification gates: stale reports, preconditions, dotenv substitutions and cleanup HTTP failures cannot pass."
