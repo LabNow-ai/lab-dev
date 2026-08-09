@@ -638,10 +638,10 @@ if [[ "$MODE" == "ha" ]]; then
   # to the other replica, so a 429 proves the counter is not replica-local.
   write_private_value "$tmpdir/enforcement-key-alias" "p1-smoke-budget-$suffix"
   make_key_payload "$tmpdir/enforcement-key-alias" "$tmpdir/enforcement-key-create.json"
-  # LiteLLM 1.97.0 maps the public /key/generate `max_budget` field to its
-  # persisted per-key `key_max_budget`; sending the internal field directly
-  # is ignored by the request model and would create a false HA pass.
-  jq '.max_budget = 0.000001' "$tmpdir/enforcement-key-create.json" > "$tmpdir/enforcement-key-limited.json"
+  # Use a separate shared TPM gate. It is enforced by the Redis-backed limiter
+  # before the second replica accepts a request, unlike asynchronous SpendLog
+  # persistence which cannot be used as an admission-control proof.
+  jq '.tpm_limit = 64' "$tmpdir/enforcement-key-create.json" > "$tmpdir/enforcement-key-limited.json"
   chmod 600 "$tmpdir/enforcement-key-limited.json"
   request_admin POST /key/generate "$tmpdir/enforcement-key-limited.json" "$tmpdir/enforcement-key.json"
   make_key_header "$tmpdir/enforcement-key.json" "$enforcement_key_file" "$enforcement_headers"
@@ -649,9 +649,9 @@ if [[ "$MODE" == "ha" ]]; then
   make_key_action_payload delete "$enforcement_key_file" "$tmpdir/enforcement-key-cleanup.json"
   request_data_post "$BASE_URL" "$enforcement_headers" /v1/chat/completions "$tmpdir/chat-request.json" "$tmpdir/budget-first.json"
   budget_code="$(curl --silent --show-error --max-time 30 --request POST "$PEER_URL/v1/chat/completions" --header "@$enforcement_headers" --data-binary "@$tmpdir/chat-request.json" --output "$tmpdir/budget-second.json" --write-out '%{http_code}' || true)"
-  [[ "$budget_code" == "429" ]] || { echo "shared budget/Spend limit was bypassed by peer: http=$budget_code" >&2; exit 1; }
+  [[ "$budget_code" == "429" ]] || { echo "shared TPM limit was bypassed by peer: http=$budget_code" >&2; exit 1; }
   shared_enforcement_result="passed"
-  echo "PASS HA shared budget/Spend enforcement: peer rejected post-spend request with 429."
+  echo "PASS HA shared TPM enforcement: peer rejected the second request with 429."
 fi
 
 make_key_action_payload block "$block_key_file" "$tmpdir/block-key.json"
