@@ -88,10 +88,14 @@ P1 不把 LiteLLM User/Team 当作产品用户或 Workspace 的事实源；Shell
 cd docker_litellm/demo
 ./scripts/smoke-baseline.sh --mode single
 ./scripts/smoke-baseline.sh --mode ha
+./scripts/smoke-redis-recovery.sh
+./scripts/aggregate-verification-summary.sh
 ./scripts/smoke-baseline.sh --security-check
 ```
 
 `--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x`、Compose 上游凭据注入和 Redis 密码命令行展开，并检查 Docker Secret、0600 临时文件与退出清理约束。
+
+`smoke-redis-recovery.sh` 在已启动的 HA 栈中临时断开 Redis 网络端点，验证两个副本的有界认证探针均失败，再恢复 `redis` alias、等待 breaker 窗口并确认探针恢复。它有独立的恢复 trap，不会让故障测试影响主 smoke 的资源清理。`aggregate-verification-summary.sh` 将主 HA 与 Redis 独立报告组合为不含密钥、密码、提示词和响应正文的最终 JSON 摘要。
 
 脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、生成受限虚拟 key、显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。DeepSeek V4 使用 `deepseek/<UPSTREAM_MODEL>` 的原生 provider，避免被通用 OpenAI provider 丢弃 `thinking` 参数。HA 模式会先证明第二副本接受 key，再轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
 
