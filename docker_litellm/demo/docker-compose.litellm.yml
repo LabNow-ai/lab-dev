@@ -43,7 +43,7 @@ services:
     <<: *litellm-common
     container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
     profiles: ["migrate"]
-    command: ["/bin/bash", "/opt/utils/start-litellm.sh", "--config", "config.migrate.yaml", "--skip_server_startup"]
+    command: ["/bin/bash", "/opt/utils/start-litellm.sh", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
     healthcheck:
       disable: true
     depends_on:

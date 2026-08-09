@@ -51,6 +51,10 @@ WORKDIR ${HOME_LITELLM}
 # Copy utilities, tools and build artifacts
 COPY work /opt/utils/
 COPY --from=builder /build/dist/*.whl /tmp/
+# prisma-python invokes Node again for migration operations.  Copy the fixed
+# builder runtime into the final image so a fresh migration container never
+# tries to download Node during startup.
+COPY --from=builder /opt/node /opt/node
 
 # Install Runtime dependencies and configure tools
 RUN set -eux \
