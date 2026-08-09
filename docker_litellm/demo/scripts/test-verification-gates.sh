@@ -11,7 +11,8 @@ with_running_stack=false
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-gates.XXXXXX")"
 chmod 700 "$tmpdir"
 trap 'rm -rf "$tmpdir"' EXIT
-run_id="p1-$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+run_id="${VERIFICATION_RUN_ID:-p1-$(python3 -c 'import secrets; print(secrets.token_hex(16))')}"
+[[ "$run_id" =~ ^p1-[a-f0-9]{32}$ ]] || { echo "invalid verification run id" >&2; exit 2; }
 
 # A deliberately stale-but-well-shaped set must be rejected when the current
 # run id differs. No service or .env is read by this test.
