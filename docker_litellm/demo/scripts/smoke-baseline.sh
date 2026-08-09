@@ -36,6 +36,7 @@ redis_container=""
 redis_network=""
 smoke_phase="initializing"
 smoke_exit_code=""
+cleanup_running=false
 tmpdir=""
 image_ref=""
 test_prefix=""
@@ -261,6 +262,8 @@ assert_test_resources_removed() {
 cleanup() {
   local exit_code=$?
   local cleanup_ok=true
+  [[ "$cleanup_running" == false ]] || return "$exit_code"
+  cleanup_running=true
   trap - EXIT
   set +e
   if [[ -n "$redis_container" && -n "$redis_network" ]]; then
@@ -304,7 +307,7 @@ cleanup() {
     result="failed"
   fi
   write_summary || exit_code=1
-  return "$exit_code"
+  exit "$exit_code"
 }
 trap cleanup EXIT
 
