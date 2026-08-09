@@ -155,16 +155,19 @@ master_key_file="$tmpdir/master-key"
 upstream_key_file="$tmpdir/upstream-key"
 upstream_base_file="$tmpdir/upstream-base"
 upstream_model_file="$tmpdir/upstream-model"
+upstream_provider_file="$tmpdir/upstream-provider"
 admin_headers="$tmpdir/admin.headers"
 write_private_value "$master_key_file" "$LITELLM_MASTER_KEY"
 write_private_value "$upstream_key_file" "${UPSTREAM_API_KEY:-}"
 write_private_value "$upstream_base_file" "${UPSTREAM_BASE_URL:-}"
 write_private_value "$upstream_model_file" "${UPSTREAM_MODEL:-}"
+write_private_value "$upstream_provider_file" "$upstream_provider"
 make_header_file "$admin_headers" "$master_key_file"
 assert_private_file "$master_key_file"
 assert_private_file "$upstream_key_file"
 assert_private_file "$upstream_base_file"
 assert_private_file "$upstream_model_file"
+assert_private_file "$upstream_provider_file"
 
 # No child process needs these values. Compose reads its own --env-file.
 unset LITELLM_MASTER_KEY UPSTREAM_API_KEY UPSTREAM_BASE_URL UPSTREAM_MODEL UPSTREAM_PROVIDER \
@@ -234,7 +237,7 @@ cleanup() {
     cleanup_request_admin POST /user/delete "$tmpdir/user-delete.json" || cleanup_ok=false
   fi
   if [[ "$cleanup_ok" == true ]]; then cleanup_result="passed"; else cleanup_result="failed"; exit_code=1; fi
-  unset master_key_file upstream_key_file upstream_base_file upstream_model_file
+  unset master_key_file upstream_key_file upstream_base_file upstream_model_file upstream_provider_file
   rm -rf "$tmpdir"
   if [[ -e "$tmpdir" ]]; then cleanup_result="failed"; exit_code=1; fi
   smoke_exit_code="$exit_code"
@@ -478,7 +481,7 @@ fi
 
 # P1 deliberately supports one explicit provider mapping.  Reject incomplete
 # or ambiguous combinations before any upstream-facing request is sent.
-provider_normalized="$(printf '%s' "$upstream_provider" | tr '[:upper:]' '[:lower:]')"
+provider_normalized="$(tr -d '\r\n' < "$upstream_provider_file" | tr '[:upper:]' '[:lower:]')"
 case "$provider_normalized" in
   deepseek|deepseek-direct|deepseek_direct|deepseek-v4|deepseek_v4|deepseek-v4-flash|deepseek_v4_flash)
     provider_prefix="deepseek"
