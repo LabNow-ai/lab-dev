@@ -13,7 +13,7 @@ P1 默认不构建 LiteLLM Dashboard 静态资源：固定源码在当前构建�
 | Prisma Python client | `0.15.0` | LiteLLM 连接 PostgreSQL 所需客户端，兼容基础镜像的 Python 3.13 |
 | 本地产物镜像 | `quay.io/labnow/litellm:1.97.0-ead62528e607` | P1 Compose 的唯一 LiteLLM 默认镜像 |
 | PostgreSQL | `postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193` | 用户、凭证、模型、虚拟 key 与 spend 持久化 |
-| Redis | `redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2` | 副本共享认证缓存、限流、Spend counter 和协调缓存 |
+| Redis | `redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2` | 副本共享认证缓存、RPM/TPM limiter 与协调缓存；SpendLog 的事实源是 PostgreSQL |
 | OpenClaw（P2 参考） | `2026.5.10-beta.1` / `eed75ed47f47deb18c9d093a2e638c9bb0bedf14` | 仅为下一阶段黄金适配器保留版本基线；P1 不启动或实现 Adapter |
 
 镜像构建会对 wheel 自带的 LiteLLM Prisma schema 运行 `prisma generate`，并把生成的查询引擎固定在 `/opt/litellm/.cache`；没有该步骤，或将该缓存随 `/root/.cache` 清理，代理会在 PostgreSQL startup 时报缺少 Prisma binaries 或无法连接查询引擎。
@@ -47,7 +47,7 @@ cp .env.example .env
 docker compose --env-file .env -f docker-compose.litellm.yml --profile single up -d
 ```
 
-迁移与代理启动刻意分离。标准真实验收由一个统一入口执行：它生成非敏感 `verification_run_id`，显式连续运行 migration（两次）、single、HA、Redis 恢复和严格聚合；任一步失败都会停止且使对应旧报告失效。
+迁移与代理启动刻意分离。标准真实验收由一个统一入口执行：它生成新的非敏感 `verification_run_id`，先失效所有旧输入/最终报告，再运行 migration（两次）、并发 migration job、single、HA、Redis 恢复和严格聚合；任一步失败都会停止且保留当前失败报告。
 
 ```bash
 ./scripts/verify-p1.sh
@@ -84,7 +84,7 @@ cd docker_litellm/demo
 ./scripts/test-verification-gates.sh
 ```
 
-在全新 checkout 中按上述标准命令执行时，脚本自己生成而非复用历史文件：`p1-migration-summary.json`、`p1-single-summary.json`、`p1-ha-summary.json`、`p1-redis-recovery.json` 与最终 `p1-final-summary.json`（均在被忽略的 `artifacts/`）。聚合脚本只接受当前 `HEAD`、同一 `verification_run_id`、相同 image ID、`result=passed`、`phase=completed` 且脱敏的四份输入；任何缺失、失败、跳过或模式不符都会被拒绝。
+在全新 checkout 中按上述标准命令执行时，脚本自己生成而非复用历史文件：`p1-migration-summary.json`、`p1-migration-concurrency.json`、`p1-single-summary.json`、`p1-ha-summary.json`、`p1-redis-recovery.json` 与最终 `p1-final-summary.json`（均在被忽略的 `artifacts/`）。聚合脚本只接受当前 `HEAD`、同一 `verification_run_id`、相同 image ID、正确 mode、启动后 `tested_at`、`result=passed`、`phase=completed` 且脱敏的输入；任何缺失、失败、跳过、过期或模式不符都会被拒绝。
 
 `--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x`、Compose 上游凭据注入和 Redis 密码命令行展开，并检查 Docker Secret、0600 临时文件与退出清理约束。`test-verification-gates.sh` 验证历史 PASS 失效、前置失败报告与 dotenv 命令替换不执行；在已启动 single 栈中追加 `--with-running-stack` 会以真实 404 删除请求证明 cleanup 不会生成 PASS。
 
@@ -98,7 +98,7 @@ cd docker_litellm/demo
 
 ## Readiness 与 Redis 结论
 
-LiteLLM `v1.97.0-dev.1` 的公开 `/health/readiness` 仅返回服务与数据库连通性，不将 Redis 纳入公开 readiness。因此 Compose 健康检查只能确认 LiteLLM + PostgreSQL；`smoke-baseline.sh` 额外从每个 LiteLLM 容器执行 Redis `PING`。若 Redis 不可用，P1 的多副本认证缓存、限流、Spend counter 与协调结论无效，应将该运行组合标记为 `blocked`，不能降级宣称为高可用。Redis 恢复后，LiteLLM 的认证缓存 circuit breaker 需要经过 `REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT` 后才会重新探测；P1 默认设为 5 秒，并要求恢复后再次跑 HA smoke。
+LiteLLM `v1.97.0-dev.1` 的公开 `/health/readiness` 仅返回服务与数据库连通性，不将 Redis 纳入公开 readiness。因此 Compose 健康检查只能确认 LiteLLM + PostgreSQL；`smoke-baseline.sh` 额外从每个 LiteLLM 容器执行 Redis `PING`。若 Redis 不可用，P1 的多副本认证缓存、RPM/TPM limiter 与协调结论无效，应将该运行组合标记为 `blocked`，不能降级宣称为高可用。Redis 恢复后，LiteLLM 的认证缓存 circuit breaker 需要经过 `REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT` 后才会重新探测；P1 默认设为 5 秒，并要求恢复后再次跑 HA smoke。跨副本 SpendLog 只证明 PostgreSQL 可见性，不是 Redis Spend counter 或预算准入控制证据。
 
 ## 常见问题
 
