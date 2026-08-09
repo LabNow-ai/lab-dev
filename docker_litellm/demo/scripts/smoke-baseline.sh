@@ -493,8 +493,7 @@ write_summary() {
   local summary_tmp
   mkdir -p "$(dirname "$SUMMARY_FILE")"
   chmod 700 "$(dirname "$SUMMARY_FILE")"
-  summary_tmp="${SUMMARY_FILE}.tmp.$$"
-  : > "$summary_tmp"
+  summary_tmp="$(mktemp "${SUMMARY_FILE}.tmp.XXXXXX")"
   chmod 600 "$summary_tmp"
   jq -n \
     --arg commit "$(git -C "$DEMO_DIR/../.." rev-parse HEAD)" \
