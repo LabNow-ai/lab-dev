@@ -37,6 +37,19 @@ if VERIFICATION_RUN_ID="$run_id" LITELLM_SMOKE_ENV_FILE="$tmpdir/absent.env" LIT
 fi
 jq -e '.result == "failed" and .phase == "precondition_failed"' "$tmpdir/precondition.json" >/dev/null
 
+# Security inspection must remain read-only on both outcomes. Force a static
+# failure and prove that its target report is byte-for-byte unchanged.
+security_report="$tmpdir/security-existing.json"
+printf '%s\n' '{"preserved":true}' > "$security_report"
+security_before="$(shasum -a 256 "$security_report" | awk '{print $1}')"
+if LITELLM_SECURITY_CHECK_FORCE_FAILURE=1 LITELLM_SMOKE_SUMMARY_FILE="$security_report" \
+  "$script_dir/smoke-baseline.sh" --security-check >/dev/null 2>&1; then
+  echo "forced security failure unexpectedly passed" >&2
+  exit 1
+fi
+security_after="$(shasum -a 256 "$security_report" | awk '{print $1}')"
+[[ "$security_before" == "$security_after" ]] || { echo "failed security check modified a report" >&2; exit 1; }
+
 # Cleanup failures must never be normalized to PASS. This checks the curl
 # transport invariant directly without sending a request.
 rg -q 'cleanup_request_admin.*\(\)' "$script_dir/smoke-baseline.sh"
@@ -62,7 +75,7 @@ make_reports() {
   jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
     '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",content_redacted:true,proxy_replicas_started:false}' > "$tmpdir/p1-migration-summary.json"
   jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
-    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",concurrent_migration:true,content_redacted:true}' > "$tmpdir/p1-migration-concurrency.json"
+    '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"migration",result:"passed",phase:"completed",concurrent_migration:true,actual_overlap:true,lock_wait_observed:true,exclusive_lock:true,max_lock_holders:1,migration_execution_count:2,proxy_replicas_started:false,content_redacted:true}' > "$tmpdir/p1-migration-concurrency.json"
   jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
     '{verification_run_id:$run_id,commit:$commit,image_id:"image",tested_at:$started_at,mode:"single",result:"passed",phase:"completed",content_redacted:true,migration:"passed",chat:"passed",stream:"passed",tool:"passed",usage:"passed",block:"passed",delete:"passed",cleanup:"passed",security_scan:"passed",content_logging_scan:"passed"}' > "$tmpdir/p1-single-summary.json"
   jq -n --arg run_id "$run_id" --arg commit "$current_commit" --arg started_at "$started_at" \
@@ -87,6 +100,11 @@ make_reports
 jq '.limiter_source="provider"' "$tmpdir/p1-ha-summary.json" > "$tmpdir/ha.tmp" && mv "$tmpdir/ha.tmp" "$tmpdir/p1-ha-summary.json"
 if VERIFICATION_RUN_ID="$run_id" VERIFICATION_STARTED_AT="$started_at" LITELLM_ARTIFACTS_DIR="$tmpdir" "$script_dir/aggregate-verification-summary.sh" >/dev/null 2>&1; then
   echo "aggregate accepted a forged limiter claim" >&2; exit 1
+fi
+make_reports
+jq '.image_id="other-image"' "$tmpdir/p1-migration-concurrency.json" > "$tmpdir/concurrency.tmp" && mv "$tmpdir/concurrency.tmp" "$tmpdir/p1-migration-concurrency.json"
+if VERIFICATION_RUN_ID="$run_id" VERIFICATION_STARTED_AT="$started_at" LITELLM_ARTIFACTS_DIR="$tmpdir" "$script_dir/aggregate-verification-summary.sh" >/dev/null 2>&1; then
+  echo "aggregate accepted a concurrency report with a mismatched image" >&2; exit 1
 fi
 
 if [[ "$with_running_stack" == true ]]; then

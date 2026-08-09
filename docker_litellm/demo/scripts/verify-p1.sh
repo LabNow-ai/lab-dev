@@ -24,6 +24,7 @@ done
 "${script_dir}/verify-migration-concurrency.sh"
 "${script_dir}/run-migration.sh"
 "${compose[@]}" --profile single up -d --wait postgres redis litellm-1
+"${script_dir}/test-verification-gates.sh" --with-running-stack
 "${script_dir}/smoke-baseline.sh" --mode single
 "${compose[@]}" --profile ha up -d --wait postgres redis litellm-1 litellm-2
 "${script_dir}/smoke-baseline.sh" --mode ha

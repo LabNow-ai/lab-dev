@@ -18,6 +18,7 @@ x-litellm-common: &litellm-common
     - ./config.yaml:/opt/litellm/config.yaml:ro
     - ./config.migrate.yaml:/opt/litellm/config.migrate.yaml:ro
     - ../work/start-litellm.sh:/opt/utils/start-litellm.sh:ro
+    - ../work/run-migration-locked.py:/opt/utils/run-migration-locked.py:ro
   secrets:
     - redis_password
   depends_on:
@@ -43,7 +44,7 @@ services:
     <<: *litellm-common
     container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
     profiles: ["migrate"]
-    command: ["/bin/bash", "/opt/utils/start-litellm.sh", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
+    command: ["python3", "/opt/utils/run-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
     healthcheck:
       disable: true
     depends_on:

@@ -34,6 +34,8 @@ jq -e --arg commit "$commit" --arg run_id "$run_id" --arg started_at "$started_a
 
 jq -e --arg commit "$commit" --arg run_id "$run_id" --arg started_at "$started_at" '
   .mode == "migration" and .result == "passed" and .phase == "completed" and .concurrent_migration == true and
+  .actual_overlap == true and .lock_wait_observed == true and .exclusive_lock == true and
+  .max_lock_holders == 1 and .migration_execution_count == 2 and .proxy_replicas_started == false and
   .verification_run_id == $run_id and .commit == $commit and (.image_id | type == "string" and length > 0) and
   (.tested_at | type == "string" and . >= $started_at) and .content_redacted == true
 ' "$concurrency_report" >/dev/null
@@ -73,6 +75,7 @@ image_id="$(jq -r '.image_id' "$migration_report")"
 [[ "$image_id" == "$(jq -r '.image_id' "$single_report")" ]] || { echo "single image ID differs" >&2; exit 1; }
 [[ "$image_id" == "$(jq -r '.image_id' "$ha_report")" ]] || { echo "HA image ID differs" >&2; exit 1; }
 [[ "$image_id" == "$(jq -r '.image_id' "$redis_report")" ]] || { echo "Redis report image ID differs" >&2; exit 1; }
+[[ "$image_id" == "$(jq -r '.image_id' "$concurrency_report")" ]] || { echo "concurrency image ID differs" >&2; exit 1; }
 
 umask 077
 mkdir -p "$(dirname "$output")"
@@ -80,9 +83,9 @@ chmod 700 "$(dirname "$output")"
 jq -n \
   --arg run_id "$run_id" --arg commit "$commit" --arg image_id "$image_id" \
   --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --slurpfile migration "$migration_report" --slurpfile single "$single_report" \
+  --slurpfile migration "$migration_report" --slurpfile concurrency "$concurrency_report" --slurpfile single "$single_report" \
   --slurpfile ha "$ha_report" --slurpfile redis "$redis_report" \
-  '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,generated_at:$tested_at,result:"passed",phase:"completed",migration:$migration[0],single:$single[0],ha:$ha[0],redis_recovery:$redis[0],content_redacted:true,local_only:true}' \
+  '{verification_run_id:$run_id,commit:$commit,image_id:$image_id,tested_at:$tested_at,generated_at:$tested_at,result:"passed",phase:"completed",migration:$migration[0],migration_concurrency:$concurrency[0],single:$single[0],ha:$ha[0],redis_recovery:$redis[0],content_redacted:true,local_only:true}' \
   > "$output"
 chmod 600 "$output"
 echo "PASS aggregate summary: $output"

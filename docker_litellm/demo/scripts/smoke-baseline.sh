@@ -64,6 +64,13 @@ fi
 # It invalidates any stale report and writes a non-passing, redacted result.
 early_failure_cleanup() {
   local exit_code=$?
+  # A security inspection is strictly read-only. This includes intentionally
+  # failing inspections used by the negative gate: neither path may replace
+  # a producer report from an earlier real smoke.
+  if [[ "$SECURITY_CHECK" == true ]]; then
+    trap - EXIT
+    return "$exit_code"
+  fi
   # Ignore any nested EXIT delivery while preserving the report just written.
   trap '' EXIT
   if command -v jq >/dev/null; then
@@ -111,6 +118,10 @@ security_check() {
     && rg -q 'trap cleanup EXIT' "$0" \
     && rg -q 'rm -rf "\$tmpdir"' "$0" \
     || unsafe=1
+
+  # Test-only fault injection validates the failure path preserves reports.
+  # It is deliberately limited to this read-only static checker.
+  [[ "${LITELLM_SECURITY_CHECK_FORCE_FAILURE:-0}" != "1" ]] || unsafe=1
 
   if ((unsafe)); then
     echo "FAIL security negative check: unsafe secret transport or cleanup invariant" >&2
