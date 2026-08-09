@@ -309,7 +309,15 @@ cleanup() {
     result="failed"
   fi
   write_summary || exit_code=1
-  exit "$exit_code"
+  # Bash may re-enter EXIT processing when `exit` is called from an EXIT
+  # handler, which previously truncated a just-written failed report. A failed
+  # cleanup terminates the shell with the default TERM action after disabling
+  # the handler; the persisted JSON remains the authoritative failure record.
+  if (( exit_code != 0 )); then
+    trap - EXIT
+    kill -TERM "$$"
+  fi
+  return "$exit_code"
 }
 trap cleanup EXIT
 
