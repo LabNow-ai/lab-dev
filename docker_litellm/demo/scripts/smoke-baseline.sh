@@ -479,12 +479,12 @@ assert_proxy_limiter_response() {
   local response_file="$1" http_code="$2" limit_kind="$3"
   [[ "$http_code" == "429" ]] &&
     jq -e --arg kind "$limit_kind" '
-      (.error // .detail // .message // {}) as $error |
-      ($error | if type == "object" then . else {message:(tostring)} end) as $normalized |
-      (($normalized.type // "") | ascii_downcase) == "rate_limit_error" and
-      (($normalized.code // "") | tostring) == "429" and
-      (($normalized.message // "") | ascii_downcase | test($kind + ".*(limit|rate)|rate.*" + $kind))
-    ' "$response_file" >/dev/null
+      (.error // .detail // .message // "") | tostring | ascii_downcase |
+      test("rate limit exceeded") and
+      (if $kind == "rpm" then test("requests|rpm") else test("tokens|tpm") end)
+    ' "$response_file" >/dev/null &&
+    docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-1 litellm-2 |
+      rg -q 'parallel_request_limiter_v3|ProxyRateLimitError'
 }
 
 write_summary() {
