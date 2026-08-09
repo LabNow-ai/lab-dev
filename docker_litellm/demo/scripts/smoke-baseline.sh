@@ -99,14 +99,6 @@ security_scan_result="static_passed"
 
 [[ -f "$ENV_FILE" ]] || { echo "missing local environment file: $ENV_FILE (copy .env.example)" >&2; exit 2; }
 
-if [[ "$MODE" == "single" ]]; then
-  BASE_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}"
-  PEER_URL="$BASE_URL"
-else
-  BASE_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}"
-  PEER_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}"
-fi
-
 umask 077
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-smoke.XXXXXX")"
 chmod 700 "$tmpdir"
@@ -127,10 +119,20 @@ UPSTREAM_API_KEY="$(effective_env UPSTREAM_API_KEY)"
 UPSTREAM_BASE_URL="$(effective_env UPSTREAM_BASE_URL)"
 UPSTREAM_MODEL="$(effective_env UPSTREAM_MODEL)"
 UPSTREAM_PROVIDER="$(effective_env UPSTREAM_PROVIDER)"
+LITELLM_PUBLISH_HOST="$(effective_env LITELLM_PUBLISH_HOST)"
+LITELLM_1_PORT="$(effective_env LITELLM_1_PORT)"
+LITELLM_2_PORT="$(effective_env LITELLM_2_PORT)"
 : "${LITELLM_MASTER_KEY:?missing LITELLM_MASTER_KEY in effective Compose environment}"
 : "${LITELLM_IMAGE:?missing LITELLM_IMAGE in effective Compose environment}"
 image_ref="$LITELLM_IMAGE"
 upstream_provider="${LITELLM_SMOKE_UPSTREAM_PROVIDER:-${UPSTREAM_PROVIDER:-}}"
+if [[ "$MODE" == "single" ]]; then
+  BASE_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}"
+  PEER_URL="$BASE_URL"
+else
+  BASE_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}"
+  PEER_URL="http://${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}"
+fi
 
 private_file() {
   : > "$1"
