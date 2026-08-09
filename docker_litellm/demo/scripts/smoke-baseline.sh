@@ -494,10 +494,15 @@ assert_proxy_limiter_response() {
   local response_file="$1" headers_file="$2" http_code="$3" limit_kind="$4" since="$5" expected_type
   if [[ "$limit_kind" == rpm ]]; then expected_type=requests; else expected_type=tokens; fi
   [[ "$http_code" == "429" ]] &&
-    rg -qi -- "^x-ratelimit-.*-(limit|remaining)-${expected_type}:" "$headers_file" &&
-    jq -e '(.error // .detail // .message // "") | tostring | test("rate limit|limit"; "i")' "$response_file" >/dev/null &&
+    # LiteLLM 1.97.0's parallel_request_limiter_v3 raises ProxyRateLimitError
+    # with the stable proxy-only rate_limit_type header. Provider 429s do not
+    # synthesize this header or the matching "Limit type" detail below.
+    rg -qi -- "^rate_limit_type:[[:space:]]*${expected_type}[[:space:]]*$" "$headers_file" &&
+    jq -e --arg expected "$expected_type" '(.detail // .error.detail // .error.message // .error // .message // "") | tostring | test("Rate limit exceeded.*Limit type: " + $expected; "i")' "$response_file" >/dev/null &&
+    # The access log is bounded to this request window and confirms that this
+    # exact proxy instance emitted a local 429; no prompt/response is copied.
     docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color --since "$since" litellm-1 litellm-2 |
-      rg -q 'parallel_request_limiter_v3|ProxyRateLimitError'
+      rg -q 'POST /v1/chat/completions.* 429|HTTP/1\.[01]" 429'
 }
 
 write_summary() {
