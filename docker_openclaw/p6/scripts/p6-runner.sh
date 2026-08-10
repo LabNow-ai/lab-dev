@@ -115,6 +115,7 @@ run_driver() {
         type == "object" and .schema_version == "p6-driver-report/v1"
         and .result == "passed" and .content_redacted == true
         and (.checks | type == "object") and (.secret_pattern_file == $patterns)
+        and (.scan_roots | type == "array" and length >= 1 and all(.[]; type == "string" and startswith("/")))
       ' "$driver_report" >/dev/null || p6_die "GOLDEN_DRIVER_REPORT_INVALID" 77
       jq -e '.checks | [.console_ui,.binding_payload,.jupyterhub_dockerspawner,.launcher_claim_activate_release,.openclaw_apply_probe_readiness,.chat,.stream,.tool,.usage,.owner_negative,.prompt_response_absent,.revoke,.generation_restart,.late_release,.delete,.zero_active_leases,.cleanup] | all(. == "passed")' "$driver_report" >/dev/null || p6_die "GOLDEN_DRIVER_CHECK_FAILED" 77
       ;;
@@ -142,7 +143,12 @@ case "$action" in
     trap cleanup EXIT
     if ! run_driver provision; then p6_write_report "$report" failed topology_provision_failed "driver"; exit 1; fi
     if ! run_driver golden; then p6_write_report "$report" failed golden_chain_failed "driver"; exit 1; fi
-    if ! p6_security_scan "$P6_WORK_DIR" "$P6_WORK_DIR/secret-patterns"; then p6_write_report "$report" failed security_scan_failed "secret_scan"; exit 1; fi
+    scan_roots=("$P6_WORK_DIR")
+    while IFS= read -r scan_root; do
+      [[ -e "$scan_root" && ! -L "$scan_root" ]] || { p6_write_report "$report" failed security_scan_failed "scan_root"; exit 1; }
+      scan_roots+=("$scan_root")
+    done < <(jq -r '.scan_roots[]' "$P6_WORK_DIR/driver-report.json")
+    if ! p6_security_scan "$P6_WORK_DIR/secret-patterns" "${scan_roots[@]}"; then p6_write_report "$report" failed security_scan_failed "secret_scan"; exit 1; fi
     rm -f "$P6_WORK_DIR/secret-patterns"
     if ! run_driver cleanup; then p6_write_report "$report" failed cleanup_failed "driver"; exit 1; fi
     p6_write_report "$report" passed completed

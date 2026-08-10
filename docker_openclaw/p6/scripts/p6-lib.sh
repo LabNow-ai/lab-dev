@@ -146,10 +146,12 @@ p6_assert_runtime_paths() {
 p6_security_scan() {
   # Write secret strings only to a mode-0600 pattern file and pass its path to
   # rg. Neither the shell command line nor the report contains the secret.
-  local scan_root="$1" patterns="$2"
+  local patterns="$1"
+  shift
   p6_require_regular_0600 "$patterns" || return $?
   [[ -s "$patterns" ]] || { p6_die "SECRET_PATTERN_FILE_REQUIRED" 74; return $?; }
-  if rg --fixed-strings --files-with-matches --glob '!secret-patterns' --glob '!secret.json' -f "$patterns" "$scan_root" >/dev/null 2>&1; then
+  (($# > 0)) || { p6_die "SECRET_SCAN_ROOT_REQUIRED" 74; return $?; }
+  if rg --fixed-strings --files-with-matches --glob '!secret-patterns' --glob '!secret.json' -f "$patterns" "$@" >/dev/null 2>&1; then
     rm -f "$patterns"
     p6_die "SECRET_FINGERPRINT_MATCH" 75
     return $?
