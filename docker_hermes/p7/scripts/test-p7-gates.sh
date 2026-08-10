@@ -17,6 +17,11 @@ rg -q 'ARG HERMES_BUILD_BASE_IMAGE' "${root}/docker_hermes/hermes.Dockerfile"
 rg -q 'io.labnow.hermes.runtime-base' "${root}/docker_hermes/hermes.Dockerfile"
 rg -q 'pull_policy: never' "${root}/docker_hermes/p7/docker-compose.runtime.yml"
 ! rg -n --glob '!**/test-p7-gates.sh' 'OPENAI_API_KEY:|DEEPSEEK_API_KEY:|:latest' "${root}/docker_hermes/p7"
+! rg -q 'HERMES_PRODUCT_CHAIN_NOT_AVAILABLE' "$runner"
+rg -q 'p7-product-chain.py' "$runner"
+python3 -m py_compile \
+  "${root}/docker_hermes/p7/scripts/p7-prepare-runtime.py" \
+  "${root}/docker_hermes/p7/scripts/p7-product-chain.py"
 
 input="$tmp/invalid.json"
 printf '%s\n' '{"schema_version":"p7-inputs/v1"}' > "$input"; chmod 600 "$input"
@@ -26,13 +31,31 @@ fi
 
 valid="$tmp/valid.json"
 jq '
-  .repositories |= with_entries(.value.commit = "0123456789abcdef0123456789abcdef01234567")
+  .repositories.lab_dev.commit = "0123456789abcdef0123456789abcdef01234567"
+  | .repositories.lab_dev.runtime_commit = .repositories.lab_dev.commit
+  | .repositories.labnow_shell.commit = "0123456789abcdef0123456789abcdef01234567"
+  | .repositories.labnow_shell.runtime_commit = .repositories.labnow_shell.commit
+  | .repositories.hermes_source.repository = "https://example.invalid/hermes.git"
+  | .repositories.hermes_source.commit = "0123456789abcdef0123456789abcdef01234567"
   | .images |= with_entries(.value.image_id = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+  | .support_images |= with_entries(.value.image_id = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
   | .images.hermes.ref = "quay.io/labnow/hermes:p7-0123456789ab"
+  | .images.hermes.repo_digest = "quay.io/labnow/hermes@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   | .images.hermes.source_commit = .repositories.hermes_source.commit
-  | .images.workspace.source_commit = .repositories.labnow_open.commit
-  | .images.shell.source_commit = .repositories.labnow_shell.commit
-  | .images.launcher.source_commit = .repositories.labnow_launcher.commit
+  | .images.litellm.ref = "quay.io/labnow/litellm@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  | .images.litellm.repo_digest = .images.litellm.ref
+  | .images.workspace.ref = "quay.io/labnow/labnow-open@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  | .images.workspace.repo_digest = .images.workspace.ref
+  | .images.workspace.source_commit = .repositories.labnow_open.runtime_commit
+  | .images.shell.ref = "quay.io/labnow/labnow-shell@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  | .images.shell.repo_digest = .images.shell.ref
+  | .images.shell.source_commit = .repositories.labnow_shell.runtime_commit
+  | .images.launcher.ref = "quay.io/labnow/labnow-launcher@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  | .images.launcher.repo_digest = .images.launcher.ref
+  | .images.launcher.source_commit = .repositories.labnow_launcher.runtime_commit
+  | .support_images.postgres.repo_digest = "postgres@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  | .support_images.redis.repo_digest = "redis@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  | .support_images.nginx.repo_digest = "nginx@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   | .base_images.build = "quay.io/labnow/node@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   | .base_images.runtime = "quay.io/labnow/base@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   | .runtime.p1_env_file = "/private/tmp/p7-test.env"
@@ -45,4 +68,4 @@ chmod 600 "${valid}.mismatch"
 if P7_ARTIFACTS_DIR="$tmp/artifacts" P7_WORK_DIR="$tmp/work" "$runner" --input "${valid}.mismatch" --validate-input >/dev/null 2>&1; then
   printf '%s\n' 'P7 provenance mismatch input was accepted' >&2; exit 1
 fi
-printf '%s\n' 'PASS P7 gates: source pin, local-only compose and invalid input fail closed.'
+printf '%s\n' 'PASS P7 gates: source pin, local-only topology, real golden entry and invalid input fail closed.'

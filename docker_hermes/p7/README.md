@@ -1,8 +1,9 @@
 # P7 Hermes 可复现运行基线
 
 此目录只承担 CHE-568 的 `lab-dev` 职责：固定 Hermes 源码/构建 provenance，
-校验本地镜像，以及为跨仓 Hermes 产品链提供失败关闭的运行入口。它不复制
-`labnow-open` 的 Hermes renderer 或 `labnow-shell` 的 image→adapter 目录逻辑。
+校验本地镜像，并参数化复用 P6 已验证的真实五组件拓扑执行 Hermes 产品链。
+它不复制 `labnow-open` 的 Hermes renderer 或 `labnow-shell` 的
+image→adapter 目录业务逻辑。
 
 ## 固定构建
 
@@ -29,18 +30,27 @@ build_image_no_tag hermes p7-<12hex> docker_hermes/hermes.Dockerfile \
 ## 入口与安全
 
 从 `p7-inputs.example.json` 创建权限为 `0400` 或 `0600` 的 Git 忽略
-`p7-inputs.json`。输入只包含路径、commit、镜像 ID 和运行材料路径；不得保存
-API key、Token、密码、请求正文或响应正文。
+`p7-inputs.json`。输入只包含路径、delivery/runtime commit、镜像 ID/RepoDigest
+和 P1 环境文件路径；不得保存 API key、Token、密码、请求正文或响应正文。
 
 ```bash
 ./docker_hermes/p7/scripts/test-p7-gates.sh
 ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/path/p7-inputs.json --validate-input
 ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/path/p7-inputs.json --preflight
 ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/path/p7-inputs.json --render
+P7_RUN_ID=p7-<32hex> ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/path/p7-inputs.json --golden
+P7_RUN_ID=p7-<same-32hex> ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/path/p7-inputs.json --cleanup
 ```
 
-`--golden` 当前只会在 Hermes renderer、Shell image→adapter catalogue 与固定
-Hermes Workspace 镜像均进入受限输入后运行；缺少任一 P7 产品输入会以
-`P7_ERROR:HERMES_PRODUCT_CHAIN_NOT_AVAILABLE` 失败关闭，绝不把 P6 OpenClaw
-结果伪装为 Hermes 结果。运行材料必须由 live Launcher 以 `RuntimeManifest` /
-`RuntimeSecretFile` 只读挂载到 Workspace；本 Compose 不接受 provider key 环境变量。
+`--golden` 会先核验三仓 delivery/runtime commit、Hermes 上游、五个产品镜像、
+三个 support image 和两个构建基础引用，再复用 P6 的隔离 LiteLLM、Shell、
+Launcher/JupyterHub 拓扑。Workspace 只能由 live DockerSpawner 创建；Shell
+服务端从准确 Open 产品镜像推导 `hermes` Adapter，Launcher 以
+`RuntimeManifest` / `RuntimeSecretFile` 只读挂载运行材料。runner 执行真实
+Hermes 非流式调用、数据面流式调用、Hermes terminal tool、usage、两代 key、
+stop/restart/delete/revoke、owner 负向、零明文扫描与 run-scoped cleanup。
+
+Console 鼠标创建、键盘/焦点和 axe 使用同一 Shell commit 的 P7 浏览器证据；
+runner 另外执行该固定 Shell image 的 live API → JupyterHub → Workspace 链，
+不得以 P6 OpenClaw 报告或健康检查替代 Hermes 成功。失败报告只保存错误码，
+成功报告只保存结构断言、非敏感 ID、计数和 SHA-256。

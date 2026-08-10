@@ -6,18 +6,23 @@
   "review_policy_commit": "06c49f26642c7e39a118aedad1395197f2bd91db",
   "phase": {"branch": "dev/che-568-hermes-console-experience", "base_commit": "45c38585a0ca889f6a20aebfdf3b13a01d369ac2"},
   "repositories": {
-    "lab_dev": {"path": "/absolute/path/to/lab-dev", "commit": "REPLACE_WITH_P7_LAB_DEV_HEAD"},
-    "labnow_open": {"path": "/absolute/path/to/labnow-open", "commit": "REPLACE_WITH_P7_OPEN_HEAD"},
-    "labnow_shell": {"path": "/absolute/path/to/labnow-shell", "commit": "REPLACE_WITH_P7_SHELL_HEAD"},
-    "labnow_launcher": {"path": "/absolute/path/to/labnow-launcher", "commit": "c84edea3e051d561f28d9f99235563cf491aaeb2"},
+    "lab_dev": {"path": "/absolute/path/to/lab-dev", "commit": "REPLACE_WITH_P7_LAB_DEV_HEAD", "runtime_commit": "REPLACE_WITH_P7_LAB_DEV_RUNTIME_HEAD"},
+    "labnow_open": {"path": "/absolute/path/to/labnow-open", "commit": "533b3c5bd0742a77a1cccfc4a30b818271751213", "runtime_commit": "8c56966c4b6be12702d4397aad6b1a153b87d053"},
+    "labnow_shell": {"path": "/absolute/path/to/labnow-shell", "commit": "REPLACE_WITH_P7_SHELL_HEAD", "runtime_commit": "REPLACE_WITH_P7_SHELL_RUNTIME_HEAD"},
+    "labnow_launcher": {"path": "/absolute/path/to/labnow-launcher", "commit": "c84edea3e051d561f28d9f99235563cf491aaeb2", "runtime_commit": "c84edea3e051d561f28d9f99235563cf491aaeb2"},
     "hermes_source": {"path": "/absolute/path/to/hermes-agent", "repository": "REPLACE_WITH_OBSERVED_HERMES_REMOTE", "commit": "REPLACE_WITH_FIXED_HERMES_COMMIT"}
   },
   "images": {
-    "hermes": {"ref": "quay.io/labnow/hermes:p7-REPLACE_WITH_12_HEX", "image_id": "sha256:REPLACE_WITH_64_HEX", "provenance": "local_build", "source_repository": "hermes_source", "source_commit": "REPLACE_WITH_FIXED_HERMES_COMMIT"},
-    "litellm": {"ref": "quay.io/labnow/litellm@sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1", "image_id": "sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1"},
-    "workspace": {"ref": "quay.io/labnow/labnow-open:REPLACE_WITH_P7_FIXED_TAG", "image_id": "sha256:REPLACE_WITH_64_HEX", "source_repository": "labnow_open", "source_commit": "REPLACE_WITH_P7_OPEN_HEAD"},
-    "shell": {"ref": "quay.io/labnow/labnow-shell:REPLACE_WITH_P7_FIXED_TAG", "image_id": "sha256:REPLACE_WITH_64_HEX", "source_repository": "labnow_shell", "source_commit": "REPLACE_WITH_P7_SHELL_HEAD"},
-    "launcher": {"ref": "quay.io/labnow/labnow-launcher:che-563-openclaw-product-closure-local", "image_id": "sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f", "source_repository": "labnow_launcher", "source_commit": "c84edea3e051d561f28d9f99235563cf491aaeb2"}
+    "hermes": {"ref": "quay.io/labnow/hermes:p7-REPLACE_WITH_12_HEX", "image_id": "sha256:REPLACE_WITH_64_HEX", "repo_digest": "quay.io/labnow/hermes@sha256:REPLACE_WITH_64_HEX", "provenance": "local_build", "source_repository": "hermes_source", "source_commit": "REPLACE_WITH_FIXED_HERMES_COMMIT"},
+    "litellm": {"ref": "quay.io/labnow/litellm@sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1", "image_id": "sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1", "repo_digest": "quay.io/labnow/litellm@sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1", "provenance": "repo_digest"},
+    "workspace": {"ref": "quay.io/labnow/labnow-open@sha256:56e69ace0da9dbede193e80904fa76ded1dd94cfc38cb1137f6df686c5b7f031", "image_id": "sha256:56e69ace0da9dbede193e80904fa76ded1dd94cfc38cb1137f6df686c5b7f031", "repo_digest": "quay.io/labnow/labnow-open@sha256:56e69ace0da9dbede193e80904fa76ded1dd94cfc38cb1137f6df686c5b7f031", "provenance": "local_build", "source_repository": "labnow_open", "source_commit": "8c56966c4b6be12702d4397aad6b1a153b87d053"},
+    "shell": {"ref": "quay.io/labnow/labnow-shell@sha256:REPLACE_WITH_64_HEX", "image_id": "sha256:REPLACE_WITH_64_HEX", "repo_digest": "quay.io/labnow/labnow-shell@sha256:REPLACE_WITH_64_HEX", "provenance": "local_build", "source_repository": "labnow_shell", "source_commit": "REPLACE_WITH_P7_SHELL_RUNTIME_HEAD"},
+    "launcher": {"ref": "quay.io/labnow/labnow-launcher@sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f", "image_id": "sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f", "repo_digest": "quay.io/labnow/labnow-launcher@sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f", "provenance": "local_build", "source_repository": "labnow_launcher", "source_commit": "c84edea3e051d561f28d9f99235563cf491aaeb2"}
+  },
+  "support_images": {
+    "postgres": {"ref": "postgres:17-alpine", "image_id": "sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193", "repo_digest": "postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"},
+    "redis": {"ref": "redis:7.4-alpine", "image_id": "sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2", "repo_digest": "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"},
+    "nginx": {"ref": "nginx:1.27-alpine", "image_id": "sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10", "repo_digest": "nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10"}
   },
   "base_images": {
     "build": "quay.io/labnow/node@sha256:REPLACE_WITH_64_HEX",
