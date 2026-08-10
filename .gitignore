@@ -123,6 +123,9 @@ celerybeat.pid
 # Environments
 .env
 docker_litellm/demo/artifacts/
+docker_openclaw/p6/artifacts/
+docker_openclaw/p6/p6-inputs.json
+docker_openclaw/p6/.p6-work/
 .venv
 env/
 venv/

@@ -1,0 +1,24 @@
+{
+  "schema_version": "p6-inputs/v1",
+  "contract_version": "v1alpha1",
+  "contract_bundle_sha256": "d289dff9bcaa3d28035c5ed2e56b806f4b3b37fdca3159352d22f0c03942e202",
+  "control_commit": "2eb71d7590739df3de8db2f8cf9098154a397f0b",
+  "review_policy_commit": "2eb71d7590739df3de8db2f8cf9098154a397f0b",
+  "repositories": {
+    "lab_dev": {"path": "/absolute/path/to/lab-dev", "commit": "940325578bae9905673965d6dc489130ab4b6a46"},
+    "labnow_open": {"path": "/absolute/path/to/labnow-open", "commit": "dfac9767fd6cdd4706ac4cd6917defcafd1c6eb8"},
+    "labnow_shell": {"path": "/absolute/path/to/labnow-shell", "commit": "eb0e6f90182e5d59174ea9edb7cb71edeaa7a47f"},
+    "labnow_launcher": {"path": "/absolute/path/to/labnow-launcher", "commit": "c64f5fbabc587e26394a486ef9ae12558234f646"}
+  },
+  "images": {
+    "litellm": {"ref": "quay.io/labnow/litellm:REPLACE_WITH_FIXED_TAG", "image_id": "sha256:REPLACE_WITH_LOCAL_IMAGE_ID", "provenance": "repo_digest", "repo_digest": "quay.io/labnow/litellm@sha256:REPLACE_WITH_REPO_DIGEST"},
+    "openclaw_base": {"ref": "quay.io/labnow/openclaw@sha256:REPLACE_WITH_VERIFIED_BASE_DIGEST", "image_id": "sha256:REPLACE_WITH_LOCAL_IMAGE_ID", "provenance": "repo_digest", "repo_digest": "quay.io/labnow/openclaw@sha256:REPLACE_WITH_VERIFIED_BASE_DIGEST"},
+    "openclaw_workspace": {"ref": "quay.io/labnow/labnow-open:che-563-openclaw-product-closure-local", "image_id": "sha256:REPLACE_WITH_LOCAL_IMAGE_ID", "provenance": "local_build", "repo_digest": "absent", "source_repository": "labnow_open", "source_commit": "REPLACE_WITH_LABNOW_OPEN_PHASE_COMMIT", "base_image_digest": "quay.io/labnow/openclaw@sha256:REPLACE_WITH_VERIFIED_BASE_DIGEST"}
+  },
+  "paths": {
+    "adapter": "/absolute/path/to/labnow-open/src/labnow-open-etc/openclaw-model-access-adapter.sh",
+    "runtime_mount": "/absolute/path/to/launcher-managed-runtime-mount",
+    "workspace_root": "/absolute/path/to/p6-run-workspace"
+  },
+  "driver": "/absolute/path/to/local-only-p6-golden-driver"
+}

@@ -1,0 +1,37 @@
+name: p6-openclaw-closure
+
+# The P6 runner renders this file only after p6-inputs.json has bound every
+# image to a local ID and repository digest. There are intentionally no image
+# defaults, no `latest`, and no credential values in this Compose file.
+services:
+  openclaw-workspace:
+    image: ${P6_OPENCLAW_WORKSPACE_IMAGE:?p6-runner must supply the fixed labnow-open Workspace image}
+    pull_policy: never
+    restart: "no"
+    environment:
+      OPENCLAW_GATEWAY_BIND: lan
+      OPENCLAW_GATEWAY_PORT: "18789"
+      # P6 keeps the gateway on the internal network. The real Console/Shell
+      # flow authenticates at its owning boundary; no gateway token is added
+      # to a persistent OpenClaw configuration.
+      OPENCLAW_USE_TRUSTED_PROXY_AUTH: "true"
+      LABNOW_MODEL_ACCESS_STATE_DIR: /root/.openclaw/data/labnow-model-access
+    volumes:
+      - type: bind
+        source: ${P6_RUNTIME_MOUNT:?p6-runner must supply the Launcher-managed runtime mount}
+        target: /run/labnow/model-access
+        read_only: true
+      - type: bind
+        source: ${P6_OPENCLAW_STATE_DIR:?p6-runner must supply an isolated run state directory}
+        target: /root/.openclaw/data
+    networks: [p6-net]
+    healthcheck:
+      test: ["CMD-SHELL", "openclaw config validate >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+networks:
+  p6-net:
+    name: ${P6_NETWORK_NAME:?p6-runner must supply an isolated network name}
