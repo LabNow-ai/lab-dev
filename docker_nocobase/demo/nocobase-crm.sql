@@ -2,7 +2,7 @@
   NocoBase fresh-database bootstrap (PostgreSQL) - "public" schema
   - Standalone initial DDL for CRM/meta tables (prefixed with "t_crm_" or "t_meta_")
   - Sequence + DEFAULT nextval(...)
-  - Physical foreign key constraints, M2M junction table (t_crm_customerTags) & O2M table (t_crm_customerRecords)
+  - Physical foreign key constraints, M2M junction tables (t_crm_customerTags, t_crm_teamMembers) & O2M tables (t_crm_customerRecords, t_crm_contactMethods)
   - Built-in NocoBase metadata registration (categories, collections & fields)
   - Association metadata (m2o, m2m, o2m / belongsTo, belongsToMany, hasMany)
   - Collection sort numbers starting from 101
@@ -66,6 +66,9 @@ DROP TABLE IF EXISTS "t_meta_skus" CASCADE;
 DROP TABLE IF EXISTS "t_meta_spus" CASCADE;
 DROP TABLE IF EXISTS "t_crm_customerTags" CASCADE;
 DROP TABLE IF EXISTS "t_crm_customerRecords" CASCADE;
+DROP TABLE IF EXISTS "t_crm_contactMethods" CASCADE;
+DROP TABLE IF EXISTS "t_crm_teamMembers" CASCADE;
+DROP TABLE IF EXISTS "t_crm_teams" CASCADE;
 DROP TABLE IF EXISTS "t_crm_tags" CASCADE;
 DROP TABLE IF EXISTS "t_crm_customer" CASCADE;
 
@@ -73,6 +76,9 @@ DROP SEQUENCE IF EXISTS "t_crm_customer_id_seq";
 DROP SEQUENCE IF EXISTS "t_crm_tags_id_seq";
 DROP SEQUENCE IF EXISTS "t_crm_customerTags_id_seq";
 DROP SEQUENCE IF EXISTS "t_crm_customerRecords_id_seq";
+DROP SEQUENCE IF EXISTS "t_crm_contactMethods_id_seq";
+DROP SEQUENCE IF EXISTS "t_crm_teams_id_seq";
+DROP SEQUENCE IF EXISTS "t_crm_teamMembers_id_seq";
 DROP SEQUENCE IF EXISTS "t_meta_spus_id_seq";
 DROP SEQUENCE IF EXISTS "t_meta_skus_id_seq";
 DROP SEQUENCE IF EXISTS "t_crm_orders_id_seq";
@@ -82,6 +88,9 @@ CREATE SEQUENCE IF NOT EXISTS "t_crm_customer_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_crm_tags_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_crm_customerTags_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_crm_customerRecords_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_contactMethods_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_teams_id_seq";
+CREATE SEQUENCE IF NOT EXISTS "t_crm_teamMembers_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_meta_spus_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_meta_skus_id_seq";
 CREATE SEQUENCE IF NOT EXISTS "t_crm_orders_id_seq";
@@ -91,6 +100,38 @@ CREATE SEQUENCE IF NOT EXISTS "t_crm_orderItems_id_seq";
 -- 2. Main tables (Audit columns placed immediately after id)
 -- =========================================================
 
+CREATE TABLE IF NOT EXISTS "t_crm_teams" (
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_teams_id_seq"'::regclass),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('TEAM', false, 5, 'base32'),
+  "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdById" bigint,
+  "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedById" bigint,
+  "name" character varying(255) NOT NULL,
+  "description" text,
+  "state" character varying(255) DEFAULT 'active',
+  "data1" text,
+  "data2" text,
+  CONSTRAINT "t_crm_teams_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "t_crm_teamMembers" (
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_teamMembers_id_seq"'::regclass),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('TMBR', false, 6, 'base32'),
+  "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdById" bigint,
+  "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedById" bigint,
+  "teamId" bigint NOT NULL,
+  "userId" bigint NOT NULL,
+  "role" character varying(255) DEFAULT 'member',
+  "data1" text,
+  "data2" text,
+  CONSTRAINT "t_crm_teamMembers_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_teamMembers_teamId_userId_uk" UNIQUE ("teamId", "userId"),
+  CONSTRAINT "t_crm_teamMembers_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "t_crm_teams"("id") ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS "t_crm_customer" (
   "id" bigint NOT NULL DEFAULT nextval('"t_crm_customer_id_seq"'::regclass),
   "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CUST', false, 6, 'base32'),
@@ -99,6 +140,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_customer" (
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "assigneeId" bigint,
+  "teamId" bigint,
   "name" character varying(255),
   "phone" character varying(255),
   "addr" text,
@@ -107,7 +149,8 @@ CREATE TABLE IF NOT EXISTS "t_crm_customer" (
   "state" character varying(255) DEFAULT 'sea',
   "data1" text,
   "data2" text,
-  CONSTRAINT "t_crm_customer_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "t_crm_customer_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_customer_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "t_crm_teams"("id") ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "t_crm_tags" (
@@ -141,6 +184,26 @@ CREATE TABLE IF NOT EXISTS "t_crm_customerTags" (
   CONSTRAINT "t_crm_customerTags_tag_fkey" FOREIGN KEY ("tag") REFERENCES "t_crm_tags"("id") ON DELETE CASCADE
 );
 
+-- One-to-Many Table for Customer Multi-Channel Contact Methods
+CREATE TABLE IF NOT EXISTS "t_crm_contactMethods" (
+  "id" bigint NOT NULL DEFAULT nextval('"t_crm_contactMethods_id_seq"'::regclass),
+  "code" character varying(64) NOT NULL DEFAULT generate_biz_code('CMTD', false, 6, 'base32'),
+  "createdAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdById" bigint,
+  "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedById" bigint,
+  "customerId" bigint NOT NULL,
+  "channel" character varying(255) NOT NULL,
+  "account" character varying(255) NOT NULL,
+  "isPrimary" boolean DEFAULT false,
+  "verified" boolean DEFAULT false,
+  "data1" text,
+  "data2" text,
+  CONSTRAINT "t_crm_contactMethods_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "t_crm_contactMethods_customerId_channel_account_uk" UNIQUE ("customerId", "channel", "account"),
+  CONSTRAINT "t_crm_contactMethods_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("id") ON DELETE CASCADE
+);
+
 -- One-to-Many Table for Customer Communication Records
 CREATE TABLE IF NOT EXISTS "t_crm_customerRecords" (
   "id" bigint NOT NULL DEFAULT nextval('"t_crm_customerRecords_id_seq"'::regclass),
@@ -150,6 +213,7 @@ CREATE TABLE IF NOT EXISTS "t_crm_customerRecords" (
   "updatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedById" bigint,
   "customerId" bigint NOT NULL,
+  "contactMethodId" bigint,
   "title" character varying(255),
   "type" character varying(255) DEFAULT 'call',
   "content" text,
@@ -157,7 +221,8 @@ CREATE TABLE IF NOT EXISTS "t_crm_customerRecords" (
   "data1" text,
   "data2" text,
   CONSTRAINT "t_crm_customerRecords_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "t_crm_customerRecords_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("id") ON DELETE CASCADE
+  CONSTRAINT "t_crm_customerRecords_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "t_crm_customer"("id") ON DELETE CASCADE,
+  CONSTRAINT "t_crm_customerRecords_contactMethodId_fkey" FOREIGN KEY ("contactMethodId") REFERENCES "t_crm_contactMethods"("id") ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS "t_meta_spus" (
@@ -233,7 +298,10 @@ CREATE TABLE IF NOT EXISTS "t_crm_orderItems" (
 -- =========================================================
 -- 3. Bind sequence ownership & indexes
 -- =========================================================
+ALTER SEQUENCE "t_crm_teams_id_seq" OWNED BY "t_crm_teams"."id";
+ALTER SEQUENCE "t_crm_teamMembers_id_seq" OWNED BY "t_crm_teamMembers"."id";
 ALTER SEQUENCE "t_crm_customer_id_seq" OWNED BY "t_crm_customer"."id";
+ALTER SEQUENCE "t_crm_contactMethods_id_seq" OWNED BY "t_crm_contactMethods"."id";
 ALTER SEQUENCE "t_crm_tags_id_seq" OWNED BY "t_crm_tags"."id";
 ALTER SEQUENCE "t_crm_customerTags_id_seq" OWNED BY "t_crm_customerTags"."id";
 ALTER SEQUENCE "t_crm_customerRecords_id_seq" OWNED BY "t_crm_customerRecords"."id";
@@ -243,7 +311,12 @@ ALTER SEQUENCE "t_crm_orders_id_seq" OWNED BY "t_crm_orders"."id";
 ALTER SEQUENCE "t_crm_orderItems_id_seq" OWNED BY "t_crm_orderItems"."id";
 
 CREATE INDEX IF NOT EXISTS "t_crm_customer_assignee_id_idx" ON "t_crm_customer" ("assigneeId");
+CREATE INDEX IF NOT EXISTS "t_crm_customer_teamId_idx" ON "t_crm_customer" ("teamId");
+CREATE INDEX IF NOT EXISTS "t_crm_contactMethods_customerId_idx" ON "t_crm_contactMethods" ("customerId");
 CREATE INDEX IF NOT EXISTS "t_crm_customerRecords_customerId_idx" ON "t_crm_customerRecords" ("customerId");
+CREATE INDEX IF NOT EXISTS "t_crm_customerRecords_contactMethodId_idx" ON "t_crm_customerRecords" ("contactMethodId");
+CREATE INDEX IF NOT EXISTS "t_crm_teamMembers_teamId_idx" ON "t_crm_teamMembers" ("teamId");
+CREATE INDEX IF NOT EXISTS "t_crm_teamMembers_userId_idx" ON "t_crm_teamMembers" ("userId");
 CREATE INDEX IF NOT EXISTS "t_crm_orders_customerId_idx" ON "t_crm_orders" ("customerId");
 CREATE INDEX IF NOT EXISTS "t_crm_orderItems_skuId_idx" ON "t_crm_orderItems" ("skuId");
 CREATE INDEX IF NOT EXISTS "t_crm_orderItems_orderId_idx" ON "t_crm_orderItems" ("orderId");
@@ -267,7 +340,7 @@ WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collec
 INSERT INTO "collectionCategory" ("categoryId", "collectionName", "createdAt", "updatedAt")
 SELECT c.id, col.name, NOW(), NOW()
 FROM "collectionCategories" c
-CROSS JOIN (VALUES ('t_crm_customer'), ('t_crm_tags'), ('t_crm_customerTags'), ('t_crm_customerRecords'), ('t_meta_spus'), ('t_meta_skus'), ('t_crm_orders'), ('t_crm_orderItems')) AS col(name)
+CROSS JOIN (VALUES ('t_crm_customer'), ('t_crm_contactMethods'), ('t_crm_tags'), ('t_crm_customerTags'), ('t_crm_customerRecords'), ('t_crm_teams'), ('t_crm_teamMembers'), ('t_meta_spus'), ('t_meta_skus'), ('t_crm_orders'), ('t_crm_orderItems')) AS col(name)
 WHERE c.name = 'CRM'
   AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'collectionCategory')
   AND NOT EXISTS (
@@ -295,10 +368,13 @@ SELECT
   v.opts::json,
   v.sort_val
 FROM (VALUES
+  ('t_crm_teams', '跟进团队', false, 101, '{"template": "general", "tableName": "t_crm_teams", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
+  ('t_crm_teamMembers', '团队成员', false, 102, '{"template": "general", "tableName": "t_crm_teamMembers", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "code", "unavailableActions": []}'),
   ('t_crm_tags', '标签', false, 100, '{"template": "general", "tableName": "t_crm_tags", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "tag", "unavailableActions": []}'),
   ('t_crm_customer', '顾客', false, 110, '{"template": "general", "tableName": "t_crm_customer", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "name", "unavailableActions": []}'),
-  ('t_crm_customerTags', '顾客标签', true, 111, '{"template": "general", "timestamps": true, "autoGenId": true, "autoCreate": true, "isThrough": true, "sortable": false}'),
-  ('t_crm_customerRecords', '顾客沟通记录', false, 112, '{"template": "general", "tableName": "t_crm_customerRecords", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}'),
+  ('t_crm_contactMethods', '顾客联系方式', false, 111, '{"template": "general", "tableName": "t_crm_contactMethods", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "account", "unavailableActions": []}'),
+  ('t_crm_customerTags', '顾客标签', true, 112, '{"template": "general", "timestamps": true, "autoGenId": true, "autoCreate": true, "isThrough": true, "sortable": false}'),
+  ('t_crm_customerRecords', '顾客沟通记录', false, 113, '{"template": "general", "tableName": "t_crm_customerRecords", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "title", "unavailableActions": []}'),
   ('t_meta_spus', '产品(SPU)', false, 121, '{"template": "general", "tableName": "t_meta_spus", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "productName", "unavailableActions": []}'),
   ('t_meta_skus', '商品规格(SKU)', false, 122, '{"template": "general", "tableName": "t_meta_skus", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "skuDisplayName", "unavailableActions": []}'),
   ('t_crm_orders', '订单', false, 131, '{"template": "general", "tableName": "t_crm_orders", "timestamps": false, "autoGenId": true, "from": "dbsync", "underscored": false, "titleField": "code", "unavailableActions": []}'),
@@ -314,7 +390,7 @@ ON CONFLICT ("name") DO UPDATE SET
 -- 4.3 Fields Registration & Display Titles (Including Foreign Key, M2M & O2M Association Fields)
 DELETE FROM "fields"
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fields')
-  AND "collectionName" IN ('t_crm_customer', 't_crm_customerRecords', 't_crm_tags', 't_crm_customerTags', 't_meta_spus', 't_meta_skus', 't_crm_orders', 't_crm_orderItems');
+  AND "collectionName" IN ('t_crm_customer', 't_crm_contactMethods', 't_crm_customerRecords', 't_crm_tags', 't_crm_customerTags', 't_crm_teams', 't_crm_teamMembers', 't_meta_spus', 't_meta_skus', 't_crm_orders', 't_crm_orderItems');
 
 INSERT INTO "fields" ("key", "name", "type", "interface", "options", "collectionName", "sort")
 SELECT
@@ -326,6 +402,34 @@ SELECT
   v.col_name,
   v.sort_val
 FROM (VALUES
+  -- t_crm_teams
+  ('t_crm_teams', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_teams', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
+  ('t_crm_teams', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
+  ('t_crm_teams', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
+  ('t_crm_teams', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
+  ('t_crm_teams', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
+  ('t_crm_teams', 'name', 'string', 'input', '{"allowNull": false, "field": "name", "uiSchema": {"type": "string", "title": "团队名称", "x-component": "Input"}}', 7),
+  ('t_crm_teams', 'description', 'text', 'textarea', '{"allowNull": true, "field": "description", "uiSchema": {"type": "string", "title": "团队描述", "x-component": "Input.TextArea"}}', 8),
+  ('t_crm_teams', 'state', 'string', 'select', '{"allowNull": true, "field": "state", "defaultValue": "active", "uiSchema": {"type": "string", "title": "团队状态", "x-component": "Select", "enum": [{"value": "active", "label": "活跃", "color": "green"}, {"value": "archived", "label": "已归档", "color": "default"}]}}', 9),
+  ('t_crm_teams', 'members', 'hasMany', 'o2m', '{"target": "t_crm_teamMembers", "foreignKey": "teamId", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "团队成员", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 10),
+  ('t_crm_teams', 'customers', 'hasMany', 'o2m', '{"target": "t_crm_customer", "foreignKey": "teamId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "负责客户", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 11),
+  ('t_crm_teams', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 12),
+  ('t_crm_teams', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
+
+  -- t_crm_teamMembers
+  ('t_crm_teamMembers', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_teamMembers', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
+  ('t_crm_teamMembers', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
+  ('t_crm_teamMembers', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
+  ('t_crm_teamMembers', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
+  ('t_crm_teamMembers', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
+  ('t_crm_teamMembers', 'team', 'belongsTo', 'm2o', '{"target": "t_crm_teams", "foreignKey": "teamId", "targetKey": "id", "uiSchema": {"type": "object", "title": "所属团队", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "name"}}}}', 7),
+  ('t_crm_teamMembers', 'user', 'belongsTo', 'm2o', '{"target": "users", "foreignKey": "userId", "targetKey": "id", "uiSchema": {"type": "object", "title": "成员用户", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}}}', 8),
+  ('t_crm_teamMembers', 'role', 'string', 'select', '{"allowNull": true, "field": "role", "defaultValue": "member", "uiSchema": {"type": "string", "title": "团队角色", "x-component": "Select", "enum": [{"value": "leader", "label": "团队负责人", "color": "blue"}, {"value": "member", "label": "团队成员", "color": "green"}]}}', 9),
+  ('t_crm_teamMembers', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 10),
+  ('t_crm_teamMembers', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 11),
+
   -- t_crm_customer
   ('t_crm_customer', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
   ('t_crm_customer', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
@@ -345,6 +449,24 @@ FROM (VALUES
   ('t_crm_customer', 'orders', 'hasMany', 'o2m', '{"target": "t_crm_orders", "foreignKey": "customerId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "订单列表", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 16),
   ('t_crm_customer', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 17),
   ('t_crm_customer', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 18),
+  ('t_crm_customer', 'team', 'belongsTo', 'm2o', '{"target": "t_crm_teams", "foreignKey": "teamId", "targetKey": "id", "uiSchema": {"type": "object", "title": "跟进团队", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "name"}}}}', 19),
+  ('t_crm_customer', 'contactMethods', 'hasMany', 'o2m', '{"target": "t_crm_contactMethods", "foreignKey": "customerId", "sourceKey": "id", "targetKey": "id", "uiSchema": {"type": "array", "title": "联系方式", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 20),
+
+  -- t_crm_contactMethods
+  ('t_crm_contactMethods', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
+  ('t_crm_contactMethods', 'code', 'string', 'input', '{"allowNull": true, "field": "code", "uiSchema": {"type": "string", "title": "业务编码", "x-component": "Input", "x-read-pretty": true}}', 2),
+  ('t_crm_contactMethods', 'createdAt', 'datetimeTz', 'createdAt', '{"field": "createdAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Created at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 3),
+  ('t_crm_contactMethods', 'createdBy', 'belongsTo', 'createdBy', '{"target": "users", "foreignKey": "createdById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Created by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 4),
+  ('t_crm_contactMethods', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
+  ('t_crm_contactMethods', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
+  ('t_crm_contactMethods', 'customer', 'belongsTo', 'm2o', '{"target": "t_crm_customer", "foreignKey": "customerId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联顾客", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "name"}}}}', 7),
+  ('t_crm_contactMethods', 'channel', 'string', 'select', '{"allowNull": false, "field": "channel", "uiSchema": {"type": "string", "title": "联系方式渠道", "x-component": "Select", "enum": [{"value": "phone", "label": "电话", "color": "blue"}, {"value": "wechat", "label": "微信/企业微信", "color": "green"}, {"value": "whatsapp", "label": "WhatsApp", "color": "green"}, {"value": "email", "label": "邮件", "color": "purple"}, {"value": "line", "label": "Line", "color": "green"}, {"value": "telegram", "label": "Telegram", "color": "blue"}, {"value": "other", "label": "其他", "color": "default"}]}}', 8),
+  ('t_crm_contactMethods', 'account', 'string', 'input', '{"allowNull": false, "field": "account", "uiSchema": {"type": "string", "title": "联系方式账号", "x-component": "Input"}}', 9),
+  ('t_crm_contactMethods', 'isPrimary', 'boolean', 'switch', '{"allowNull": true, "field": "isPrimary", "defaultValue": false, "uiSchema": {"type": "boolean", "title": "是否首选联系方式", "x-component": "Checkbox"}}', 10),
+  ('t_crm_contactMethods', 'verified', 'boolean', 'switch', '{"allowNull": true, "field": "verified", "defaultValue": false, "uiSchema": {"type": "boolean", "title": "是否已验证", "x-component": "Checkbox"}}', 11),
+  ('t_crm_contactMethods', 'records', 'hasMany', 'o2m', '{"target": "t_crm_customerRecords", "foreignKey": "contactMethodId", "sourceKey": "id", "targetKey": "id", "onDelete": "SET NULL", "uiSchema": {"type": "array", "title": "关联沟通记录", "x-component": "AssociationField", "x-component-props": {"multiple": true}}}', 12),
+  ('t_crm_contactMethods', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 13),
+  ('t_crm_contactMethods', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
 
   -- t_crm_customerRecords
   ('t_crm_customerRecords', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "记录ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
@@ -354,12 +476,13 @@ FROM (VALUES
   ('t_crm_customerRecords', 'updatedAt', 'datetimeTz', 'updatedAt', '{"field": "updatedAt", "uiSchema": {"type": "datetime", "title": "{{t(\"Last updated at\")}}", "x-component": "DatePicker", "x-component-props": {"showTime": true}, "x-read-pretty": true}}', 5),
   ('t_crm_customerRecords', 'updatedBy', 'belongsTo', 'updatedBy', '{"target": "users", "foreignKey": "updatedById", "targetKey": "id", "uiSchema": {"type": "object", "title": "{{t(\"Last updated by\")}}", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "nickname"}}, "x-read-pretty": true}}', 6),
   ('t_crm_customerRecords', 'customer', 'belongsTo', 'm2o', '{"target": "t_crm_customer", "foreignKey": "customerId", "targetKey": "id", "uiSchema": {"type": "object", "title": "关联顾客", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "name"}}}}', 7),
-  ('t_crm_customerRecords', 'title', 'string', 'input', '{"allowNull": true, "field": "title", "uiSchema": {"type": "string", "title": "沟通主题", "x-component": "Input"}}', 8),
-  ('t_crm_customerRecords', 'type', 'string', 'select', '{"allowNull": true, "field": "type", "defaultValue": "call", "uiSchema": {"type": "string", "title": "沟通方式", "x-component": "Select", "enum": [{"value": "call", "label": "电话沟通", "color": "blue"}, {"value": "meeting", "label": "当面拜访", "color": "magenta"}, {"value": "wechat", "label": "微信沟通", "color": "green"}, {"value": "email", "label": "邮件往来", "color": "purple"}, {"value": "other", "label": "其他", "color": "default"}]}}', 9),
-  ('t_crm_customerRecords', 'content', 'text', 'textarea', '{"allowNull": true, "field": "content", "uiSchema": {"type": "string", "title": "沟通内容", "x-component": "Input.TextArea"}}', 10),
-  ('t_crm_customerRecords', 'recordTime', 'datetimeTz', 'datetime', '{"field": "recordTime", "uiSchema": {"type": "datetime", "title": "沟通时间", "x-component": "DatePicker", "x-component-props": {"showTime": true}}}', 11),
-  ('t_crm_customerRecords', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 12),
-  ('t_crm_customerRecords', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 13),
+  ('t_crm_customerRecords', 'contactMethod', 'belongsTo', 'm2o', '{"target": "t_crm_contactMethods", "foreignKey": "contactMethodId", "targetKey": "id", "uiSchema": {"type": "object", "title": "使用联系方式", "x-component": "AssociationField", "x-component-props": {"fieldNames": {"value": "id", "label": "account"}}}}', 8),
+  ('t_crm_customerRecords', 'title', 'string', 'input', '{"allowNull": true, "field": "title", "uiSchema": {"type": "string", "title": "沟通主题", "x-component": "Input"}}', 9),
+  ('t_crm_customerRecords', 'type', 'string', 'select', '{"allowNull": true, "field": "type", "defaultValue": "call", "uiSchema": {"type": "string", "title": "沟通方式", "x-component": "Select", "enum": [{"value": "call", "label": "电话沟通", "color": "blue"}, {"value": "meeting", "label": "当面拜访", "color": "magenta"}, {"value": "wechat", "label": "微信沟通", "color": "green"}, {"value": "email", "label": "邮件往来", "color": "purple"}, {"value": "other", "label": "其他", "color": "default"}]}}', 10),
+  ('t_crm_customerRecords', 'content', 'text', 'textarea', '{"allowNull": true, "field": "content", "uiSchema": {"type": "string", "title": "沟通内容", "x-component": "Input.TextArea"}}', 11),
+  ('t_crm_customerRecords', 'recordTime', 'datetimeTz', 'datetime', '{"field": "recordTime", "uiSchema": {"type": "datetime", "title": "沟通时间", "x-component": "DatePicker", "x-component-props": {"showTime": true}}}', 12),
+  ('t_crm_customerRecords', 'data1', 'text', 'textarea', '{"allowNull": true, "field": "data1", "uiSchema": {"type": "string", "title": "备注", "x-component": "Input.TextArea"}}', 13),
+  ('t_crm_customerRecords', 'data2', 'text', 'textarea', '{"allowNull": true, "field": "data2", "uiSchema": {"type": "string", "title": "其他", "x-component": "Input.TextArea"}}', 14),
 
   -- t_crm_tags
   ('t_crm_tags', 'id', 'snowflakeId', 'snowflakeId', '{"autoIncrement": false, "primaryKey": true, "allowNull": false, "field": "id", "uiSchema": {"type": "number", "title": "ID", "x-component": "InputNumber", "x-component-props": {"stringMode": true, "separator": "0.00", "step": "1"}, "x-validator": "integer"}}', 1),
@@ -464,7 +587,7 @@ WHERE "fields".key = sub.key AND "fields"."sort" IS NULL;
 -- Batch update primaryKey: true for all CRM/meta tables' primary key fields
 UPDATE "fields"
 SET "options" = (COALESCE("options"::jsonb, '{}'::jsonb) || '{"primaryKey": true}'::jsonb)::json 
-WHERE ("collectionName" IN ('t_crm_customer', 't_crm_customerRecords', 't_crm_tags', 't_meta_spus', 't_meta_skus', 't_crm_orders', 't_crm_orderItems') AND "name" = 'id')
+WHERE ("collectionName" IN ('t_crm_customer', 't_crm_contactMethods', 't_crm_customerRecords', 't_crm_tags', 't_crm_teams', 't_crm_teamMembers', 't_meta_spus', 't_meta_skus', 't_crm_orders', 't_crm_orderItems') AND "name" = 'id')
    OR ("collectionName" = 't_crm_customerTags' AND "name" = 'id');
 
 -- =========================================================
