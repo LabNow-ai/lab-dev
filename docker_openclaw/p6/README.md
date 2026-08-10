@@ -1,61 +1,95 @@
 # P6 OpenClaw 产品闭环（本仓编排）
 
-本目录仅承担 LLM Hub V1 / P6 的 `lab-dev` 职责：固定本地组合输入、
-OpenClaw Compose、黄金 runner、脱敏报告聚合和清理入口。Shell、Launcher
-和 OpenClaw 产品业务逻辑仍由各自仓库拥有。
+本目录只承担 LLM Hub V1 / P6 的 `lab-dev` 职责：固定本地组合、创建隔离
+拓扑、执行黄金 runner、聚合脱敏报告并清理本轮资源。Shell、Launcher 和
+OpenClaw 的产品业务逻辑仍由各自仓库拥有。
 
-当前状态：本仓 runner 与固定输入门禁已具备，尚未达到 ready。真实黄金运行
-必须等待四仓 tracked 工作树干净，并提供能自动编排五个组件的固定 driver；
-在此之前，`--preflight`/`--golden` 必须失败关闭，handoff 为 `blocked`。
+当前状态：真实五组件 driver 与失败关闭门禁已写入工作树；在真实黄金 run、
+有界复审及 promotion 完成前，P6 仍不是 `verified`。
 
-## 输入与安全边界
+## 固定输入与 review_snapshot
 
-从 [`p6-inputs.example.json`](p6-inputs.example.json) 创建本地
-`p6-inputs.json`，权限必须为 `0400` 或 `0600`。该文件是 Git 忽略的，
-只保存路径、固定 commit、镜像 ID/digest 与本地 driver 路径。测试 Secret
-由 driver 在运行中以受限文件生成；它只将模式为 `0600` 的 pattern 文件
-交给 runner 做零命中扫描，绝不写入输入、报告或命令参数。
+从 [`p6-inputs.example.json`](p6-inputs.example.json) 创建 Git 忽略的
+`p6-inputs.json`，权限必须为 `0400` 或 `0600`。输入只包含：
 
-Runner 拒绝以下情况：浮动 `latest`、非 `quay.io/labnow/` 镜像、commit/
-RC1 bundle 不匹配、任何冻结仓 tracked 工作树有变更、本机镜像 ID/digest
-不匹配、输入/Secret 权限不安全或运行时路径缺失。它从不 source `.env`。
-本地 Workspace 镜像可以明确标为 `local_build` 且 `repo_digest="absent"`，
-此时必须提供准确 image ID、`labnow-open` source commit 与固定上游
-OpenClaw base digest；runner 会校验三者，不会伪造 repository digest。
+- `lab-dev` 的 Phase branch、base、当前 `HEAD`、tracked diff SHA-256 和变更文件集；
+- 其余三仓的准确 commit；
+- LiteLLM、OpenClaw base、Workspace、Launcher、Shell、PostgreSQL、Redis、
+  nginx 的准确本地 image ID 与 RepoDigest；
+- P1 本地测试 `.env` 的绝对路径。
 
-## 入口
+`lab-dev` 可以用受保护的 `review_snapshot` 进入 Review，不要求提前 commit。
+Runner 会重新计算：
+
+```bash
+git diff --binary --full-index --no-ext-diff <phase_base_commit> -- | shasum -a 256
+```
+
+并核对分支、`HEAD`、文件集和 SHA-256。其他三仓必须停在准确 commit 且 tracked
+工作树 clean。未知 untracked 文件不属于输入，也不会被读取、删除或修改。
+
+## 真实拓扑
+
+[`docker-compose.runtime.yml`](docker-compose.runtime.yml) 每次创建一个独立的：
+
+- 固定 LiteLLM + 独立 PostgreSQL / Redis / migration；
+- 固定 Shell + 独立 PostgreSQL / migration；
+- run-scoped User Center fixture；
+- 固定 Launcher / live JupyterHub；
+- run-scoped HTTPS LiteLLM gateway；
+- 由 live DockerSpawner 创建的固定 OpenClaw Workspace。
+
+Workspace 不由第二份 Compose 旁路创建。Launcher 通过真实 Shell 内部接口完成
+claim → materialize → Adapter apply/probe → activate，stop/restart/delete 时完成
+release。P1 `.env` 只由受版本控制的 preparer 程序化读取；所有测试 key、Hub
+token、服务 token、数据库密码、KEK 和本地证书均在本轮 `0700` 目录内以
+`0400`/`0600` 文件生成，不进入输入、命令参数、Git 或脱敏报告。
+
+## Runner 门禁
 
 ```bash
 ./docker_openclaw/p6/scripts/test-p6-gates.sh
+./docker_openclaw/p6/scripts/test-p6-driver-flow.sh
 ./docker_openclaw/p6/scripts/test-p6-compose-render.sh
 ./docker_openclaw/p6/scripts/p6-runner.sh --input /secure/path/p6-inputs.json --preflight
 ./docker_openclaw/p6/scripts/p6-runner.sh --input /secure/path/p6-inputs.json --render
-./docker_openclaw/p6/scripts/p6-runner.sh --input /secure/path/p6-inputs.json --golden
-./docker_openclaw/p6/scripts/p6-runner.sh --input /secure/path/p6-inputs.json --cleanup
+P6_RUN_ID=p6-<32hex> ./docker_openclaw/p6/scripts/p6-runner.sh --input /secure/path/p6-inputs.json --golden
+P6_RUN_ID=p6-<same-32hex> ./docker_openclaw/p6/scripts/p6-runner.sh --input /secure/path/p6-inputs.json --cleanup
 ```
 
-`--golden` 在严格 preflight 后调用输入中已固定的跨仓 driver，强制其按
-`provision → golden → cleanup` 执行：`provision` 必须在同一 run 中启动固定
-LiteLLM、Shell、live JupyterHub、Launcher 与 P6 Workspace；Workspace 必须
-使用本目录 Compose；`golden` 覆盖 Console、JupyterHub/DockerSpawner、
-Launcher claim/activate/release、Adapter、chat/stream/tool、用量、撤销、
-generation、delete 与零 active lease；`cleanup` 必须证明所有上述资源、
-运行材料、临时文件和进程均不存在。缺少任何阶段或检查都会失败关闭，不能
-把外部服务预先手工启动后当作 P6 成功。
+`--golden` 在一个 run 中完成：
 
-本轮固定组合为 LiteLLM 本地 ID/digest、上游 OpenClaw base digest，以及
-`quay.io/labnow/labnow-open:che-563-openclaw-product-closure-local` Workspace
-本地镜像；Workspace 的 local-only provenance 绑定
-`labnow-open@5b70a6b0f960ddc1a5c45a27449cd7317da0c7da` 与上游 OpenClaw
-base digest。P6 Compose 仅定义该 Workspace，完整 driver 负责启动同一 run
-中的 LiteLLM、Shell、JupyterHub 和 Launcher，并在 cleanup 中全部移除。
+1. 通过 Shell 真实 API 创建 connection、route、binding；
+2. 通过 Shell 调用 live JupyterHub，由真实 DockerSpawner 创建 Workspace；
+3. 核对最小 `model_access`、只读材料、Adapter status、访问入口和 readiness；
+4. 执行 chat、stream、tool，并按 owner / Workspace / key / model / time 查询用量；
+5. stop 后验证旧 key 被拒绝；restart 后验证 generation 增加、新 key 成功、
+   旧 key 仍拒绝、旧 generation 迟到 release 返回 409；
+6. delete 后验证新 key 被拒绝、active lease 为零；
+7. 扫描 Shell、Launcher、LiteLLM、Workspace 日志/进程/脱敏 inspect、OpenClaw
+   配置与本轮 Workspace 文件，确认测试 Secret 零命中；
+8. 只删除本 run 的准确容器、网络、数据卷、运行材料和临时文件。
 
-运行产生的脱敏报告位于 `p6/artifacts/`（Git 忽略）。只有同一 run 的
-preflight、golden、cleanup 都 `passed`，才允许：
+Shell 在 `5c9411dfd3c4d7b1e606c0d9dc0c5e62313bc376` 的真实鼠标流程证据和
+LiteLLM `1.97.0` v2 key-alias 分页用量 smoke 按冻结 Review 结论复用；runner 不伪装成
+重新执行浏览器 UI。`test-p6-driver-flow.sh`
+只验证编排、报告和 cleanup 的确定性，不能替代真实黄金 run。
+
+## 证据与聚合
+
+脱敏报告位于 Git 忽略的 `p6/artifacts/`。`provision`、`golden`、`cleanup`
+三份 driver 报告绑定同一 run、输入 SHA-256 和准确 provenance。报告只保留
+结构断言、非敏感 ID、计数、状态和 SHA-256，不保留 key、Prompt、Response
+正文、原始环境或私钥。
+
+只有同一 run 的 preflight、golden、cleanup 都为 `passed`，且阶段报告 hash
+一致时，才允许聚合：
 
 ```bash
-./docker_openclaw/p6/scripts/p6-aggregate.sh --artifacts docker_openclaw/p6/artifacts --run-id p6-<run-id>
+./docker_openclaw/p6/scripts/p6-aggregate.sh \
+  --artifacts docker_openclaw/p6/artifacts \
+  --run-id p6-<same-32hex>
 ```
 
-清理只移除本 runner 创建的 Compose 资源与受限临时目录，不删除数据卷、
-用户目录或其他项目资源。P6 不推送镜像、不部署、不推进 integration。
+P6 只在本地运行，不拉取或推送产品分支，不发布镜像，不部署，也不修改任何
+`main`。

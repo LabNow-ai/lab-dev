@@ -4,41 +4,59 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+p6_dir="$(cd "${script_dir}/.." && pwd)"
 runner="$script_dir/p6-runner.sh"
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/p6-gates.XXXXXX")"
 chmod 700 "$tmpdir"
 trap 'rm -rf "$tmpdir"' EXIT
 
 input="$tmpdir/input.json"
-jq -n \
-  --arg contract_sha 'd289dff9bcaa3d28035c5ed2e56b806f4b3b37fdca3159352d22f0c03942e202' \
-  --arg control '2eb71d7590739df3de8db2f8cf9098154a397f0b' \
-  --arg lab_dev '940325578bae9905673965d6dc489130ab4b6a46' \
-  --arg open 'dfac9767fd6cdd4706ac4cd6917defcafd1c6eb8' \
-  --arg shell 'eb0e6f90182e5d59174ea9edb7cb71edeaa7a47f' \
-  --arg launcher 'c64f5fbabc587e26394a486ef9ae12558234f646' \
-  '{schema_version:"p6-inputs/v1",contract_version:"v1alpha1",contract_bundle_sha256:$contract_sha,control_commit:$control,review_policy_commit:$control,
-    repositories:{lab_dev:{path:"/tmp/lab-dev",commit:$lab_dev},labnow_open:{path:"/tmp/labnow-open",commit:$open},labnow_shell:{path:"/tmp/labnow-shell",commit:$shell},labnow_launcher:{path:"/tmp/labnow-launcher",commit:$launcher}},
-    images:{litellm:{ref:"quay.io/labnow/litellm:1.97.0-ead62528e607",image_id:("sha256:" + ("a" * 64)),provenance:"repo_digest",repo_digest:("quay.io/labnow/litellm@sha256:" + ("a" * 64))},openclaw_base:{ref:("quay.io/labnow/openclaw@sha256:" + ("b" * 64)),image_id:("sha256:" + ("b" * 64)),provenance:"repo_digest",repo_digest:("quay.io/labnow/openclaw@sha256:" + ("b" * 64))},openclaw_workspace:{ref:"quay.io/labnow/labnow-open:che-563-openclaw-product-closure-local",image_id:("sha256:" + ("c" * 64)),provenance:"local_build",repo_digest:"absent",source_repository:"labnow_open",source_commit:$open,base_image_digest:("quay.io/labnow/openclaw@sha256:" + ("b" * 64))}},
-    paths:{runtime_mount:"/tmp/runtime",workspace_root:"/tmp/workspace"},driver:"/tmp/driver"}' > "$input"
+cp "$p6_dir/p6-inputs.example.json" "$input"
 chmod 600 "$input"
+run_id="p6-$(python3 -c 'print("0" * 32)')"
+P6_RUN_ID="$run_id" P6_ARTIFACTS_DIR="$tmpdir/artifacts" "$runner" --input "$input" --validate-input >/dev/null
 
-# An example-like but structurally fixed input is accepted without inspecting
-# Docker/repositories. Mutable refs and control/contract mismatches must fail.
-P6_RUN_ID="p6-$(python3 -c 'print("0" * 32)')" P6_ARTIFACTS_DIR="$tmpdir/artifacts" "$runner" --input "$input" --validate-input >/dev/null
-latest="$tmpdir/latest.json"
-jq '.images.openclaw_workspace.ref = "quay.io/labnow/labnow-open:latest"' "$input" > "$latest"; chmod 600 "$latest"
-if P6_ARTIFACTS_DIR="$tmpdir/artifacts" "$runner" --input "$latest" --validate-input >/dev/null 2>&1; then echo 'accepted latest image' >&2; exit 1; fi
-mismatch="$tmpdir/mismatch.json"
-jq '.contract_bundle_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"' "$input" > "$mismatch"; chmod 600 "$mismatch"
-if P6_ARTIFACTS_DIR="$tmpdir/artifacts" "$runner" --input "$mismatch" --validate-input >/dev/null 2>&1; then echo 'accepted contract mismatch' >&2; exit 1; fi
+source "$script_dir/p6-lib.sh"
+mkdir -p "$tmpdir/scan-bin" "$tmpdir/scan-root"
+printf '#!/usr/bin/env bash\nexit 2\n' > "$tmpdir/scan-bin/rg"
+chmod 700 "$tmpdir/scan-bin/rg"
+printf 'fixture-pattern-not-present\n' > "$tmpdir/patterns"
+chmod 600 "$tmpdir/patterns"
+printf 'safe fixture\n' > "$tmpdir/scan-root/value.txt"
+if (PATH="$tmpdir/scan-bin:$PATH"; p6_security_scan "$tmpdir/patterns" "$tmpdir/scan-root" >/dev/null 2>&1); then
+  echo 'accepted failed secret scan as zero-hit' >&2
+  exit 1
+fi
 
-# The orchestration source must not fall back to latest or a plaintext gateway
-# token, and aggregation must reject absent golden evidence.
-rg -q 'P6_OPENCLAW_WORKSPACE_IMAGE' "$script_dir/../docker-compose.p6.yml"
-! rg -n 'P6_OPENCLAW_IMAGE|P6_OPENCLAW_ADAPTER' "$script_dir/../docker-compose.p6.yml" "$script_dir/p6-runner.sh"
-rg -q 'run_driver provision' "$script_dir/p6-runner.sh"
-rg -q 'run_driver cleanup' "$script_dir/p6-runner.sh"
-! rg -q 'up -d --wait openclaw-workspace' "$script_dir/p6-runner.sh"
-if "$script_dir/p6-aggregate.sh" --artifacts "$tmpdir/artifacts" --run-id "p6-$(python3 -c 'print("0" * 32)')" >/dev/null 2>&1; then echo 'accepted incomplete evidence' >&2; exit 1; fi
-echo 'PASS P6 gates: fixed-input mismatches and incomplete evidence fail closed.'
+negative() {
+  local name="$1" filter="$2" candidate
+  candidate="$tmpdir/${name}.json"
+  jq "$filter" "$input" > "$candidate"
+  chmod 600 "$candidate"
+  if P6_RUN_ID="$run_id" P6_ARTIFACTS_DIR="$tmpdir/artifacts" "$runner" --input "$candidate" --validate-input >/dev/null 2>&1; then
+    printf 'accepted invalid input: %s\n' "$name" >&2
+    exit 1
+  fi
+}
+
+negative latest '.images.openclaw_workspace.ref = "quay.io/labnow/labnow-open:latest"'
+negative contract_mismatch '.contract_bundle_sha256 = ("0" * 64)'
+negative missing_workspace_digest '.images.openclaw_workspace.repo_digest = "absent"'
+negative missing_launcher_digest '.local_only_images.launcher.repo_digest = "absent"'
+negative unprotected_lab_dev '.repositories.lab_dev.delivery_identity = "commit"'
+negative missing_snapshot_files '.repositories.lab_dev.changed_files = []'
+negative mutable_support '.support_images.nginx.ref = "nginx:latest"'
+
+rg -q 'p6-product-chain.py' "$script_dir/p6-full-driver.sh"
+rg -q 'review_snapshot' "$script_dir/p6-lib.sh"
+rg -q 'tracked_diff_sha256' "$script_dir/p6-lib.sh"
+! rg -q 'golden_checks|pattern_command|topology.*compose_file' "$p6_dir/p6-inputs.example.json"
+! rg -q 'docker-compose.p6.yml|up -d --wait openclaw-workspace' "$script_dir/p6-runner.sh" "$script_dir/p6-full-driver.sh"
+test -x "$script_dir/p6-full-driver.sh"
+test -x "$script_dir/p6-prepare-runtime.py"
+test -x "$script_dir/p6-product-chain.py"
+if "$script_dir/p6-aggregate.sh" --artifacts "$tmpdir/artifacts" --run-id "$run_id" >/dev/null 2>&1; then
+  echo 'accepted incomplete evidence' >&2
+  exit 1
+fi
+echo 'PASS P6 gates: review_snapshot, fixed provenance and incomplete evidence fail closed.'
