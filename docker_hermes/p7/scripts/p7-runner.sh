@@ -61,8 +61,8 @@ validate_shape() {
     and (.repositories.hermes_source.path | type == "string" and startswith("/"))
     and (.repositories.hermes_source.repository | type == "string" and startswith("https://"))
     and (.repositories.hermes_source.commit | type == "string" and test("^[0-9a-f]{40}$"))
-    and (.repositories.labnow_open.commit == "533b3c5bd0742a77a1cccfc4a30b818271751213")
-    and (.repositories.labnow_open.runtime_commit == "8c56966c4b6be12702d4397aad6b1a153b87d053")
+    and (.repositories.labnow_open.commit == "2ac4e268d562c7d26ace8affc830f09cf1cb9305")
+    and (.repositories.labnow_open.runtime_commit == "2ac4e268d562c7d26ace8affc830f09cf1cb9305")
     and (.repositories.labnow_launcher.commit == "f84a51319d75b99a6b210f19e264904cae07fc8a")
     and (.repositories.labnow_launcher.runtime_commit == .repositories.labnow_launcher.commit)
     and (.images | keys | sort) == ["hermes","launcher","litellm","shell","workspace"]
