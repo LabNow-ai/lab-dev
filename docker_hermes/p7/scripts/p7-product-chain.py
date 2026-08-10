@@ -144,7 +144,7 @@ def hermes_model_call(config: dict[str, Any], marker: str) -> dict[str, Any]:
         [
             "docker", "exec", config["workspace_container"], "timeout", "--signal=TERM",
             "--kill-after=10s", "180s", "start-labnow-hermes.sh", "-z",
-            f"Reply {marker} only.", "--ignore-rules", "--max-turns", "4",
+            f"Reply {marker} only.", "--ignore-rules",
         ],
         code="HERMES_MODEL_CALL_FAILED",
         timeout=200,
@@ -169,7 +169,7 @@ def hermes_tool_call(config: dict[str, Any], marker: str) -> dict[str, Any]:
                 "docker", "exec", config["workspace_container"], "timeout", "--signal=TERM",
                 "--kill-after=10s", "180s", "start-labnow-hermes.sh", "-z",
                 f"Use the terminal tool to run: printf {marker} > {proof}. Then reply {marker}_DONE only.",
-                "--ignore-rules", "--max-turns", "10", "-t", "terminal",
+                "--ignore-rules", "-t", "terminal",
             ],
             code="HERMES_TOOL_CALL_FAILED",
             timeout=200,

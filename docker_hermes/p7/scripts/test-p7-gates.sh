@@ -22,6 +22,8 @@ rg -q 'COPY --from=launcher src/labnow-launcher/devhub_launcher' "${root}/docker
 ! rg -n --glob '!**/test-p7-gates.sh' 'OPENAI_API_KEY:|DEEPSEEK_API_KEY:|:latest' "${root}/docker_hermes/p7"
 ! rg -q 'HERMES_PRODUCT_CHAIN_NOT_AVAILABLE' "$runner"
 rg -q 'p7-product-chain.py' "$runner"
+! rg -q -- '--max-turns' "${root}/docker_hermes/p7/scripts/p7-product-chain.py"
+rg -q '"-t", "terminal"' "${root}/docker_hermes/p7/scripts/p7-product-chain.py"
 python3 -m py_compile \
   "${root}/docker_hermes/p7/scripts/p7-prepare-runtime.py" \
   "${root}/docker_hermes/p7/scripts/p7-product-chain.py"
