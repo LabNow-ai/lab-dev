@@ -7,7 +7,7 @@
   "phase": {"branch": "dev/che-568-hermes-console-experience", "base_commit": "45c38585a0ca889f6a20aebfdf3b13a01d369ac2"},
   "repositories": {
     "lab_dev": {"path": "/absolute/path/to/lab-dev", "commit": "REPLACE_WITH_P7_LAB_DEV_HEAD", "runtime_commit": "REPLACE_WITH_P7_LAB_DEV_RUNTIME_HEAD"},
-    "labnow_open": {"path": "/absolute/path/to/labnow-open", "commit": "2ac4e268d562c7d26ace8affc830f09cf1cb9305", "runtime_commit": "2ac4e268d562c7d26ace8affc830f09cf1cb9305"},
+    "labnow_open": {"path": "/absolute/path/to/labnow-open", "commit": "18b20aa7fa3e506b9c85b88736c9f51f317d55d8", "runtime_commit": "2ac4e268d562c7d26ace8affc830f09cf1cb9305"},
     "labnow_shell": {"path": "/absolute/path/to/labnow-shell", "commit": "REPLACE_WITH_P7_SHELL_HEAD", "runtime_commit": "REPLACE_WITH_P7_SHELL_RUNTIME_HEAD"},
     "labnow_launcher": {"path": "/absolute/path/to/labnow-launcher", "commit": "f84a51319d75b99a6b210f19e264904cae07fc8a", "runtime_commit": "f84a51319d75b99a6b210f19e264904cae07fc8a"},
     "hermes_source": {"path": "/absolute/path/to/hermes-agent", "repository": "REPLACE_WITH_OBSERVED_HERMES_REMOTE", "commit": "REPLACE_WITH_FIXED_HERMES_COMMIT"}

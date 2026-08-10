@@ -75,3 +75,11 @@ Console 鼠标创建、键盘/焦点和 axe 使用同一 Shell commit 的 P7 浏
 runner 另外执行该固定 Shell image 的 live API → JupyterHub → Workspace 链，
 不得以 P6 OpenClaw 报告或健康检查替代 Hermes 成功。失败报告只保存错误码，
 成功报告只保存结构断言、非敏感 ID、计数和 SHA-256。
+
+当前固定组合已由 run `p7-c2d3e4f5a60718293a4b5c6d7e8f9012` 完成真实黄金链；
+聚合报告 SHA-256 为
+`1d4331b482dd6959efba7707f991c79bf0076cf46ff2b8f7813c31de862d1a61`，
+产品报告 SHA-256 为
+`de08555b73a3d2229d1047931c1dd3ef97b38cd1f62fa1d1c219dcdba95567ed`。
+该事实只证明本地固定 commit/digest 组合，不表示远端镜像、远端 integration、
+main 或部署状态。
