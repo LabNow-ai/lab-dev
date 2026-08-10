@@ -63,8 +63,8 @@ validate_shape() {
     and (.repositories.hermes_source.commit | type == "string" and test("^[0-9a-f]{40}$"))
     and (.repositories.labnow_open.commit == "18b20aa7fa3e506b9c85b88736c9f51f317d55d8")
     and (.repositories.labnow_open.runtime_commit == "2ac4e268d562c7d26ace8affc830f09cf1cb9305")
-    and (.repositories.labnow_launcher.commit == "f84a51319d75b99a6b210f19e264904cae07fc8a")
-    and (.repositories.labnow_launcher.runtime_commit == .repositories.labnow_launcher.commit)
+    and (.repositories.labnow_launcher.commit == "990910aafeb6715bdfd656d002c3c6a27ff75cdb")
+    and (.repositories.labnow_launcher.runtime_commit == "f84a51319d75b99a6b210f19e264904cae07fc8a")
     and (.images | keys | sort) == ["hermes","launcher","litellm","shell","workspace"]
     and (.support_images | keys | sort) == ["nginx","postgres","redis"]
     and ([.images[] | .image_id] + [.support_images[] | .image_id] | all(type == "string" and test("^sha256:[0-9a-f]{64}$")))
