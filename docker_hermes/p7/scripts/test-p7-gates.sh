@@ -24,6 +24,7 @@ rg -q 'COPY --from=launcher src/labnow-launcher/devhub_launcher' "${root}/docker
 rg -q 'p7-product-chain.py' "$runner"
 ! rg -q -- '--max-turns' "${root}/docker_hermes/p7/scripts/p7-product-chain.py"
 rg -q '"-t", "terminal"' "${root}/docker_hermes/p7/scripts/p7-product-chain.py"
+rg -q 'core.quotePath=false diff --name-only' "$runner"
 python3 -m py_compile \
   "${root}/docker_hermes/p7/scripts/p7-prepare-runtime.py" \
   "${root}/docker_hermes/p7/scripts/p7-product-chain.py"

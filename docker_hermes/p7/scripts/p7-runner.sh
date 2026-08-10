@@ -103,7 +103,7 @@ assert_repository() {
   [[ -z "$status" ]] || { die "REPOSITORY_TRACKED_TREE_DIRTY" 71; return $?; }
   git -C "$path" merge-base --is-ancestor "$runtime_commit" "$commit" || { die "RUNTIME_COMMIT_NOT_ANCESTOR" 70; return $?; }
   if [[ "$runtime_commit" != "$commit" ]]; then
-    changed="$(git -C "$path" diff --name-only "$runtime_commit..$commit")"
+    changed="$(git -C "$path" -c core.quotePath=false diff --name-only "$runtime_commit..$commit")"
     [[ -n "$changed" ]] || { die "RUNTIME_DELIVERY_DELTA_MISSING" 70; return $?; }
     if grep -Ev '^(doc|docs|development-docs)/|(^|/)README\.md$' <<<"$changed" >/dev/null; then
       die "RUNTIME_DELIVERY_DELTA_NOT_DOCUMENTATION" 70; return $?
