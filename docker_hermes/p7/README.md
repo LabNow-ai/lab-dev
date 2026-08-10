@@ -27,6 +27,27 @@ build_image_no_tag hermes p7-<12hex> docker_hermes/hermes.Dockerfile \
 `io.labnow.hermes.*-base` label 记录实际传入的不可变基础镜像引用。runner 会校验
 这些 label 与受限输入一致。
 
+P7 真实链路发现 P6 Launcher 将 `RuntimeManifest.adapter_id` 固定为
+`openclaw` 后，Launcher 在独立 Phase 分支完成了受信任双 Adapter 修复。全量
+Launcher Dockerfile 会动态下载构建工具，不能作为本轮固定组合的重建入口；
+本目录用 `launcher-overlay.Dockerfile` 从已验证的 P6 Launcher 本地 digest
+出发，只覆盖固定 Launcher commit 的运行时代码与 Hub 配置：
+
+```bash
+docker build --platform linux/amd64 --provenance=false \
+  --build-context launcher=/absolute/path/to/labnow-launcher \
+  --build-arg P6_LAUNCHER_IMAGE=quay.io/labnow/labnow-launcher:che-563-openclaw-product-closure-local \
+  --build-arg P6_LAUNCHER_BASE_DIGEST=quay.io/labnow/labnow-launcher@sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f \
+  --build-arg LAUNCHER_SOURCE_COMMIT=f84a51319d75b99a6b210f19e264904cae07fc8a \
+  -t quay.io/labnow/labnow-launcher:che-568-hermes-console-experience-local \
+  -f docker_hermes/p7/launcher-overlay.Dockerfile .
+```
+
+构建前必须回读 P6 tag 的本地 image ID 正是上述 digest，并确认 Launcher
+checkout tracked clean 且 HEAD 等于 `LAUNCHER_SOURCE_COMMIT`。overlay 的 OCI
+revision 与 `io.labnow.p7.launcher-base` label 会由 runner 回读；产物仍只在本地，
+不得把本地 RepoDigest 描述成远端 registry 已发布制品。
+
 ## 入口与安全
 
 从 `p7-inputs.example.json` 创建权限为 `0400` 或 `0600` 的 Git 忽略
@@ -42,7 +63,7 @@ P7_RUN_ID=p7-<32hex> ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/pat
 P7_RUN_ID=p7-<same-32hex> ./docker_hermes/p7/scripts/p7-runner.sh --input /secure/path/p7-inputs.json --cleanup
 ```
 
-`--golden` 会先核验三仓 delivery/runtime commit、Hermes 上游、五个产品镜像、
+`--golden` 会先核验 Open、Dev、Shell、Launcher 四仓 delivery/runtime commit、Hermes 上游、五个产品镜像、
 三个 support image 和两个构建基础引用，再复用 P6 的隔离 LiteLLM、Shell、
 Launcher/JupyterHub 拓扑。Workspace 只能由 live DockerSpawner 创建；Shell
 服务端从准确 Open 产品镜像推导 `hermes` Adapter，Launcher 以

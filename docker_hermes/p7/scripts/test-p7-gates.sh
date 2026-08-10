@@ -16,6 +16,9 @@ rg -q 'org.opencontainers.image.revision' "${root}/docker_hermes/hermes.Dockerfi
 rg -q 'ARG HERMES_BUILD_BASE_IMAGE' "${root}/docker_hermes/hermes.Dockerfile"
 rg -q 'io.labnow.hermes.runtime-base' "${root}/docker_hermes/hermes.Dockerfile"
 rg -q 'pull_policy: never' "${root}/docker_hermes/p7/docker-compose.runtime.yml"
+rg -q 'P6_LAUNCHER_BASE_DIGEST' "${root}/docker_hermes/p7/launcher-overlay.Dockerfile"
+rg -q 'io.labnow.p7.launcher-base' "${root}/docker_hermes/p7/launcher-overlay.Dockerfile"
+rg -q 'COPY --from=launcher src/labnow-launcher/devhub_launcher' "${root}/docker_hermes/p7/launcher-overlay.Dockerfile"
 ! rg -n --glob '!**/test-p7-gates.sh' 'OPENAI_API_KEY:|DEEPSEEK_API_KEY:|:latest' "${root}/docker_hermes/p7"
 ! rg -q 'HERMES_PRODUCT_CHAIN_NOT_AVAILABLE' "$runner"
 rg -q 'p7-product-chain.py' "$runner"
@@ -62,6 +65,42 @@ jq '
 ' "${root}/docker_hermes/p7/p7-inputs.example.json" > "$valid"
 chmod 600 "$valid"
 P7_ARTIFACTS_DIR="$tmp/artifacts" P7_WORK_DIR="$tmp/work" "$runner" --input "$valid" --validate-input >/dev/null
+
+# A failed repository gate must stop before any Docker preflight or topology
+# action.  The runner executes preflight from an `if` condition, where Bash
+# does not propagate `errexit` into nested functions; keep this explicit
+# fixture so a reported dirty tree cannot accidentally continue provisioning.
+mkdir -p "$tmp/bin" "$tmp/dirty-repo/.git"
+jq --arg path "$tmp/dirty-repo" '.repositories.lab_dev.path = $path' "$valid" > "$tmp/dirty.json"
+chmod 600 "$tmp/dirty.json"
+cat > "$tmp/bin/git" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  *"rev-parse HEAD"*) printf '%s\n' '0123456789abcdef0123456789abcdef01234567' ;;
+  *"status --porcelain=v1 --untracked-files=no"*) printf '%s\n' ' M tracked-file' ;;
+  *) exit 99 ;;
+esac
+SH
+cat > "$tmp/bin/docker" <<SH
+#!/usr/bin/env bash
+touch "$tmp/docker-was-called"
+exit 99
+SH
+chmod 700 "$tmp/bin/git" "$tmp/bin/docker"
+set +e
+PATH="$tmp/bin:$PATH" P7_ARTIFACTS_DIR="$tmp/artifacts" P7_WORK_DIR="$tmp/work" \
+  "$runner" --input "$tmp/dirty.json" --preflight >/dev/null 2>&1
+dirty_status=$?
+set -e
+if [[ "$dirty_status" != 1 ]]; then
+  printf 'P7 dirty-tree preflight returned %s instead of 1\n' "$dirty_status" >&2
+  exit 1
+fi
+if [[ -e "$tmp/docker-was-called" ]]; then
+  printf '%s\n' 'P7 dirty-tree preflight reached Docker' >&2
+  exit 1
+fi
 
 jq '.images.hermes.source_commit = "fedcba9876543210fedcba9876543210fedcba98"' "$valid" > "${valid}.mismatch"
 chmod 600 "${valid}.mismatch"

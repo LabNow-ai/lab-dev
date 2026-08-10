@@ -13,27 +13,30 @@ die() { printf 'P7_ERROR:%s\n' "$1" >&2; return "${2:-1}"; }
 sha256() { shasum -a 256 "$1" | awk '{print $1}'; }
 run_id() { python3 -c 'import secrets; print("p7-" + secrets.token_hex(16))'; }
 mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
-secure_file() { [[ -f "$1" && ! -L "$1" && "$(mode_of "$1")" =~ ^(400|600)$ ]] || die "SECURE_FILE_REQUIRED" 64; }
+secure_file() {
+  [[ -f "$1" && ! -L "$1" && "$(mode_of "$1")" =~ ^(400|600)$ ]] || { die "SECURE_FILE_REQUIRED" 64; return $?; }
+}
 
 usage() { printf '%s\n' "Usage: p7-runner.sh --input /secure/path/p7-inputs.json --validate-input|--preflight|--render|--golden|--cleanup"; }
 input=""; action=""
 while (($#)); do
   case "$1" in
     --input) input="${2:-}"; shift 2 ;;
-    --validate-input|--preflight|--render|--golden|--cleanup) [[ -z "$action" ]] || die "ACTION_DUPLICATED" 2; action="${1#--}"; shift ;;
+    --validate-input|--preflight|--render|--golden|--cleanup) [[ -z "$action" ]] || { die "ACTION_DUPLICATED" 2; exit 2; }; action="${1#--}"; shift ;;
     *) usage >&2; exit 2 ;;
   esac
 done
 [[ -n "$input" && -n "$action" ]] || { usage >&2; exit 2; }
-secure_file "$input"
+secure_file "$input" || exit $?
+input="$(cd "$(dirname "$input")" && pwd)/$(basename "$input")"
 export P7_INPUT_FILE="$input"
 P7_RUN_ID="${P7_RUN_ID:-$(run_id)}"
-[[ "$P7_RUN_ID" =~ ^p7-[a-f0-9]{32}$ ]] || die "RUN_ID_INVALID" 64
+[[ "$P7_RUN_ID" =~ ^p7-[a-f0-9]{32}$ ]] || { die "RUN_ID_INVALID" 64; exit 64; }
 export P7_RUN_ID
 artifact_dir="${P7_ARTIFACTS_DIR:-${p7_dir}/artifacts}"
 work_dir="${P7_WORK_DIR:-${p7_dir}/.p7-work/${P7_RUN_ID}}"
-[[ "$artifact_dir" = /* && "$work_dir" = /* && ${#work_dir} -gt 12 ]] || die "RUNTIME_PATH_INVALID" 64
-case "$work_dir" in /|"$repo_root"|"$p7_dir") die "RUNTIME_PATH_INVALID" 64 ;; esac
+[[ "$artifact_dir" = /* && "$work_dir" = /* && ${#work_dir} -gt 12 ]] || { die "RUNTIME_PATH_INVALID" 64; exit 64; }
+case "$work_dir" in /|"$repo_root"|"$p7_dir") die "RUNTIME_PATH_INVALID" 64; exit 64 ;; esac
 export P7_ARTIFACTS_DIR="$artifact_dir" P7_WORK_DIR="$work_dir"
 mkdir -p "$artifact_dir"; chmod 700 "$artifact_dir"
 report="${artifact_dir}/p7-${action}-${P7_RUN_ID}.json"
@@ -60,7 +63,7 @@ validate_shape() {
     and (.repositories.hermes_source.commit | type == "string" and test("^[0-9a-f]{40}$"))
     and (.repositories.labnow_open.commit == "533b3c5bd0742a77a1cccfc4a30b818271751213")
     and (.repositories.labnow_open.runtime_commit == "8c56966c4b6be12702d4397aad6b1a153b87d053")
-    and (.repositories.labnow_launcher.commit == "c84edea3e051d561f28d9f99235563cf491aaeb2")
+    and (.repositories.labnow_launcher.commit == "f84a51319d75b99a6b210f19e264904cae07fc8a")
     and (.repositories.labnow_launcher.runtime_commit == .repositories.labnow_launcher.commit)
     and (.images | keys | sort) == ["hermes","launcher","litellm","shell","workspace"]
     and (.support_images | keys | sort) == ["nginx","postgres","redis"]
@@ -78,13 +81,14 @@ validate_shape() {
       $root.images[$name].provenance == "local_build"
       and ($root.images[$name].source_repository | type == "string")
       and $root.images[$name].source_commit == $root.repositories[$root.images[$name].source_repository].runtime_commit))
+    and .images.launcher.base_image == "quay.io/labnow/labnow-launcher@sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f"
     and .images.litellm.provenance == "repo_digest"
     and ([.images.workspace,.images.shell,.images.launcher,.images.litellm] | all(.ref == .repo_digest))
     and (.base_images | keys | sort) == ["build","runtime"]
     and ([.base_images[]] | all(type == "string" and test("^quay\\.io/labnow/(node|base)@sha256:[0-9a-f]{64}$")))
     and (.runtime | keys | sort) == ["p1_env_file"]
     and (.runtime.p1_env_file | type == "string" and startswith("/"))
-  ' "$input" >/dev/null || die "INPUT_SCHEMA_INVALID" 68
+  ' "$input" >/dev/null || { die "INPUT_SCHEMA_INVALID" 68; return $?; }
 }
 
 assert_repository() {
@@ -92,17 +96,17 @@ assert_repository() {
   path="$(jq -er ".repositories.${name}.path" "$input")"
   commit="$(jq -er ".repositories.${name}.commit" "$input")"
   runtime_commit="$(jq -er ".repositories.${name}.runtime_commit" "$input")"
-  [[ -d "$path/.git" ]] || die "REPOSITORY_UNAVAILABLE" 69
+  [[ -d "$path/.git" ]] || { die "REPOSITORY_UNAVAILABLE" 69; return $?; }
   actual="$(git -C "$path" rev-parse HEAD)"
-  [[ "$actual" == "$commit" ]] || die "REPOSITORY_COMMIT_MISMATCH" 70
+  [[ "$actual" == "$commit" ]] || { die "REPOSITORY_COMMIT_MISMATCH" 70; return $?; }
   status="$(git -C "$path" status --porcelain=v1 --untracked-files=no)"
-  [[ -z "$status" ]] || die "REPOSITORY_TRACKED_TREE_DIRTY" 71
-  git -C "$path" merge-base --is-ancestor "$runtime_commit" "$commit" || die "RUNTIME_COMMIT_NOT_ANCESTOR" 70
+  [[ -z "$status" ]] || { die "REPOSITORY_TRACKED_TREE_DIRTY" 71; return $?; }
+  git -C "$path" merge-base --is-ancestor "$runtime_commit" "$commit" || { die "RUNTIME_COMMIT_NOT_ANCESTOR" 70; return $?; }
   if [[ "$runtime_commit" != "$commit" ]]; then
     changed="$(git -C "$path" diff --name-only "$runtime_commit..$commit")"
-    [[ -n "$changed" ]] || die "RUNTIME_DELIVERY_DELTA_MISSING" 70
+    [[ -n "$changed" ]] || { die "RUNTIME_DELIVERY_DELTA_MISSING" 70; return $?; }
     if grep -Ev '^(doc|docs|development-docs)/|(^|/)README\.md$' <<<"$changed" >/dev/null; then
-      die "RUNTIME_DELIVERY_DELTA_NOT_DOCUMENTATION" 70
+      die "RUNTIME_DELIVERY_DELTA_NOT_DOCUMENTATION" 70; return $?
     fi
   fi
 }
@@ -112,10 +116,10 @@ assert_hermes_source() {
   path="$(jq -er '.repositories.hermes_source.path' "$input")"
   expected_repository="$(jq -er '.repositories.hermes_source.repository' "$input")"
   expected_commit="$(jq -er '.repositories.hermes_source.commit' "$input")"
-  [[ -d "$path/.git" ]] || die "HERMES_SOURCE_UNAVAILABLE" 69
-  [[ "$(git -C "$path" rev-parse HEAD)" == "$expected_commit" ]] || die "HERMES_SOURCE_COMMIT_MISMATCH" 70
-  [[ "$(git -C "$path" remote get-url origin)" == "$expected_repository" ]] || die "HERMES_SOURCE_REMOTE_MISMATCH" 70
-  [[ -z "$(git -C "$path" status --porcelain=v1 --untracked-files=no)" ]] || die "HERMES_SOURCE_TRACKED_TREE_DIRTY" 71
+  [[ -d "$path/.git" ]] || { die "HERMES_SOURCE_UNAVAILABLE" 69; return $?; }
+  [[ "$(git -C "$path" rev-parse HEAD)" == "$expected_commit" ]] || { die "HERMES_SOURCE_COMMIT_MISMATCH" 70; return $?; }
+  [[ "$(git -C "$path" remote get-url origin)" == "$expected_repository" ]] || { die "HERMES_SOURCE_REMOTE_MISMATCH" 70; return $?; }
+  [[ -z "$(git -C "$path" status --porcelain=v1 --untracked-files=no)" ]] || { die "HERMES_SOURCE_TRACKED_TREE_DIRTY" 71; return $?; }
 }
 
 assert_image() {
@@ -123,22 +127,27 @@ assert_image() {
   ref="$(jq -er ".${section}.${name}.ref" "$input")"
   expected_id="$(jq -er ".${section}.${name}.image_id" "$input")"
   expected_digest="$(jq -er ".${section}.${name}.repo_digest" "$input")"
-  actual_id="$(docker image inspect --format '{{.Id}}' "$ref" 2>/dev/null)" || die "IMAGE_UNAVAILABLE" 72
-  [[ "$actual_id" == "$expected_id" ]] || die "IMAGE_ID_MISMATCH" 72
+  actual_id="$(docker image inspect --format '{{.Id}}' "$ref" 2>/dev/null)" || { die "IMAGE_UNAVAILABLE" 72; return $?; }
+  [[ "$actual_id" == "$expected_id" ]] || { die "IMAGE_ID_MISMATCH" 72; return $?; }
   digests="$(docker image inspect --format '{{join .RepoDigests "\n"}}' "$ref")"
-  grep -Fqx "$expected_digest" <<<"$digests" || die "IMAGE_DIGEST_MISMATCH" 72
+  grep -Fqx "$expected_digest" <<<"$digests" || { die "IMAGE_DIGEST_MISMATCH" 72; return $?; }
 }
 
 assert_images() {
   local name
   for name in hermes litellm workspace shell launcher; do assert_image images "$name" || return $?; done
   for name in postgres redis nginx; do assert_image support_images "$name" || return $?; done
-  local hermes_ref
+  local hermes_ref launcher_ref launcher_base
   hermes_ref="$(jq -er '.images.hermes.ref' "$input")"
-  [[ "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$hermes_ref")" == "$(jq -er '.repositories.hermes_source.commit' "$input")" ]] || die "HERMES_IMAGE_PROVENANCE_MISMATCH" 72
-  [[ "$(docker image inspect --format '{{ index .Config.Labels "io.labnow.hermes.build-base" }}' "$hermes_ref")" == "$(jq -er '.base_images.build' "$input")" ]] || die "HERMES_BUILD_BASE_MISMATCH" 72
-  [[ "$(docker image inspect --format '{{ index .Config.Labels "io.labnow.hermes.runtime-base" }}' "$hermes_ref")" == "$(jq -er '.base_images.runtime' "$input")" ]] || die "HERMES_RUNTIME_BASE_MISMATCH" 72
-  docker image inspect "$(jq -er '.base_images.build' "$input")" "$(jq -er '.base_images.runtime' "$input")" >/dev/null 2>&1 || die "HERMES_BASE_IMAGE_UNAVAILABLE" 72
+  [[ "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$hermes_ref")" == "$(jq -er '.repositories.hermes_source.commit' "$input")" ]] || { die "HERMES_IMAGE_PROVENANCE_MISMATCH" 72; return $?; }
+  [[ "$(docker image inspect --format '{{ index .Config.Labels "io.labnow.hermes.build-base" }}' "$hermes_ref")" == "$(jq -er '.base_images.build' "$input")" ]] || { die "HERMES_BUILD_BASE_MISMATCH" 72; return $?; }
+  [[ "$(docker image inspect --format '{{ index .Config.Labels "io.labnow.hermes.runtime-base" }}' "$hermes_ref")" == "$(jq -er '.base_images.runtime' "$input")" ]] || { die "HERMES_RUNTIME_BASE_MISMATCH" 72; return $?; }
+  docker image inspect "$(jq -er '.base_images.build' "$input")" "$(jq -er '.base_images.runtime' "$input")" >/dev/null 2>&1 || { die "HERMES_BASE_IMAGE_UNAVAILABLE" 72; return $?; }
+  launcher_ref="$(jq -er '.images.launcher.ref' "$input")"
+  launcher_base="$(jq -er '.images.launcher.base_image' "$input")"
+  [[ "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$launcher_ref")" == "$(jq -er '.repositories.labnow_launcher.runtime_commit' "$input")" ]] || { die "LAUNCHER_IMAGE_PROVENANCE_MISMATCH" 72; return $?; }
+  [[ "$(docker image inspect --format '{{ index .Config.Labels "io.labnow.p7.launcher-base" }}' "$launcher_ref")" == "$launcher_base" ]] || { die "LAUNCHER_BASE_IMAGE_MISMATCH" 72; return $?; }
+  docker image inspect "$launcher_base" >/dev/null 2>&1 || { die "LAUNCHER_BASE_IMAGE_UNAVAILABLE" 72; return $?; }
 }
 
 assert_runtime_input() {
@@ -157,7 +166,7 @@ for raw in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
         values[key] = value
 raise SystemExit(0 if all(values.get(key) for key in required) else 1)
 PY
-  [[ $? == 0 ]] || die "P1_ENV_INCOMPLETE" 73
+  [[ $? == 0 ]] || { die "P1_ENV_INCOMPLETE" 73; return $?; }
 }
 
 preflight() {
@@ -165,8 +174,8 @@ preflight() {
   local repo
   for repo in lab_dev labnow_open labnow_shell labnow_launcher; do assert_repository "$repo" || return $?; done
   assert_hermes_source || return $?
-  [[ "$(git -C "$(jq -er '.repositories.lab_dev.path' "$input")" branch --show-current)" == "dev/che-568-hermes-console-experience" ]] || die "PHASE_BRANCH_MISMATCH" 70
-  git -C "$(jq -er '.repositories.lab_dev.path' "$input")" merge-base --is-ancestor "$(jq -er '.phase.base_commit' "$input")" HEAD || die "PHASE_BASE_NOT_ANCESTOR" 70
+  [[ "$(git -C "$(jq -er '.repositories.lab_dev.path' "$input")" branch --show-current)" == "dev/che-568-hermes-console-experience" ]] || { die "PHASE_BRANCH_MISMATCH" 70; return $?; }
+  git -C "$(jq -er '.repositories.lab_dev.path' "$input")" merge-base --is-ancestor "$(jq -er '.phase.base_commit' "$input")" HEAD || { die "PHASE_BASE_NOT_ANCESTOR" 70; return $?; }
   assert_images || return $?
   assert_runtime_input || return $?
 }
@@ -200,10 +209,10 @@ cleanup_runtime() {
 assert_cleanup() {
   local short="${P7_RUN_ID#p7-}" project="p6-runtime-${P7_RUN_ID#p7-}"
   short="${short:0:12}"; project="p6-runtime-${short}"
-  [[ -z "$(docker container ls -aq --filter "label=com.docker.compose.project=${project}")" ]] || die "TOPOLOGY_CONTAINER_REMAINS" 79
-  [[ -z "$(docker volume ls -q --filter "label=com.docker.compose.project=${project}")" ]] || die "TOPOLOGY_VOLUME_REMAINS" 79
-  ! docker network inspect "p6net-${short}" >/dev/null 2>&1 || die "TOPOLOGY_NETWORK_REMAINS" 79
-  [[ ! -e "$work_dir" ]] || die "TOPOLOGY_RUNTIME_MATERIAL_REMAINS" 79
+  [[ -z "$(docker container ls -aq --filter "label=com.docker.compose.project=${project}")" ]] || { die "TOPOLOGY_CONTAINER_REMAINS" 79; return $?; }
+  [[ -z "$(docker volume ls -q --filter "label=com.docker.compose.project=${project}")" ]] || { die "TOPOLOGY_VOLUME_REMAINS" 79; return $?; }
+  ! docker network inspect "p6net-${short}" >/dev/null 2>&1 || { die "TOPOLOGY_NETWORK_REMAINS" 79; return $?; }
+  [[ ! -e "$work_dir" ]] || { die "TOPOLOGY_RUNTIME_MATERIAL_REMAINS" 79; return $?; }
 }
 
 render_summary() {
@@ -216,12 +225,12 @@ security_scan() {
   local patterns="$1" status
   shift
   secure_file "$patterns" || return $?
-  [[ -s "$patterns" && $# -gt 0 ]] || die "SECRET_SCAN_INPUT_INVALID" 74
+  [[ -s "$patterns" && $# -gt 0 ]] || { die "SECRET_SCAN_INPUT_INVALID" 74; return $?; }
   set +e
   rg --fixed-strings --files-with-matches --glob '!secret-patterns' -f "$patterns" "$@" >/dev/null 2>&1
   status=$?
   set -e
-  case "$status" in 1) return 0 ;; 0) die "SECRET_PATTERN_MATCH" 75 ;; *) die "SECRET_SCAN_FAILED" 75 ;; esac
+  case "$status" in 1) return 0 ;; 0) die "SECRET_PATTERN_MATCH" 75; return $? ;; *) die "SECRET_SCAN_FAILED" 75; return $? ;; esac
 }
 
 case "$action" in
