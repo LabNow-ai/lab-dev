@@ -172,7 +172,8 @@ preflight() {
 }
 
 write_report() {
-  local result="$1" phase="$2" reason="${3:-}" extra="${4:-{}}" tmp
+  local result="$1" phase="$2" reason="${3:-}" extra="${4:-}" tmp
+  [[ -n "$extra" ]] || extra='{}'
   tmp="$(mktemp "${artifact_dir}/.p7-report.XXXXXX")"
   jq -n --arg run_id "$P7_RUN_ID" --arg result "$result" --arg phase "$phase" --arg reason "$reason" --arg input_sha "$(sha256 "$input")" --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson provenance "$(jq -c '{contract_version,contract_release,control_commit,review_policy_commit,phase,repositories:(.repositories|with_entries(.value=if .key=="hermes_source" then {commit:.value.commit,repository:.value.repository} else {commit:.value.commit,runtime_commit:.value.runtime_commit} end)),images,support_images,base_images}' "$input")" --argjson extra "$extra" \
     '{schema_version:"p7-report/v1",run_id:$run_id,result:$result,phase:$phase,input_sha256:$input_sha,tested_at:$tested_at,content_redacted:true} + $provenance + $extra + (if $reason == "" then {} else {reason:$reason} end)' > "$tmp"
