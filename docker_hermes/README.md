@@ -2,6 +2,10 @@
 
 `hermes` is a containerized agentic assistant platform based on the [Hermes Agent](https://github.com/nousresearch/hermes-agent) project, built using Node.js and Python runtime stacks.
 
+P7 的验收构建固定 Hermes repository 与 40 位 commit；Dockerfile 不再以移动
+`main` 作为制品输入。默认 standalone Compose 仍服务于本地开发，但只接受已在
+本机存在的明确镜像引用，不会静默 pull `latest`。
+
 ---
 
 ## 1. Port Configuration
@@ -47,6 +51,21 @@ export CI_PROJECT_NAME=LabNow/lab-dev
 source ./tool.sh
 build_image_no_tag hermes local docker_hermes/hermes.Dockerfile
 ```
+
+### P7 可复现构建
+
+需要跨仓 Hermes 联调时，使用 P7 固定 tag 和观察到的 Hermes source identity：
+
+```bash
+build_image_no_tag hermes p7-<12hex> docker_hermes/hermes.Dockerfile \
+  --build-arg HERMES_SOURCE_REPOSITORY=<observed-source-remote> \
+  --build-arg HERMES_SOURCE_COMMIT=<40-hex-commit>
+```
+
+镜像会记录 `org.opencontainers.image.source` 与
+`org.opencontainers.image.revision`，并在 `/opt/hermes/.labnow-source-*` 保存
+相同的非敏感 provenance。只在本地命名为 `quay.io/labnow/hermes:p7-<12hex>`，不 push。
+完整 P7 的受限输入、静态门禁和跨仓 runner 见 [`p7/README.md`](p7/README.md)。
 
 ### Start with Docker Compose
 

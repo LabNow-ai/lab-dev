@@ -1,0 +1,27 @@
+{
+  "schema_version": "p7-inputs/v1",
+  "contract_version": "v1alpha1",
+  "contract_release": "0.1.0-rc.1",
+  "control_commit": "06c49f26642c7e39a118aedad1395197f2bd91db",
+  "review_policy_commit": "06c49f26642c7e39a118aedad1395197f2bd91db",
+  "phase": {"branch": "dev/che-568-hermes-console-experience", "base_commit": "45c38585a0ca889f6a20aebfdf3b13a01d369ac2"},
+  "repositories": {
+    "lab_dev": {"path": "/absolute/path/to/lab-dev", "commit": "REPLACE_WITH_P7_LAB_DEV_HEAD"},
+    "labnow_open": {"path": "/absolute/path/to/labnow-open", "commit": "REPLACE_WITH_P7_OPEN_HEAD"},
+    "labnow_shell": {"path": "/absolute/path/to/labnow-shell", "commit": "REPLACE_WITH_P7_SHELL_HEAD"},
+    "labnow_launcher": {"path": "/absolute/path/to/labnow-launcher", "commit": "c84edea3e051d561f28d9f99235563cf491aaeb2"},
+    "hermes_source": {"path": "/absolute/path/to/hermes-agent", "repository": "REPLACE_WITH_OBSERVED_HERMES_REMOTE", "commit": "REPLACE_WITH_FIXED_HERMES_COMMIT"}
+  },
+  "images": {
+    "hermes": {"ref": "quay.io/labnow/hermes:p7-REPLACE_WITH_12_HEX", "image_id": "sha256:REPLACE_WITH_64_HEX", "provenance": "local_build", "source_repository": "hermes_source", "source_commit": "REPLACE_WITH_FIXED_HERMES_COMMIT"},
+    "litellm": {"ref": "quay.io/labnow/litellm@sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1", "image_id": "sha256:a2e115874c21b829bd052b18fc85be2f9217fb8244b82812c4ebc6e36f9824d1"},
+    "workspace": {"ref": "quay.io/labnow/labnow-open:REPLACE_WITH_P7_FIXED_TAG", "image_id": "sha256:REPLACE_WITH_64_HEX", "source_repository": "labnow_open", "source_commit": "REPLACE_WITH_P7_OPEN_HEAD"},
+    "shell": {"ref": "quay.io/labnow/labnow-shell:REPLACE_WITH_P7_FIXED_TAG", "image_id": "sha256:REPLACE_WITH_64_HEX", "source_repository": "labnow_shell", "source_commit": "REPLACE_WITH_P7_SHELL_HEAD"},
+    "launcher": {"ref": "quay.io/labnow/labnow-launcher:che-563-openclaw-product-closure-local", "image_id": "sha256:6f9732fda8b86d9bfe4596e848025cc38448da4b17dfea8520e046a32b32e61f", "source_repository": "labnow_launcher", "source_commit": "c84edea3e051d561f28d9f99235563cf491aaeb2"}
+  },
+  "base_images": {
+    "build": "quay.io/labnow/node@sha256:REPLACE_WITH_64_HEX",
+    "runtime": "quay.io/labnow/base@sha256:REPLACE_WITH_64_HEX"
+  },
+  "runtime": {"p1_env_file": "/secure/path/to/p1.env"}
+}

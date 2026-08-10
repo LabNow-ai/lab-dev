@@ -3,9 +3,19 @@
 ARG BASE_NAMESPACE
 ARG BASE_IMG_BUILD="node"
 ARG BASE_IMG="base"
+ARG HERMES_BUILD_BASE_IMAGE
+ARG HERMES_RUNTIME_BASE_IMAGE
+# P7: the upstream source is a release input, not a moving branch.  Keep the
+# repository and commit overridable only so the local runner can bind both to
+# its protected input and record the exact provenance.
+ARG HERMES_SOURCE_REPOSITORY="https://github.com/nousresearch/hermes-agent.git"
+ARG HERMES_SOURCE_COMMIT="1388cd1c0c1800078bfcc92aebd144fbf145fdb4"
 
 # --- Building Stage ---
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD} AS builder
+FROM ${HERMES_BUILD_BASE_IMAGE:-${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG_BUILD}} AS builder
+
+ARG HERMES_SOURCE_REPOSITORY
+ARG HERMES_SOURCE_COMMIT
 
 # Build-time environment
 ENV NODE_ENV=development
@@ -21,9 +31,18 @@ COPY work /opt/utils/
 # Install build-time system dependencies (compilers + native libs needed for Python extensions).
 # Without these, `uv sync` fails when compiling packages like `matrix-*-crypto`, `cryptography`, or `ffi`-based wheels on cold builds.
 RUN set -eux \
+ && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\n' > /etc/apt/apt.conf.d/80-labnow-retries \
  && . /opt/utils/script-utils.sh && install_apt /opt/utils/install_list_hermes.apt \
+ && rm -f /etc/apt/apt.conf.d/80-labnow-retries \
  ## Clone source (full clone for reproducibility; depth 1 for speed)
- && git clone --depth 1 --branch main https://github.com/nousresearch/hermes-agent.git . \
+ && test "$(printf '%s' "$HERMES_SOURCE_COMMIT" | wc -c | tr -d ' ')" = 40 \
+ && git init . \
+ && git remote add origin "$HERMES_SOURCE_REPOSITORY" \
+ && git fetch --depth 1 origin "$HERMES_SOURCE_COMMIT" \
+ && git checkout --detach FETCH_HEAD \
+ && test "$(git rev-parse HEAD)" = "$HERMES_SOURCE_COMMIT" \
+ && printf '%s\n' "$HERMES_SOURCE_REPOSITORY" > /opt/hermes/.labnow-source-repository \
+ && printf '%s\n' "$HERMES_SOURCE_COMMIT" > /opt/hermes/.labnow-source-commit \
  && chmod +x /opt/utils/*.sh && mv /opt/utils/*hermes*.sh /opt/utils/install_list_hermes.apt /opt/utils/supervisord.conf /opt/hermes/ \
  ## ---------- hack python-olm for building compatible wheels ----------
  && mkdir -pv /opt/hermes/vendor \
@@ -31,7 +50,7 @@ RUN set -eux \
  && curl -s https://pypi.org/pypi/python-olm/3.2.16/json \
   | jq -r '.urls[] | select(.packagetype=="sdist").url' \
   | xargs curl -L -o python-olm-3.2.16.tar.gz \
- && tar xf python-olm-3.2.16.tar.gz && cd python-olm-3.2.16 \
+ && python -c 'import tarfile; tarfile.open("python-olm-3.2.16.tar.gz").extractall(path=".", filter="data")' && cd python-olm-3.2.16 \
  && sed -i 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' libolm/CMakeLists.txt \
  && pip wheel . --no-build-isolation -w /tmp/olm/wheels \
  && mv /tmp/olm/wheels/*olm*.whl /opt/hermes/vendor/ \
@@ -58,9 +77,18 @@ RUN set -eux \
  && printf 'docker\n' > /opt/hermes/.install_method
 
 ### --- Runtime Stage ---
-FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
+FROM ${HERMES_RUNTIME_BASE_IMAGE:-${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}}
+
+ARG HERMES_SOURCE_REPOSITORY
+ARG HERMES_SOURCE_COMMIT
+ARG HERMES_BUILD_BASE_IMAGE
+ARG HERMES_RUNTIME_BASE_IMAGE
 
 LABEL maintainer="postmaster@labnow.ai"
+LABEL org.opencontainers.image.source="${HERMES_SOURCE_REPOSITORY}"
+LABEL org.opencontainers.image.revision="${HERMES_SOURCE_COMMIT}"
+LABEL io.labnow.hermes.build-base="${HERMES_BUILD_BASE_IMAGE}"
+LABEL io.labnow.hermes.runtime-base="${HERMES_RUNTIME_BASE_IMAGE}"
 
 # Production environment
 ENV NODE_ENV=production
@@ -74,7 +102,9 @@ COPY --from=builder /opt/hermes /opt/hermes
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
 RUN set -eux && cd /opt/hermes \
+ && printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\n' > /etc/apt/apt.conf.d/80-labnow-retries \
  && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \ 
+ && rm -f /etc/apt/apt.conf.d/80-labnow-retries \
  && uv pip install ./vendor/*.whl && rm -rf ./vendor \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
  && rm -rf /opt/hermes/bin \
