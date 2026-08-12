@@ -67,6 +67,20 @@ build_image_no_tag hermes p7-<12hex> docker_hermes/hermes.Dockerfile \
 相同的非敏感 provenance。只在本地命名为 `quay.io/labnow/hermes:p7-<12hex>`，不 push。
 完整 P7 的受限输入、静态门禁和跨仓 runner 见 [`p7/README.md`](p7/README.md)。
 
+### P8-H10：Dashboard Chat TUI runtime
+
+Hermes 的 Dashboard 在 `/api/pty` 中执行已经构建的
+`/opt/hermes/ui-tui/dist/entry.js`。运行基础镜像不是 Node 镜像，因此 Dockerfile 会从
+同一目标架构的 builder 复制固定的 `/opt/node` runtime，并将其放入 `PATH`。这避免用户
+第一次打开 Chat 时触发 Node 下载/解压；不改变 Hermes source、TUI build 或模型配置。
+
+对 P8-H10 本地镜像执行不含凭证、不会请求模型的 runtime 门禁：
+
+```bash
+./docker_hermes/scripts/test-hermes-runtime-node.sh \
+  quay.io/labnow/hermes:che-588-hermes-chat-tui-runtime-local
+```
+
 ### Start with Docker Compose
 
 1. Copy the sample environment file:

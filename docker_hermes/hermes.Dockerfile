@@ -96,8 +96,16 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 ENV PYTHONPATH="/opt/hermes:${PYTHONPATH:-}"
 ENV HERMES_HOME=/root/.hermes
 ENV HERMES_ALLOW_ROOT_GATEWAY=1 
+# The Dashboard PTY starts the already-built ui-tui bundle with `node`.  The
+# runtime base is intentionally Python-only, so copy the architecture-matched
+# Node runtime produced by the builder instead of lazily downloading one after
+# an operator opens Chat.
+ENV PATH="/opt/node/bin:${PATH}"
 # Copy the full hermes install tree from the builder (source + browsers + built frontends)
 COPY --from=builder /opt/hermes /opt/hermes
+# `/opt/node` contains node, npm and the Node runtime's bundled execution
+# material. Both stages use the same Docker target platform.
+COPY --from=builder /opt/node /opt/node
 
 # Discover the real python site-packages so legacy env-var fallbacks point at the right tree.
 # Keep explicit versioned fallbacks around in case detection runs before the first pip install.
@@ -111,6 +119,9 @@ RUN set -eux && cd /opt/hermes \
  && ln -sf /opt/hermes/start-hermes.sh /opt/conda/bin/hermes /usr/local/bin/ \
  && . /opt/utils/script-setup-sys.sh && setup_supervisord \
  && mkdir -pv /etc/supervisord/ && mv /opt/hermes/supervisord.conf /etc/supervisord/supervisord.conf \ 
+ && node --version \
+ && test -s /opt/hermes/ui-tui/dist/entry.js \
+ && node --check /opt/hermes/ui-tui/dist/entry.js \
  && install__clean
 
 # Data persistence is owned by the runtime orchestrator.
