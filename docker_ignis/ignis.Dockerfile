@@ -31,9 +31,9 @@ RUN set -eux \
     && git clone --depth 1 --branch main https://github.com/Nystik-gh/ignis.git . \
     && mv /opt/ignis/start-ignis.sh /app/
 
-# Install Node.js dependencies and build
+# Install build-time dependencies explicitly: NODE_ENV=production would otherwise omit esbuild.
 RUN set -eux \
-    && npm install --prefer-offline --no-audit --fetch-retries=5 \
+    && npm install --include=dev --prefer-offline --no-audit --fetch-retries=5 \
     && npm run build \
     && chmod +x /app/apps/ignis-server/scripts/entrypoint.sh \
     && ln -sf /app/start-ignis.sh /usr/local/bin/ignis-server \
