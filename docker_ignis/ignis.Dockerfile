@@ -37,8 +37,7 @@ RUN set -eux \
     && npm run build \
     && chmod +x /app/apps/ignis-server/scripts/entrypoint.sh \
     && ln -sf /app/start-ignis.sh /usr/local/bin/ignis-server \
-    && npm cache clean --force \
-    && install__clean
+    && npm cache clean --force
 
 # Data volumes
 VOLUME ["/vaults", "/app/obsidian-app", "/app/data"]
