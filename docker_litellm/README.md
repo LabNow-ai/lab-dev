@@ -82,11 +82,14 @@ cd docker_litellm/demo
 ./scripts/verify-p1.sh
 ./scripts/smoke-baseline.sh --security-check
 ./scripts/test-verification-gates.sh
+./scripts/test-secret-boundary.sh
 ```
 
 在全新 checkout 中按上述标准命令执行时，脚本自己生成而非复用历史文件：`p1-migration-summary.json`、`p1-migration-concurrency.json`、`p1-single-summary.json`、`p1-ha-summary.json`、`p1-redis-recovery.json` 与最终 `p1-final-summary.json`（均在被忽略的 `artifacts/`）。聚合脚本只接受当前 `HEAD`、同一 `verification_run_id`、相同 image ID、正确 mode、启动后 `tested_at`、`result=passed`、`phase=completed` 且脱敏的输入；任何缺失、失败、跳过、过期或模式不符都会被拒绝。
 
 `--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x`、Compose 上游凭据注入和 Redis 密码命令行展开，并检查 Docker Secret、0600 临时文件与退出清理约束。`test-verification-gates.sh` 验证历史 PASS 失效、前置失败报告与 dotenv 命令替换不执行；在已启动 single 栈中追加 `--with-running-stack` 会以真实 404 删除请求证明 cleanup 不会生成 PASS。
+
+`test-secret-boundary.sh` 是 PH-1 的无上游定向门禁：它只生成本地占位凭据，不读取 `demo/.env`，验证 Compose 渲染和容器 inspect 不含 `LITELLM_MASTER_KEY`、`DATABASE_URL`、`POSTGRES_PASSWORD` 的服务环境或凭据值，并对 inspect、`ps/argv`、容器日志、容器临时文件执行负向检查。随后它启动 LiteLLM、调用并清理一次已认证的管理端点，退出时删除本次创建的容器、卷、网络和宿主临时文件。若固定网络 `litellm-baseline-net` 已被其他栈占用，脚本会失败退出而不会复用或干扰该网络。
 
 `smoke-redis-recovery.sh` 在已启动的 HA 栈中临时断开 Redis 网络端点，验证两个副本的有界认证探针均失败，再恢复 `redis` alias、等待 breaker 窗口并确认认证后的 `GET /v1/models` 恢复。它有独立的恢复 trap，不会让故障测试影响主 smoke 的资源清理。`aggregate-verification-summary.sh` 将 migration、single、HA 与 Redis 独立报告组合为不含密钥、密码、提示词和响应正文的最终 JSON 摘要。
 

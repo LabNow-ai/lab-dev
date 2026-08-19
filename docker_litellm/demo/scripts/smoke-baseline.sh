@@ -105,7 +105,12 @@ security_check() {
     || sed '/^security_check() {/,/^}/d' "$0" | rg -n -- 'set -x' \
     || git diff --no-ext-diff -- . | rg -n --pcre2 '(?:sk-|Bearer\s+)[A-Za-z0-9_-]{24,}' \
     || rg -n '^    UPSTREAM_(API_KEY|BASE_URL|MODEL|PROVIDER):' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || rg -n '^    (LITELLM_MASTER_KEY|DATABASE_URL|POSTGRES_PASSWORD):' "$DEMO_DIR/docker-compose.litellm.yml" \
     || rg -n -- '--requirepass[[:space:]].*\$\{REDIS_PASSWORD|REDIS_PASSWORD:.*\$\{' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'litellm_master_key:' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'postgres_password:' "$DEMO_DIR/docker-compose.litellm.yml" \
     || ! rg -q 'redis_password:' "$DEMO_DIR/docker-compose.litellm.yml" \
     || ! rg -q 'REDIS_PASSWORD_FILE: /run/secrets/redis_password' "$DEMO_DIR/docker-compose.litellm.yml"; then
     unsafe=1
@@ -127,7 +132,7 @@ security_check() {
     echo "FAIL security negative check: unsafe secret transport or cleanup invariant" >&2
     return 1
   fi
-  echo "PASS security negative check: no inline process arguments/log tracing/Git secrets, no upstream Compose injection, Redis Docker secret and 0600 cleanup invariants present."
+  echo "PASS security negative check: no inline process arguments/log tracing/Git secrets, no upstream or management/database Compose injection, Docker Secret and 0600 cleanup invariants present."
 }
 
 if [[ "$SECURITY_CHECK" == true ]]; then

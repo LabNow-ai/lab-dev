@@ -50,7 +50,7 @@ services:
     <<: *litellm-common
     container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
     profiles: ["migrate"]
-    command: ["python3", "/opt/utils/run-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
+    command: ["/opt/utils/start-litellm.sh", "python3", "/opt/utils/run-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
     healthcheck:
       disable: true
     depends_on:
