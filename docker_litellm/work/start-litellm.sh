@@ -9,11 +9,30 @@ export HOME="$HOME_LITELLM"
 export PRISMA_HOME_DIR="${PRISMA_HOME_DIR:-$HOME_LITELLM}"
 cd "$HOME_LITELLM"
 
-# Compose mounts the Redis credential as a Docker secret. Export it only in
-# this process tree so it is absent from Docker inspect and command arguments.
+# Compose mounts credentials as Docker secrets. Read them only in this process
+# tree, immediately before the final exec: Docker metadata and argv therefore
+# contain neither secret values nor a password-bearing DATABASE_URL. LiteLLM
+# itself requires the management key and DATABASE_URL in its final environment;
+# that process-environment visibility is the explicitly accepted residual risk.
+read_secret_file() {
+    local variable_name="$1" secret_file="$2"
+    test -r "$secret_file"
+    export "$variable_name=$(cat "$secret_file")"
+}
+
+if [ -n "${LITELLM_MASTER_KEY_FILE:-}" ]; then
+    read_secret_file LITELLM_MASTER_KEY "$LITELLM_MASTER_KEY_FILE"
+fi
+
+if [ -n "${POSTGRES_PASSWORD_FILE:-}" ]; then
+    read_secret_file POSTGRES_PASSWORD "$POSTGRES_PASSWORD_FILE"
+    : "${POSTGRES_USER:?POSTGRES_USER is required with POSTGRES_PASSWORD_FILE}"
+    export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-litellm}"
+    unset POSTGRES_PASSWORD
+fi
+
 if [ -n "${REDIS_PASSWORD_FILE:-}" ]; then
-    test -r "$REDIS_PASSWORD_FILE"
-    export REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
+    read_secret_file REDIS_PASSWORD "$REDIS_PASSWORD_FILE"
 fi
 
 # LiteLLM checks this environment variable while serializing SpendLog payloads.

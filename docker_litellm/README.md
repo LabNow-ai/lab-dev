@@ -59,7 +59,7 @@ docker compose --env-file .env -f docker-compose.litellm.yml --profile single up
 
 ## 配置与安全边界
 
-`config.yaml` 从环境变量读取管理面 `LITELLM_MASTER_KEY`、`DATABASE_URL` 与 Redis 凭据。管理面 key 仅用于 `/user/new`、`/credentials`、`/model/new`、`/key/generate`、`/key/block` 和 `/key/delete` 等管理接口；smoke 生成的数据面虚拟 key 是短期、模型白名单、TTL、预算、RPM、TPM 与 `llm_api` 路由限制的独立 key。双副本基线启用 `enable_redis_auth_cache`，并将 `user_api_key_cache_ttl` 设为 1 秒，以使撤销在 30 秒 smoke SLO 内经共享 Redis 重新校验。
+`config.yaml` 从运行时环境读取管理面 `LITELLM_MASTER_KEY`、`DATABASE_URL` 与 Redis 凭据。Compose 不再把管理密钥、数据库密码或含密码的连接串写入服务 `environment`：它将 `LITELLM_MASTER_KEY`、`POSTGRES_PASSWORD` 和 `REDIS_PASSWORD` 交给 Docker Secret；PostgreSQL 使用官方 `POSTGRES_PASSWORD_FILE`，LiteLLM 的 `start-litellm.sh` 在最终 `exec` 前读取 Secret 文件、构造 `DATABASE_URL` 并立即转交 LiteLLM。管理面 key 仅用于 `/user/new`、`/credentials`、`/model/new`、`/key/generate`、`/key/block` 和 `/key/delete` 等管理接口；smoke 生成的数据面虚拟 key 是短期、模型白名单、TTL、预算、RPM、TPM 与 `llm_api` 路由限制的独立 key。双副本基线启用 `enable_redis_auth_cache`，并将 `user_api_key_cache_ttl` 设为 1 秒，以使撤销在 30 秒 smoke SLO 内经共享 Redis 重新校验。
 
 | 变量 | 是否必填 | 作用 | 风险说明 |
 | --- | ---: | --- | --- |
@@ -93,6 +93,8 @@ cd docker_litellm/demo
 脚本在真实上游变量存在时执行：创建测试用户、保存测试上游凭证、以 `litellm_credential_name` 创建模型、由调用方生成稳定高熵 virtual key 并故意丢弃首次创建响应，再用该 key 的 0600 Authorization header 调用 `/v2/key/info` 恢复、验证相同 key 重试被拒绝而不会创建第二资源；随后显式 `GET /v1/models`、chat、stream、tool call、token-bearing usage 查询、block，以及独立 key 的 delete。DeepSeek V4 使用 `deepseek/<UPSTREAM_MODEL>` 的原生 provider，避免被通用 OpenAI provider 丢弃 `thinking` 参数。HA 模式会先证明第二副本接受 key，再验证跨副本 RPM 与 TPM 限制均返回由 LiteLLM Proxy limiter 产生的 `429`，最后轮询两个副本直到都拒绝，并输出实际传播时间与 SLO。
 
 `LITELLM_MASTER_KEY`、上游 API key 与虚拟 key 不会作为 `curl`、`jq` 或其他子进程的命令参数传递。脚本以 `umask 077` 创建工作目录，所有 header、请求、响应和 key 文件均为 `0600`，退出时删除；创建的 user、credential、model 和两个测试 key 也会清理。上游凭据仅由 smoke 客户端读取，不会注入 LiteLLM Compose 容器。
+
+Compose 凭据边界的残余风险：LiteLLM 上游配置接口仍要求 `LITELLM_MASTER_KEY` 与 `DATABASE_URL` 在其最终进程环境中可见；本基线已接受这一点。凭据不再出现在 Compose 渲染、容器 `docker inspect` metadata、命令行参数、容器日志或运行时临时文件中。使用具有 Docker daemon 访问权限或容器内同等调试权限的主体仍应视为高权限主体，不应以该边界替代主机与容器访问控制。
 
 若未设置上游变量，脚本仍验证 LiteLLM readiness、PostgreSQL 连接、从每个 LiteLLM 副本到 Redis 的认证连通性、migration 证据和 user 清理路径，并以明确的 `result=skipped` / `phase=pending_upstream` 报告退出。它不会伪造 chat、stream、tool、usage、block/delete 或撤销传播已通过，最终聚合也会拒绝该报告。
 

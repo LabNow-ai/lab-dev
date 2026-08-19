@@ -5,8 +5,12 @@ x-litellm-common: &litellm-common
   restart: "no"
   environment:
     TZ: ${TZ:-Asia/Hong_Kong}
-    LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set a local-only management key in .env}
-    DATABASE_URL: postgresql://${POSTGRES_USER:?set in .env}:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/${POSTGRES_DB:-litellm}
+    LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key
+    POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: ${POSTGRES_DB:-litellm}
+    POSTGRES_USER: ${POSTGRES_USER:?set in .env}
     REDIS_HOST: redis
     REDIS_PORT: "6379"
     REDIS_PASSWORD_FILE: /run/secrets/redis_password
@@ -20,6 +24,8 @@ x-litellm-common: &litellm-common
     - ../work/start-litellm.sh:/opt/utils/start-litellm.sh:ro
     - ../work/run-migration-locked.py:/opt/utils/run-migration-locked.py:ro
   secrets:
+    - litellm_master_key
+    - postgres_password
     - redis_password
   depends_on:
     postgres:
@@ -59,7 +65,9 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
       POSTGRES_USER: ${POSTGRES_USER:?set in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - litellm_postgres_data:/var/lib/postgresql/data
     networks:
@@ -113,6 +121,10 @@ volumes:
   litellm_redis_data:
 
 secrets:
+  litellm_master_key:
+    environment: LITELLM_MASTER_KEY
+  postgres_password:
+    environment: POSTGRES_PASSWORD
   redis_password:
     environment: REDIS_PASSWORD
 
