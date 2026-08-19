@@ -23,6 +23,7 @@ generate_payload="${tmpdir}/generate.json"
 generate_response="${tmpdir}/generate-response.json"
 generated_key_file="${tmpdir}/generated.key"
 delete_payload="${tmpdir}/delete.json"
+migration_output="${tmpdir}/migration.log"
 report_file="${LITELLM_SECRET_BOUNDARY_REPORT_FILE:-}"
 started=false
 compose_config_result="not_run"
@@ -90,7 +91,14 @@ echo "PASS compose config: service environment omits LITELLM_MASTER_KEY, DATABAS
 
 started=true
 docker compose --env-file "$env_file" -p "$project" -f "$compose_file" up -d --wait postgres redis >/dev/null
-docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile migrate run --rm --no-deps litellm-migrate >/dev/null
+docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile migrate run --rm --no-deps litellm-migrate >"$migration_output" 2>&1
+chmod 600 "$migration_output"
+if rg -Fq -- "$master_key" "$migration_output" \
+  || rg -Fq -- "$postgres_password" "$migration_output" \
+  || rg -Fq -- "$redis_password" "$migration_output"; then
+  echo "FAIL logs: credential value is present in migration output" >&2
+  exit 1
+fi
 docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single up -d litellm-1 >/dev/null
 for attempt in $(seq 1 60); do
   if curl --silent --fail --max-time 3 "http://127.0.0.1:${publish_port}/health/readiness" | jq -e '.status == "healthy" and .db == "connected"' >/dev/null; then
