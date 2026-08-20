@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
-set -eu
+set -Eeuo pipefail
+
+config_tmp=""
+cleanup() {
+    local exit_code=$?
+    trap - EXIT
+    if [[ -n "$config_tmp" && -e "$config_tmp" ]]; then
+        rm -f -- "$config_tmp"
+    fi
+    return "$exit_code"
+}
+trap cleanup EXIT
 
 # Setup workspace directory
 HOME_LITELLM="${HOME_LITELLM:-/opt/litellm}"
@@ -44,12 +55,18 @@ export STORE_PROMPTS_IN_SPEND_LOGS="${STORE_PROMPTS_IN_SPEND_LOGS:-false}"
 # backwards-compatible standalone use.
 if [ ! -f "config.yaml" ]; then
     echo "Creating default config.yaml..."
-    cat <<EOF > config.yaml
+    umask 077
+    config_tmp="$(mktemp "${HOME_LITELLM}/config.yaml.tmp.XXXXXX")"
+    chmod 600 "$config_tmp"
+    cat <<'EOF' > "$config_tmp"
 model_list:
   - model_name: gpt-3.5-turbo
     litellm_params:
       model: gpt-3.5-turbo
 EOF
+    chmod 600 "$config_tmp"
+    mv -f -- "$config_tmp" config.yaml
+    config_tmp=""
 fi
 
 # If no arguments are passed, start litellm proxy with defaults
