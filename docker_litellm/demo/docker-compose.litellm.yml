@@ -5,6 +5,7 @@ name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm
 
 x-litellm-common: &litellm-common
   image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
+  pull_policy: never
   restart: "no"
   environment:
     TZ: ${TZ:-Asia/Hong_Kong}
@@ -64,6 +65,7 @@ services:
 
   postgres:
     image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    pull_policy: never
     restart: "no"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
@@ -83,6 +85,7 @@ services:
 
   redis:
     image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    pull_policy: never
     restart: "no"
     secrets:
       - redis_password
