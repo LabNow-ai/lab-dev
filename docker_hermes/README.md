@@ -65,7 +65,8 @@ build_image_no_tag hermes p7-<12hex> docker_hermes/hermes.Dockerfile \
 镜像会记录 `org.opencontainers.image.source` 与
 `org.opencontainers.image.revision`，并在 `/opt/hermes/.labnow-source-*` 保存
 相同的非敏感 provenance。只在本地命名为 `quay.io/labnow/hermes:p7-<12hex>`，不 push。
-完整 P7 的受限输入、静态门禁和跨仓 runner 见 [`p7/README.md`](p7/README.md)。
+P7 的跨仓固定组合与 runner 已按 D-10 归档；历史回读方法见
+[`p7/README.md`](p7/README.md)。它不是 Hermes 的构建、启动或 CI 入口。
 
 ### P8-H10：Dashboard Chat TUI runtime
 
