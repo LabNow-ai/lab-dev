@@ -15,8 +15,8 @@ rg -q '^EXPOSE 18789 18790$' "$dockerfile"
 rg -q '^CMD \["start-openclaw\.sh"\]$' "$dockerfile"
 rg -q '^services:$' "$compose_file"
 rg -q '^  openclaw-gateway:$' "$compose_file"
-rg -q '^      - \$\{OPENCLAW_GATEWAY_PORT:-18789\}:18789$' "$compose_file"
-rg -q '^      - \$\{OPENCLAW_BRIDGE_PORT:-18790\}:18790$' "$compose_file"
+rg -q '^      - "\$\{OPENCLAW_GATEWAY_PORT:-18789\}:18789"$' "$compose_file"
+rg -q '^      - "\$\{OPENCLAW_BRIDGE_PORT:-18790\}:18790"$' "$compose_file"
 ! rg -q '/var/run/docker\.sock' "$compose_file"
 
 printf '%s\n' 'PASS P6 gates: OpenClaw image state, entrypoint, ports, and standard Compose avoid Docker socket access.'
