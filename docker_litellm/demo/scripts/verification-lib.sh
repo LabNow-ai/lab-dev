@@ -14,6 +14,32 @@ verification_env() {
   awk -F= -v name="$name" '$1 == name {sub(/^[^=]*=/, ""); print; exit}' "$verification_environment_file"
 }
 
+verification_file_mode() {
+  local file="$1" platform
+  platform="$(uname -s)"
+  case "$platform" in
+    Darwin|FreeBSD|OpenBSD|NetBSD|DragonFly)
+      stat -f '%Lp' "$file"
+      ;;
+    Linux)
+      stat -c '%a' -- "$file"
+      ;;
+    *)
+      echo "unsupported platform for portable file mode check: $platform" >&2
+      return 2
+      ;;
+  esac
+}
+
+verification_assert_file_mode() {
+  local file="$1" expected_mode="$2" description="$3" actual_mode
+  actual_mode="$(verification_file_mode "$file")" || return $?
+  [[ "$actual_mode" == "$expected_mode" ]] || {
+    echo "$description has mode $actual_mode, expected $expected_mode: $file" >&2
+    return 1
+  }
+}
+
 verification_invalidate_report() {
   local report="$1"
   mkdir -p "$(dirname "$report")"

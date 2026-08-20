@@ -199,9 +199,7 @@ write_private_value() {
 }
 
 assert_private_file() {
-  local mode
-  mode="$(stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1")"
-  [[ "$mode" == "600" ]] || { echo "temporary secret file is not 0600: $1" >&2; exit 1; }
+  verification_assert_file_mode "$1" 600 "temporary secret file" || exit 1
 }
 
 make_header_file() {
@@ -419,7 +417,7 @@ runtime_security_check() {
     ! rg -q --file "$tmpdir/tool-marker" "$db_content_file" &&
     ! rg -q --file "$tmpdir/response-marker" "$db_content_file" &&
     ! git ls-files -z | xargs -0 rg -n --pcre2 '(?:sk-|Bearer[[:space:]]+)[A-Za-z0-9_-]{24,}' -- >/dev/null 2>&1 &&
-    [[ "$(stat -f '%Lp' "$admin_headers" 2>/dev/null || stat -c '%a' "$admin_headers")" == "600" ]]
+    verification_assert_file_mode "$admin_headers" 600 "LiteLLM administration header"
 }
 
 make_key_payload() {

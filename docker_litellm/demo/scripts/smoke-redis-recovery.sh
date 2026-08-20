@@ -91,7 +91,7 @@ runtime_security_check() {
   ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$tmpdir/redis-processes.txt" &&
     ! rg -q 'UPSTREAM_(API_KEY|BASE_URL|MODEL)=' "$tmpdir/litellm-inspect.json" &&
     rg -q '/run/secrets/redis_password' "$tmpdir/redis-inspect.json" &&
-    [[ "$(stat -f '%Lp' "$headers_file" 2>/dev/null || stat -c '%a' "$headers_file")" == "600" ]]
+    verification_assert_file_mode "$headers_file" 600 "Redis recovery authorization header"
 }
 
 container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q redis)"
