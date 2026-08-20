@@ -7,7 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/verification-lib.sh"
 ENV_FILE="${LITELLM_SMOKE_ENV_FILE:-${DEMO_DIR}/.env}"
-export COMPOSE_PROJECT_NAME="${LITELLM_COMPOSE_PROJECT:-litellm-baseline}"
+: "${PROFILE_ENV:=litellm-baseline}"
+export PROFILE_ENV
 MODE="single"
 SECURITY_CHECK=false
 CLEANUP_NEGATIVE_TEST=false
@@ -105,7 +106,12 @@ security_check() {
     || sed '/^security_check() {/,/^}/d' "$0" | rg -n -- 'set -x' \
     || git diff --no-ext-diff -- . | rg -n --pcre2 '(?:sk-|Bearer\s+)[A-Za-z0-9_-]{24,}' \
     || rg -n '^    UPSTREAM_(API_KEY|BASE_URL|MODEL|PROVIDER):' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || rg -n '^    (LITELLM_MASTER_KEY|DATABASE_URL|POSTGRES_PASSWORD):' "$DEMO_DIR/docker-compose.litellm.yml" \
     || rg -n -- '--requirepass[[:space:]].*\$\{REDIS_PASSWORD|REDIS_PASSWORD:.*\$\{' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'litellm_master_key:' "$DEMO_DIR/docker-compose.litellm.yml" \
+    || ! rg -q 'postgres_password:' "$DEMO_DIR/docker-compose.litellm.yml" \
     || ! rg -q 'redis_password:' "$DEMO_DIR/docker-compose.litellm.yml" \
     || ! rg -q 'REDIS_PASSWORD_FILE: /run/secrets/redis_password' "$DEMO_DIR/docker-compose.litellm.yml"; then
     unsafe=1
@@ -127,7 +133,7 @@ security_check() {
     echo "FAIL security negative check: unsafe secret transport or cleanup invariant" >&2
     return 1
   fi
-  echo "PASS security negative check: no inline process arguments/log tracing/Git secrets, no upstream Compose injection, Redis Docker secret and 0600 cleanup invariants present."
+  echo "PASS security negative check: no inline process arguments/log tracing/Git secrets, no upstream or management/database Compose injection, Docker Secret and 0600 cleanup invariants present."
 }
 
 if [[ "$SECURITY_CHECK" == true ]]; then
@@ -193,9 +199,7 @@ write_private_value() {
 }
 
 assert_private_file() {
-  local mode
-  mode="$(stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1")"
-  [[ "$mode" == "600" ]] || { echo "temporary secret file is not 0600: $1" >&2; exit 1; }
+  verification_assert_file_mode "$1" 600 "temporary secret file" || exit 1
 }
 
 make_header_file() {
@@ -389,9 +393,15 @@ assert_migration_evidence() {
 }
 
 runtime_security_check() {
-  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt" db_content_file="$tmpdir/spendlog-db-content.txt"
-  docker inspect svc-litellm-1 > "$inspect_file"
-  if [[ "$MODE" == ha ]]; then docker inspect svc-litellm-2 >> "$inspect_file"; fi
+  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt" db_content_file="$tmpdir/spendlog-db-content.txt" litellm_1_container litellm_2_container
+  litellm_1_container="$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q litellm-1)"
+  [[ -n "$litellm_1_container" ]] || { echo "litellm-1 container not found" >&2; return 1; }
+  docker inspect "$litellm_1_container" > "$inspect_file"
+  if [[ "$MODE" == ha ]]; then
+    litellm_2_container="$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q litellm-2)"
+    [[ -n "$litellm_2_container" ]] || { echo "litellm-2 container not found" >&2; return 1; }
+    docker inspect "$litellm_2_container" >> "$inspect_file"
+  fi
   docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-1 > "$logs_file" 2>&1
   if [[ "$MODE" == ha ]]; then docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-2 >> "$logs_file" 2>&1; fi
   docker exec "$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)" ps -eo args > "$process_file"
@@ -407,7 +417,7 @@ runtime_security_check() {
     ! rg -q --file "$tmpdir/tool-marker" "$db_content_file" &&
     ! rg -q --file "$tmpdir/response-marker" "$db_content_file" &&
     ! git ls-files -z | xargs -0 rg -n --pcre2 '(?:sk-|Bearer[[:space:]]+)[A-Za-z0-9_-]{24,}' -- >/dev/null 2>&1 &&
-    [[ "$(stat -f '%Lp' "$admin_headers" 2>/dev/null || stat -c '%a' "$admin_headers")" == "600" ]]
+    verification_assert_file_mode "$admin_headers" 600 "LiteLLM administration header"
 }
 
 make_key_payload() {

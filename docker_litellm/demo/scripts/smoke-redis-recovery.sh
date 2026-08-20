@@ -81,23 +81,30 @@ probe() {
 }
 
 runtime_security_check() {
+  local litellm_1_container litellm_2_container
+  litellm_1_container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q litellm-1)"
+  litellm_2_container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q litellm-2)"
+  [[ -n "$litellm_1_container" && -n "$litellm_2_container" ]] || return 1
   docker inspect "$container" > "$tmpdir/redis-inspect.json"
-  docker inspect svc-litellm-1 svc-litellm-2 > "$tmpdir/litellm-inspect.json"
+  docker inspect "$litellm_1_container" "$litellm_2_container" > "$tmpdir/litellm-inspect.json"
   docker exec "$container" ps -eo args > "$tmpdir/redis-processes.txt"
   ! rg -q -- '--requirepass[[:space:]]+[^[:space:]]+' "$tmpdir/redis-processes.txt" &&
     ! rg -q 'UPSTREAM_(API_KEY|BASE_URL|MODEL)=' "$tmpdir/litellm-inspect.json" &&
     rg -q '/run/secrets/redis_password' "$tmpdir/redis-inspect.json" &&
-    [[ "$(stat -f '%Lp' "$headers_file" 2>/dev/null || stat -c '%a' "$headers_file")" == "600" ]]
+    verification_assert_file_mode "$headers_file" 600 "Redis recovery authorization header"
 }
 
 container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q redis)"
 [[ -n "$container" ]] || { phase="redis_not_found"; exit 1; }
 network="$(docker inspect -f '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}' "$container")"
 [[ -n "$network" ]] || { phase="network_not_found"; exit 1; }
+litellm_1_container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q litellm-1)"
+litellm_2_container="$(docker compose --env-file "$env_file" -f "$demo_dir/docker-compose.litellm.yml" ps -q litellm-2)"
+[[ -n "$litellm_1_container" && -n "$litellm_2_container" ]] || { phase="litellm_not_found"; exit 1; }
 
 phase="disconnect"
 docker network disconnect "$network" "$container"
-if probe svc-litellm-1 >/dev/null 2>&1 || probe svc-litellm-2 >/dev/null 2>&1; then
+if probe "$litellm_1_container" >/dev/null 2>&1 || probe "$litellm_2_container" >/dev/null 2>&1; then
   phase="probe_unexpectedly_succeeded"
   exit 1
 fi
@@ -105,8 +112,8 @@ fi
 phase="recover"
 docker network connect --alias redis "$network" "$container"
 sleep $((recovery_timeout + 1))
-probe svc-litellm-1
-probe svc-litellm-2
+probe "$litellm_1_container"
+probe "$litellm_2_container"
 
 # This is an authenticated LiteLLM call after recovery, not only a socket PING.
 curl --silent --show-error --fail --max-time 20 --request GET "http://${publish_host}:${litellm_1_port}/v1/models" \

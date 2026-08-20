@@ -1,12 +1,20 @@
-name: litellm-baseline
+# Keep the project, explicit container names, and external network names in
+# the same instance namespace. This follows the repository PROFILE_ENV
+# convention and allows multiple local LiteLLM stacks to coexist.
+name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm
 
 x-litellm-common: &litellm-common
   image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
+  pull_policy: never
   restart: "no"
   environment:
     TZ: ${TZ:-Asia/Hong_Kong}
-    LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set a local-only management key in .env}
-    DATABASE_URL: postgresql://${POSTGRES_USER:?set in .env}:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/${POSTGRES_DB:-litellm}
+    LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key
+    POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: ${POSTGRES_DB:-litellm}
+    POSTGRES_USER: ${POSTGRES_USER:?set in .env}
     REDIS_HOST: redis
     REDIS_PORT: "6379"
     REDIS_PASSWORD_FILE: /run/secrets/redis_password
@@ -20,6 +28,8 @@ x-litellm-common: &litellm-common
     - ../work/start-litellm.sh:/opt/utils/start-litellm.sh:ro
     - ../work/run-migration-locked.py:/opt/utils/run-migration-locked.py:ro
   secrets:
+    - litellm_master_key
+    - postgres_password
     - redis_password
   depends_on:
     postgres:
@@ -27,7 +37,7 @@ x-litellm-common: &litellm-common
     redis:
       condition: service_healthy
   networks:
-    - litellm-baseline-net
+    - litellm-net
   healthcheck:
     test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness', timeout=3)\""]
     interval: 10s
@@ -42,9 +52,9 @@ services:
   # Prisma's migration table makes repeated one-shot jobs idempotent.
   litellm-migrate:
     <<: *litellm-common
-    container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
+    container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-migrate}
     profiles: ["migrate"]
-    command: ["python3", "/opt/utils/run-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
+    command: ["/opt/utils/start-litellm.sh", "python3", "/opt/utils/run-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
     healthcheck:
       disable: true
     depends_on:
@@ -55,15 +65,18 @@ services:
 
   postgres:
     image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    pull_policy: never
     restart: "no"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
       POSTGRES_USER: ${POSTGRES_USER:?set in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
     volumes:
       - litellm_postgres_data:/var/lib/postgresql/data
     networks:
-      - litellm-baseline-net
+      - litellm-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -72,6 +85,7 @@ services:
 
   redis:
     image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    pull_policy: never
     restart: "no"
     secrets:
       - redis_password
@@ -87,7 +101,7 @@ services:
     volumes:
       - litellm_redis_data:/data
     networks:
-      - litellm-baseline-net
+      - litellm-net
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning ping | grep -qx PONG"]
       interval: 5s
@@ -96,14 +110,14 @@ services:
 
   litellm-1:
     <<: *litellm-common
-    container_name: ${LITELLM_1_CONTAINER_NAME:-svc-litellm-1}
+    container_name: ${LITELLM_1_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-1}
     profiles: ["single", "ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
 
   litellm-2:
     <<: *litellm-common
-    container_name: ${LITELLM_2_CONTAINER_NAME:-svc-litellm-2}
+    container_name: ${LITELLM_2_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-2}
     profiles: ["ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"
@@ -113,9 +127,13 @@ volumes:
   litellm_redis_data:
 
 secrets:
+  litellm_master_key:
+    environment: LITELLM_MASTER_KEY
+  postgres_password:
+    environment: POSTGRES_PASSWORD
   redis_password:
     environment: REDIS_PASSWORD
 
 networks:
-  litellm-baseline-net:
-    name: litellm-baseline-net
+  litellm-net:
+    name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm-net

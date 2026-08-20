@@ -8,12 +8,19 @@ migration concurrently. No connection string or secret is printed.
 
 import asyncio
 import os
+import re
 import subprocess
 import sys
 
 from prisma import Prisma
 
 LOCK_ID = 548_019_700_001
+DATABASE_URL_PATTERN = re.compile(r"postgres(?:ql)?://[^\s'\"`]+")
+
+
+def redact_migration_output(value: str) -> str:
+    """Keep migration diagnostics while preventing connection strings in logs."""
+    return DATABASE_URL_PATTERN.sub("postgresql://<REDACTED>", value)
 
 
 async def main() -> int:
@@ -38,8 +45,15 @@ async def main() -> int:
             await asyncio.sleep(hold_seconds)
         print("P1_MIGRATION_EXECUTION_START", flush=True)
         completed = subprocess.run(
-            ["/bin/bash", "/opt/utils/start-litellm.sh", *sys.argv[1:]], check=False
+            ["/bin/bash", "/opt/utils/start-litellm.sh", *sys.argv[1:]],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            errors="replace",
         )
+        if completed.stdout:
+            print(redact_migration_output(completed.stdout), end="", flush=True)
         print("P1_MIGRATION_EXECUTION_DONE", flush=True)
         return completed.returncode
     finally:
