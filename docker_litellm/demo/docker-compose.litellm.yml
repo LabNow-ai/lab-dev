@@ -1,4 +1,7 @@
-name: litellm-baseline
+# Keep the project, explicit container names, and external network names in
+# the same instance namespace. This follows the repository PROFILE_ENV
+# convention and allows multiple local LiteLLM stacks to coexist.
+name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm
 
 x-litellm-common: &litellm-common
   image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
@@ -33,7 +36,7 @@ x-litellm-common: &litellm-common
     redis:
       condition: service_healthy
   networks:
-    - litellm-baseline-net
+    - litellm-net
   healthcheck:
     test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness', timeout=3)\""]
     interval: 10s
@@ -48,7 +51,7 @@ services:
   # Prisma's migration table makes repeated one-shot jobs idempotent.
   litellm-migrate:
     <<: *litellm-common
-    container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-svc-litellm-migrate}
+    container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-migrate}
     profiles: ["migrate"]
     command: ["/opt/utils/start-litellm.sh", "python3", "/opt/utils/run-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
     healthcheck:
@@ -71,7 +74,7 @@ services:
     volumes:
       - litellm_postgres_data:/var/lib/postgresql/data
     networks:
-      - litellm-baseline-net
+      - litellm-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -95,7 +98,7 @@ services:
     volumes:
       - litellm_redis_data:/data
     networks:
-      - litellm-baseline-net
+      - litellm-net
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning ping | grep -qx PONG"]
       interval: 5s
@@ -104,14 +107,14 @@ services:
 
   litellm-1:
     <<: *litellm-common
-    container_name: ${LITELLM_1_CONTAINER_NAME:-svc-litellm-1}
+    container_name: ${LITELLM_1_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-1}
     profiles: ["single", "ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
 
   litellm-2:
     <<: *litellm-common
-    container_name: ${LITELLM_2_CONTAINER_NAME:-svc-litellm-2}
+    container_name: ${LITELLM_2_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-2}
     profiles: ["ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"
@@ -129,5 +132,5 @@ secrets:
     environment: REDIS_PASSWORD
 
 networks:
-  litellm-baseline-net:
-    name: litellm-baseline-net
+  litellm-net:
+    name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm-net

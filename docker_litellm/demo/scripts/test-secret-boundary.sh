@@ -10,8 +10,10 @@ compose_file="${demo_dir}/docker-compose.litellm.yml"
 image_ref="${LITELLM_SECRET_BOUNDARY_IMAGE:-quay.io/labnow/litellm:1.97.0-ead62528e607}"
 run_id="$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
 project="ph1-secret-boundary-${run_id}"
-litellm_container="ph1-secret-boundary-${run_id}-litellm-1"
-litellm_peer_container="ph1-secret-boundary-${run_id}-litellm-2"
+compose_project="${project}-svc-litellm"
+network_name="${project}-svc-litellm-net"
+litellm_container="${project}-svc-litellm-1"
+litellm_peer_container="${project}-svc-litellm-2"
 publish_port="${LITELLM_SECRET_BOUNDARY_PORT:-4100}"
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-secret-boundary.XXXXXX")"
 env_file="${tmpdir}/runtime.env"
@@ -39,14 +41,14 @@ cleanup() {
   local exit_code=$?
   trap - EXIT
   if [[ "$started" == true ]]; then
-    docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single down -v --remove-orphans >/dev/null 2>&1 || exit_code=1
+    docker compose --env-file "$env_file" -f "$compose_file" --profile single down -v --remove-orphans >/dev/null 2>&1 || exit_code=1
   fi
   rm -rf "$tmpdir"
   if docker ps -a --format '{{.Names}}' | rg -q "^${litellm_container}$|^${litellm_peer_container}$"; then
     echo "FAIL cleanup: PH-1 LiteLLM container remains" >&2
     exit_code=1
   fi
-  if docker network inspect litellm-baseline-net >/dev/null 2>&1; then
+  if docker network inspect "$network_name" >/dev/null 2>&1; then
     echo "FAIL cleanup: PH-1 network remains" >&2
     exit_code=1
   fi
@@ -66,14 +68,14 @@ need jq
 need rg
 need openssl
 
-# The Compose file keeps its legacy fixed network name. Refuse to attach a
-# boundary test to any pre-existing stack instead of disturbing its network.
-if docker network inspect litellm-baseline-net >/dev/null 2>&1; then
-  echo "refusing to reuse existing litellm-baseline-net" >&2
+# Refuse to attach the boundary test to an existing instance-specific network.
+if docker network inspect "$network_name" >/dev/null 2>&1; then
+  echo "refusing to reuse existing $network_name" >&2
   exit 2
 fi
 
 umask 077
+export PROFILE_ENV="$project"
 master_key="sk-$(openssl rand -hex 24)"
 postgres_password="$(openssl rand -hex 24)"
 redis_password="$(openssl rand -hex 24)"
@@ -81,7 +83,7 @@ printf 'LITELLM_IMAGE=%s\nLITELLM_MASTER_KEY=%s\nPOSTGRES_USER=litellm\nPOSTGRES
   "$image_ref" "$master_key" "$postgres_password" "$redis_password" "$litellm_container" "$litellm_peer_container" "$publish_port" > "$env_file"
 chmod 600 "$env_file"
 
-docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single config --format json | jq -e '
+docker compose --env-file "$env_file" -f "$compose_file" --profile single config --format json | jq -e '
   . as $config |
   ([.services | to_entries[] | select(.key == "litellm-1" or .key == "litellm-2" or .key == "litellm-migrate") | .value.environment // {} | keys[] | select(. == "LITELLM_MASTER_KEY" or . == "DATABASE_URL" or . == "POSTGRES_PASSWORD")] | length == 0)
   and ($config.services.postgres.environment | has("POSTGRES_PASSWORD") | not)
@@ -90,8 +92,8 @@ compose_config_result="passed"
 echo "PASS compose config: service environment omits LITELLM_MASTER_KEY, DATABASE_URL, and POSTGRES_PASSWORD."
 
 started=true
-docker compose --env-file "$env_file" -p "$project" -f "$compose_file" up -d --wait postgres redis >/dev/null
-docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile migrate run --rm --no-deps litellm-migrate >"$migration_output" 2>&1
+docker compose --env-file "$env_file" -f "$compose_file" up -d --wait postgres redis >/dev/null
+docker compose --env-file "$env_file" -f "$compose_file" --profile migrate run --rm --no-deps litellm-migrate >"$migration_output" 2>&1
 chmod 600 "$migration_output"
 if rg -Fq -- "$master_key" "$migration_output" \
   || rg -Fq -- "$postgres_password" "$migration_output" \
@@ -99,7 +101,7 @@ if rg -Fq -- "$master_key" "$migration_output" \
   echo "FAIL logs: credential value is present in migration output" >&2
   exit 1
 fi
-docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single up -d litellm-1 >/dev/null
+docker compose --env-file "$env_file" -f "$compose_file" --profile single up -d litellm-1 >/dev/null
 for attempt in $(seq 1 60); do
   if curl --silent --fail --max-time 3 "http://127.0.0.1:${publish_port}/health/readiness" | jq -e '.status == "healthy" and .db == "connected"' >/dev/null; then
     break
@@ -127,11 +129,11 @@ assert_metadata_boundary() {
 
 assert_metadata_boundary "$litellm_container" LITELLM_MASTER_KEY "$master_key"
 assert_metadata_boundary "$litellm_container" DATABASE_URL "$postgres_password"
-assert_metadata_boundary "${project}-postgres-1" POSTGRES_PASSWORD "$postgres_password"
+assert_metadata_boundary "${compose_project}-postgres-1" POSTGRES_PASSWORD "$postgres_password"
 inspect_result="passed"
 echo "PASS inspect: no management key, database URL, or PostgreSQL password value in container metadata."
 
-for container in "$litellm_container" "${project}-postgres-1" "${project}-redis-1"; do
+for container in "$litellm_container" "${compose_project}-postgres-1" "${compose_project}-redis-1"; do
   if docker top "$container" -eo args | rg -Fq -- "$master_key" \
     || docker top "$container" -eo args | rg -Fq -- "$postgres_password" \
     || docker top "$container" -eo args | rg -Fq -- "$redis_password"; then
@@ -142,9 +144,9 @@ done
 argv_result="passed"
 echo "PASS ps/argv: no credential values in container command lines."
 
-if docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single logs --no-color | rg -Fq -- "$master_key" \
-  || docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single logs --no-color | rg -Fq -- "$postgres_password" \
-  || docker compose --env-file "$env_file" -p "$project" -f "$compose_file" --profile single logs --no-color | rg -Fq -- "$redis_password"; then
+if docker compose --env-file "$env_file" -f "$compose_file" --profile single logs --no-color | rg -Fq -- "$master_key" \
+  || docker compose --env-file "$env_file" -f "$compose_file" --profile single logs --no-color | rg -Fq -- "$postgres_password" \
+  || docker compose --env-file "$env_file" -f "$compose_file" --profile single logs --no-color | rg -Fq -- "$redis_password"; then
   echo "FAIL logs: credential value is present in Compose logs" >&2
   exit 1
 fi

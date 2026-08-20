@@ -7,7 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/verification-lib.sh"
 ENV_FILE="${LITELLM_SMOKE_ENV_FILE:-${DEMO_DIR}/.env}"
-export COMPOSE_PROJECT_NAME="${LITELLM_COMPOSE_PROJECT:-litellm-baseline}"
+: "${PROFILE_ENV:=litellm-baseline}"
+export PROFILE_ENV
 MODE="single"
 SECURITY_CHECK=false
 CLEANUP_NEGATIVE_TEST=false
@@ -394,9 +395,15 @@ assert_migration_evidence() {
 }
 
 runtime_security_check() {
-  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt" db_content_file="$tmpdir/spendlog-db-content.txt"
-  docker inspect svc-litellm-1 > "$inspect_file"
-  if [[ "$MODE" == ha ]]; then docker inspect svc-litellm-2 >> "$inspect_file"; fi
+  local logs_file="$tmpdir/litellm-logs.txt" inspect_file="$tmpdir/inspect.json" process_file="$tmpdir/redis-processes.txt" db_content_file="$tmpdir/spendlog-db-content.txt" litellm_1_container litellm_2_container
+  litellm_1_container="$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q litellm-1)"
+  [[ -n "$litellm_1_container" ]] || { echo "litellm-1 container not found" >&2; return 1; }
+  docker inspect "$litellm_1_container" > "$inspect_file"
+  if [[ "$MODE" == ha ]]; then
+    litellm_2_container="$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q litellm-2)"
+    [[ -n "$litellm_2_container" ]] || { echo "litellm-2 container not found" >&2; return 1; }
+    docker inspect "$litellm_2_container" >> "$inspect_file"
+  fi
   docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-1 > "$logs_file" 2>&1
   if [[ "$MODE" == ha ]]; then docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" logs --no-color litellm-2 >> "$logs_file" 2>&1; fi
   docker exec "$(docker compose --env-file "$ENV_FILE" -f "$DEMO_DIR/docker-compose.litellm.yml" ps -q redis)" ps -eo args > "$process_file"
