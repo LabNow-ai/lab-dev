@@ -5,7 +5,7 @@ ARG BASE_IMG_BUILD="node"
 ARG BASE_IMG="base"
 ARG HERMES_BUILD_BASE_IMAGE
 ARG HERMES_RUNTIME_BASE_IMAGE
-# P7: the upstream source is a release input, not a moving branch.  Keep the
+# The upstream source is a release input, not a moving branch.  Keep the
 # repository and commit overridable only so the local runner can bind both to
 # its protected input and record the exact provenance.
 ARG HERMES_SOURCE_REPOSITORY="https://github.com/nousresearch/hermes-agent.git"

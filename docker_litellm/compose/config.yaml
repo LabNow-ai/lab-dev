@@ -1,4 +1,4 @@
-# P1 runtime configuration. Secrets only come from environment variables.
+# Runtime configuration. Secrets only come from environment variables.
 # The management API persists users, credentials, model records and virtual keys
 # in PostgreSQL. Redis is the shared cache/co-ordination backend for replicas.
 
