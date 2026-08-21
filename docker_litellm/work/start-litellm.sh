@@ -50,7 +50,7 @@ fi
 # Keep metering enabled in config.yaml, but never persist prompt content.
 export STORE_PROMPTS_IN_SPEND_LOGS="${STORE_PROMPTS_IN_SPEND_LOGS:-false}"
 
-# Default config if not exists. The P1 Compose baseline always mounts an
+# Default config if not exists. The Compose baseline always mounts an
 # explicit config with PostgreSQL and Redis; this fallback remains only for
 # backwards-compatible standalone use.
 if [ ! -f "config.yaml" ]; then

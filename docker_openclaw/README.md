@@ -38,9 +38,3 @@ docker run -d \
     -v openclaw_data:/root/.openclaw/data \
     labnow/openclaw:latest
 ```
-
-## P6 冻结证据归档
-
-P6 的跨仓固定组合、黄金 runner 与报告聚合属于已冻结的一次性验收证据，已从
-产品运行面删除。历史回读方式见 [`p6/README.md`](p6/README.md)；它不是 OpenClaw
-的构建、启动或 CI 入口。

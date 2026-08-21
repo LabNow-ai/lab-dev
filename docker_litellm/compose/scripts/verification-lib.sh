@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared fail-closed helpers for P1 verification producers.  Never source .env.
+# Shared fail-closed helpers for the migration/verification scripts.  Never source .env.
 
 verification_prepare_environment() {
   local env_file="$1" compose_file="$2" work_dir="$3"

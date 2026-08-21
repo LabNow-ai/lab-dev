@@ -19,7 +19,7 @@ ENV NODE_ENV=development
 WORKDIR /build
 
 # Clone the fixed source and build its Python wheel. Dashboard export is
-# optional: P1 validates the API proxy, not the browser dashboard.
+# optional: the API proxy does not depend on the browser dashboard.
 RUN set -eux \
  && git init . \
  && git remote add origin https://github.com/BerriAI/litellm.git \
