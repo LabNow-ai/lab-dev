@@ -4,11 +4,11 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-demo_dir="$(cd "${script_dir}/.." && pwd)"
+compose_dir="$(cd "${script_dir}/.." && pwd)"
 source "${script_dir}/verification-lib.sh"
-env_file="${LITELLM_SMOKE_ENV_FILE:-${demo_dir}/.env}"
-compose=(docker compose --env-file "$env_file" -f "${demo_dir}/docker-compose.litellm.yml")
-summary_file="${LITELLM_MIGRATION_SUMMARY_FILE:-${demo_dir}/artifacts/p1-migration-summary.json}"
+env_file="${LITELLM_SMOKE_ENV_FILE:-${compose_dir}/.env}"
+compose=(docker compose --env-file "$env_file" -f "${compose_dir}/docker-compose.litellm.yml")
+summary_file="${LITELLM_MIGRATION_SUMMARY_FILE:-${compose_dir}/artifacts/p1-migration-summary.json}"
 
 result="failed"
 phase="initializing"
@@ -24,7 +24,7 @@ cleanup() {
   chmod 700 "$(dirname "$summary_file")"
   summary_tmp="${summary_file}.tmp.$$"
   jq -n \
-    --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" \
+    --arg commit "$(git -C "$compose_dir/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg run_id "$verification_run_id" --arg result "$result" --arg phase "$phase" --argjson exit_code "$exit_code" \
@@ -42,7 +42,7 @@ trap cleanup EXIT
 umask 077
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-migration.XXXXXX")"
 chmod 700 "$tmpdir"
-verification_prepare_environment "$env_file" "${demo_dir}/docker-compose.litellm.yml" "$tmpdir"
+verification_prepare_environment "$env_file" "${compose_dir}/docker-compose.litellm.yml" "$tmpdir"
 image_ref="$(verification_env LITELLM_IMAGE)"
 : "${image_ref:?missing LITELLM_IMAGE in effective Compose environment}"
 

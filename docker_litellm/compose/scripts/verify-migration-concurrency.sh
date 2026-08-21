@@ -3,10 +3,10 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-demo_dir="$(cd "${script_dir}/.." && pwd)"
+compose_dir="$(cd "${script_dir}/.." && pwd)"
 source "${script_dir}/verification-lib.sh"
-env_file="${LITELLM_SMOKE_ENV_FILE:-${demo_dir}/.env}"
-summary_file="${demo_dir}/artifacts/p1-migration-concurrency.json"
+env_file="${LITELLM_SMOKE_ENV_FILE:-${compose_dir}/.env}"
+summary_file="${compose_dir}/artifacts/p1-migration-concurrency.json"
 run_id="${VERIFICATION_RUN_ID:?VERIFICATION_RUN_ID is required}"
 tmpdir=""
 image_ref=""
@@ -27,7 +27,7 @@ cleanup() {
   [[ -z "$first" ]] || docker rm "$first" >/dev/null 2>&1 || true
   [[ -z "$second" ]] || docker rm "$second" >/dev/null 2>&1 || true
   tmp="${summary_file}.tmp.$$"
-  jq -n --arg run_id "$run_id" --arg commit "$(git -C "$demo_dir/../.." rev-parse HEAD)" \
+  jq -n --arg run_id "$run_id" --arg commit "$(git -C "$compose_dir/../.." rev-parse HEAD)" \
     --arg image_id "$(docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true)" \
     --arg tested_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg result "$result" --arg phase "$phase" \
     --argjson actual_overlap "$actual_overlap" --argjson lock_wait_observed "$lock_wait_observed" \
@@ -41,9 +41,9 @@ trap cleanup EXIT
 
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/litellm-migration-concurrency.XXXXXX")"
 chmod 700 "$tmpdir"
-verification_prepare_environment "$env_file" "${demo_dir}/docker-compose.litellm.yml" "$tmpdir"
+verification_prepare_environment "$env_file" "${compose_dir}/docker-compose.litellm.yml" "$tmpdir"
 image_ref="$(verification_env LITELLM_IMAGE)"
-compose=(docker compose --env-file "$env_file" -f "${demo_dir}/docker-compose.litellm.yml")
+compose=(docker compose --env-file "$env_file" -f "${compose_dir}/docker-compose.litellm.yml")
 "${compose[@]}" up -d --wait postgres redis
 phase="starting_concurrent_jobs"
 

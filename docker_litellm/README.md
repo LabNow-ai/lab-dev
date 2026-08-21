@@ -40,7 +40,7 @@ docker image inspect quay.io/labnow/litellm:1.97.0-ead62528e607 \
 准备不会被 Git 跟踪的配置。不要把 `.env` 发送到聊天、日志或提交中。
 
 ```bash
-cd docker_litellm/demo
+cd docker_litellm/compose
 cp .env.example .env
 # 在 .env 中生成并填写 LITELLM_MASTER_KEY、POSTGRES_PASSWORD、REDIS_PASSWORD。
 # 真实上游调用另行填写 UPSTREAM_PROVIDER、UPSTREAM_API_KEY、UPSTREAM_BASE_URL、UPSTREAM_MODEL。
@@ -88,7 +88,7 @@ P1 不把 LiteLLM User/Team 当作产品用户或 Workspace 的事实源；Shell
 ## Smoke 验证
 
 ```bash
-cd docker_litellm/demo
+cd docker_litellm/compose
 ./scripts/verify-p1.sh
 ./scripts/smoke-baseline.sh --security-check
 ./scripts/test-verification-gates.sh
@@ -99,7 +99,7 @@ cd docker_litellm/demo
 
 `--security-check` 不读取 `.env`、不启动服务也不发送上游请求；它拒绝 inline header、secret-bearing `jq --arg`、`set -x`、Compose 上游凭据注入和 Redis 密码命令行展开，并检查 Docker Secret、0600 临时文件与退出清理约束。`test-verification-gates.sh` 验证历史 PASS 失效、前置失败报告与 dotenv 命令替换不执行；在已启动 single 栈中追加 `--with-running-stack` 会以真实 404 删除请求证明 cleanup 不会生成 PASS。
 
-`test-secret-boundary.sh` 是 PH-1 的无上游定向门禁：它只生成本地占位凭据，不读取 `demo/.env`，验证 Compose 渲染和容器 inspect 不含 `LITELLM_MASTER_KEY`、`DATABASE_URL`、`POSTGRES_PASSWORD` 的服务环境或凭据值，并对 inspect、`ps/argv`、容器日志、容器临时文件执行负向检查。随后它启动 LiteLLM、调用并清理一次已认证的管理端点，退出时删除本次创建的容器、卷、网络和宿主临时文件。脚本为每次 run 设置唯一 `PROFILE_ENV`，若对应实例网络已存在则失败退出而不会复用或干扰该网络。
+`test-secret-boundary.sh` 是 PH-1 的无上游定向门禁：它只生成本地占位凭据，不读取 `compose/.env`，验证 Compose 渲染和容器 inspect 不含 `LITELLM_MASTER_KEY`、`DATABASE_URL`、`POSTGRES_PASSWORD` 的服务环境或凭据值，并对 inspect、`ps/argv`、容器日志、容器临时文件执行负向检查。随后它启动 LiteLLM、调用并清理一次已认证的管理端点，退出时删除本次创建的容器、卷、网络和宿主临时文件。脚本为每次 run 设置唯一 `PROFILE_ENV`，若对应实例网络已存在则失败退出而不会复用或干扰该网络。
 
 `smoke-redis-recovery.sh` 在已启动的 HA 栈中临时断开 Redis 网络端点，验证两个副本的有界认证探针均失败，再恢复 `redis` alias、等待 breaker 窗口并确认认证后的 `GET /v1/models` 恢复。它有独立的恢复 trap，不会让故障测试影响主 smoke 的资源清理。`aggregate-verification-summary.sh` 将 migration、single、HA 与 Redis 独立报告组合为不含密钥、密码、提示词和响应正文的最终 JSON 摘要。
 
@@ -117,7 +117,7 @@ LiteLLM `v1.97.0-dev.1` 的公开 `/health/readiness` 仅返回服务与数据�
 
 ## 常见问题
 
-- `LITELLM_MASTER_KEY` 或数据库密码缺失：先检查被忽略的 `demo/.env`，不要将其内容贴出。
+- `LITELLM_MASTER_KEY` 或数据库密码缺失：先检查被忽略的 `compose/.env`，不要将其内容贴出。
 - readiness 未连接数据库：查看 `docker compose ... logs postgres litellm-1`，并保留卷以便排查迁移。
 - Redis 探针失败：不要继续双副本撤销验证；先确认 `redis` health 与密码一致。
 - 上游调用待验证：仅在 `.env` 中提供专用、低权限、可轮换的测试 key，再重跑两个 smoke 命令。

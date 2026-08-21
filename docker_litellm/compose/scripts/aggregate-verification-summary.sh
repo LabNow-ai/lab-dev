@@ -4,15 +4,15 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-demo_dir="$(cd "${script_dir}/.." && pwd)"
-artifacts_dir="${LITELLM_ARTIFACTS_DIR:-${demo_dir}/artifacts}"
+compose_dir="$(cd "${script_dir}/.." && pwd)"
+artifacts_dir="${LITELLM_ARTIFACTS_DIR:-${compose_dir}/artifacts}"
 single_report="${artifacts_dir}/p1-single-summary.json"
 ha_report="${artifacts_dir}/p1-ha-summary.json"
 redis_report="${artifacts_dir}/p1-redis-recovery.json"
 migration_report="${artifacts_dir}/p1-migration-summary.json"
 concurrency_report="${artifacts_dir}/p1-migration-concurrency.json"
 output="${LITELLM_AGGREGATE_SUMMARY_FILE:-${artifacts_dir}/p1-final-summary.json}"
-commit="$(git -C "$demo_dir/../.." rev-parse HEAD)"
+commit="$(git -C "$compose_dir/../.." rev-parse HEAD)"
 run_id="${VERIFICATION_RUN_ID:-}"
 started_at="${VERIFICATION_STARTED_AT:-}"
 rm -f "$output"

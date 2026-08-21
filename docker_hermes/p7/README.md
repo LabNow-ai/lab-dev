@@ -12,4 +12,4 @@ git show fdbbab2155a9e088c37d2a8a2057178e19ac9534:docker_hermes/p7/<路径>
 ```
 
 仍保留的 `scripts/test-p7-gates.sh` 是不启动容器的 Hermes 静态产品契约检查；
-受支持构建与日常启动方式见父目录 README 和 `demo/`。
+受支持构建与日常启动方式见父目录 README 和 `compose/`。
