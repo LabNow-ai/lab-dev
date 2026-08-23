@@ -9,10 +9,10 @@ COPY work /opt/utils
 
 RUN set -eux \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
-      git jq libaio1t64 libgssapi-krb5-2 \
-      libfreetype6 fontconfig fonts-liberation fonts-noto-cjk \
+      curl git jq htop \
+      libaio1t64 libgssapi-krb5-2 libfreetype6 fontconfig fonts-liberation fonts-noto-cjk \
  ## ----------------------------- Install postgresql client
- && source /opt/utils/script-setup-db-clients.sh && setup_postgresql_client \
+ && source /opt/utils/script-setup-db-clients.sh && setup_postgresql_client 18 \
  ## ----------------------------- Install dependencies and build
  && source /opt/utils/script-setup-core.sh && setup_node_base 22 \
  && npm install -g yarn @nocobase/cli \
@@ -28,6 +28,11 @@ RUN set -eux \
 
 LABEL maintainer="postmaster@labnow.ai"
 EXPOSE 13000
+
+# Healthcheck: nocobase listens on 13000, startup may take longer due to DB install/migration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD ["curl", "--head", "-fsS", "http://localhost:13000/"]
+
 WORKDIR /opt/nocobase
 VOLUME [ "/opt/nocobase/storage" ]
 
