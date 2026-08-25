@@ -77,6 +77,21 @@ PROFILE_ENV=litellm-dev-b docker compose --env-file .env -f docker-compose.litel
 
 Compose 凭据边界的残余风险：LiteLLM 上游配置接口仍要求 `LITELLM_MASTER_KEY` 与 `DATABASE_URL` 在其最终进程环境中可见；本基线已接受这一点。凭据不出现在 Compose 渲染、容器 `docker inspect` metadata、命令行参数、容器日志或运行时临时文件中。使用具有 Docker daemon 访问权限或容器内同等调试权限的主体仍应视为高权限主体，不应以该边界替代主机与容器访问控制。
 
+## SpendLogs 数据保留
+
+`LiteLLM_SpendLogs` 是 LiteLLM 计量明细的事实源。labnow-shell 的用量观测从 `/spend/logs/v2` 按水位线增量摄入并写入自有聚合表；某一历史时间段已成功摄入后，该时间段的 SpendLogs 行可以清理，清理不会影响已写入的下游聚合表。清理前仍须确认对应水位线已持久化、聚合写入成功，且没有其他仍依赖该明细表的消费者。
+
+本仓固定的 LiteLLM `v1.97.0-dev.1` / `ead62528e607b9d8e61273def638799c9c3a69ba` 已支持在 `general_settings` 中设置 `maximum_spend_logs_retention_period`。经配置变更评审后，可使用以下配置启用 LiteLLM 自带的定时清理；`"7d"` 表示删除早于当前时间 7 天的 SpendLogs。当前基线**未**启用该项，本批次仅登记策略，不修改 `config.yaml`。
+
+```yaml
+general_settings:
+  maximum_spend_logs_retention_period: "7d"
+```
+
+该固定 commit 的 [`SpendLogCleanup`](https://github.com/BerriAI/litellm/blob/ead62528e607b9d8e61273def638799c9c3a69ba/litellm/proxy/db/db_transaction_queue/spend_log_cleanup.py#L53-L75) 会读取此配置并按保留期计算清理边界；[`proxy_server.py`](https://github.com/BerriAI/litellm/blob/ead62528e607b9d8e61273def638799c9c3a69ba/litellm/proxy/proxy_server.py#L8318-L8353) 会在该配置存在时注册清理任务（未另行配置时按 `1d` 间隔执行）。
+
+保留窗口必须大于下游增量摄入的端到端延迟，包括分钟级延迟、任务重试和短暂故障恢复时间；建议至少保留 **7 天**。不要以一次成功的摄入为依据立即清理最近数据，以免水位线尚未推进或重试中的批次出现缺口。
+
 ## Readiness 与 Redis 说明
 
 LiteLLM `v1.97.0-dev.1` 的公开 `/health/readiness` 仅返回服务与数据库连通性，不将 Redis 纳入公开 readiness。因此 Compose 健康检查只能确认 LiteLLM + PostgreSQL；可额外从每个 LiteLLM 容器执行 Redis `PING` 确认。若 Redis 不可用，多副本认证缓存、RPM/TPM limiter 与协调结论无效，不能宣称为高可用。Redis 恢复后，LiteLLM 的认证缓存 circuit breaker 需要经过 `REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT` 后才会重新探测，默认 5 秒。跨副本 SpendLog 只证明 PostgreSQL 可见性，不是 Redis Spend counter 或预算准入控制证据。
