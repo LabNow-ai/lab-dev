@@ -1,21 +1,34 @@
-# Keep the project, explicit container names, and external network names in
-# the same instance namespace. This follows the repository PROFILE_ENV
-# convention and allows multiple local LiteLLM stacks to coexist.
+# Keep the project, explicit container names, and external network names in the same instance namespace.
+# This follows the repository PROFILE_ENV convention and allows multiple local LiteLLM stacks to coexist.
 name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm
+
+
+networks:
+  net-litellm:
+    name: ${PROFILE_ENV:-litellm-baseline}-svc-net-litellm
+
+secrets:
+  litellm_master_key:
+    environment: LITELLM_MASTER_KEY
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  redis_password:
+    environment: REDIS_PASSWORD
+
 
 x-litellm-common: &litellm-common
   image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
-  pull_policy: never
+  pull_policy: always
   restart: "no"
   environment:
     TZ: ${TZ:-Asia/Hong_Kong}
     LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key
     POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    POSTGRES_HOST: postgres
+    POSTGRES_HOST: db-postgres-litellm
     POSTGRES_PORT: "5432"
     POSTGRES_DB: ${POSTGRES_DB:-litellm}
     POSTGRES_USER: ${POSTGRES_USER:?set in .env}
-    REDIS_HOST: redis
+    REDIS_HOST: db-redis-litellm
     REDIS_PORT: "6379"
     REDIS_PASSWORD_FILE: /run/secrets/redis_password
     REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}
@@ -32,12 +45,11 @@ x-litellm-common: &litellm-common
     - postgres_password
     - redis_password
   depends_on:
-    postgres:
+    db-postgres-litellm:
       condition: service_healthy
-    redis:
+    db-redis-litellm:
       condition: service_healthy
-  networks:
-    - litellm-net
+  networks: ["net-litellm"]
   healthcheck:
     test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness', timeout=3)\""]
     interval: 10s
@@ -58,14 +70,14 @@ services:
     healthcheck:
       disable: true
     depends_on:
-      postgres:
+      db-postgres-litellm:
         condition: service_healthy
-      redis:
+      db-redis-litellm:
         condition: service_healthy
 
-  postgres:
-    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
-    pull_policy: never
+  db-postgres-litellm:
+    image: quay.io/labnow/postgres-18
+    pull_policy: always
     restart: "no"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
@@ -74,18 +86,20 @@ services:
     secrets:
       - postgres_password
     volumes:
-      - litellm_postgres_data:/var/lib/postgresql/data
-    networks:
-      - litellm-net
+      # sudo chown 999:999 /data/storage/database/postgres-18 && sudo chmod 700 /data/storage/database/postgres-18
+      - /data/storage/database/postgres-18:/var/lib/postgresql:rw
+      - ./sql:/docker-entrypoint-initdb.d:rw
+    # su postgres && psql -d ${POSTGRES_DB:-litellm} -U postgres
+    networks: ["net-litellm"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d ${POSTGRES_DB:-litellm}"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  redis:
-    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
-    pull_policy: never
+  db-redis-litellm:
+    image: quay.io/labnow/valkey:9
+    pull_policy: always
     restart: "no"
     secrets:
       - redis_password
@@ -99,9 +113,9 @@ services:
         { printf 'appendonly yes\nrequirepass '; cat /run/secrets/redis_password; printf '\n'; } > /run/redis/redis.conf;
         exec redis-server /run/redis/redis.conf
     volumes:
-      - litellm_redis_data:/data
-    networks:
-      - litellm-net
+      # sudo chown 999:999 /data/storage/database/valkey && sudo chmod 700 /data/storage/database/valkey
+      - /data/storage/database/valkey:/data:rw
+    networks: ["net-litellm"]
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning ping | grep -qx PONG"]
       interval: 5s
@@ -121,19 +135,3 @@ services:
     profiles: ["ha"]
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"
-
-volumes:
-  litellm_postgres_data:
-  litellm_redis_data:
-
-secrets:
-  litellm_master_key:
-    environment: LITELLM_MASTER_KEY
-  postgres_password:
-    environment: POSTGRES_PASSWORD
-  redis_password:
-    environment: REDIS_PASSWORD
-
-networks:
-  litellm-net:
-    name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm-net
