@@ -49,7 +49,7 @@ image_ref="$(verification_env LITELLM_IMAGE)"
 # A cold Compose start previously raced PostgreSQL/Redis readiness.  `--wait`
 # makes the dependency condition explicit before the one-shot job is run.
 phase="waiting_dependencies"
-"${compose[@]}" up -d --wait postgres redis
+"${compose[@]}" up -d --wait db-postgres-litellm db-redis-litellm
 phase="migration_job"
 "${compose[@]}" --profile migrate run --rm --no-deps litellm-migrate
 phase="completed"
