@@ -1,6 +1,6 @@
 # NocoBase 物理表建表与元数据 (Metadata) 配置指南
 
-本目录包含用于重构及初始化 CRM 业务系统的 PostgreSQL DDL 脚本 [nocobase-crm.sql](docker_nocobase/compose/nocobase-crm.sql)。
+本目录包含用于重构及初始化 CRM 业务系统的 PostgreSQL DDL 脚本 [nocobase-crm.sql](docker_nocobase/demo/nocobase-crm.sql)。
 
 为了避免后续在直接修改数据库元数据或创建物理表时导致 NocoBase 报错（例如：*“当数据表没有主键时...”* 或页面区块选择器无法选取数据表），请严格遵循以下设计原则与最佳实践。
 

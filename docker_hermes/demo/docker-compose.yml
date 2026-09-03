@@ -4,10 +4,8 @@ services:
   hermes:
     container_name: ${HERMES_CONTAINER_NAME:-svc-hermes}
     hostname: svc-hermes
-    image: "${HERMES_IMAGE:?set a fixed local Hermes image}"
-    # Local development must not silently pull a mutable image. Use an
-    # explicit Compose action when an operator intentionally needs a pull.
-    pull_policy: never
+    image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
+    pull_policy: always
     restart: unless-stopped
     env_file: [".env.example"]
     environment:

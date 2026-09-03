@@ -77,17 +77,17 @@ Hermes 的 Dashboard 在 `/api/pty` 中执行已经构建的
 
 1. Copy the sample environment file:
    ```bash
-   cp docker_hermes/compose/.env.example docker_hermes/compose/.env
+   cp docker_hermes/demo/.env.example docker_hermes/demo/.env
    ```
 
-2. Specify the built image in `docker_hermes/compose/.env`:
+2. Specify the built image in `docker_hermes/demo/.env`:
    ```env
-   HERMES_IMAGE=quay.io/labnow/hermes:local
+   HERMES_IMAGE=quay.io/labnow/hermes
    ```
 
 3. Launch the container:
    ```bash
-   docker compose --env-file docker_hermes/compose/.env -f docker_hermes/compose/docker-compose.yml up -d
+   docker compose --env-file docker_hermes/demo/.env -f docker_hermes/demo/docker-compose.yml up -d
    ```
 
 ### Execution Modes
@@ -114,7 +114,7 @@ python -c "from plugins.dashboard_auth.basic import hash_password; print(hash_pa
 
 ### Model Provider Setup
 
-Hermes requires an LLM inference provider. Configure credentials in `docker_hermes/compose/.env`:
+Hermes requires an LLM inference provider. Configure credentials in `docker_hermes/demo/.env`:
 
 ```env
 OPENAI_API_KEY=your-key
