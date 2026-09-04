@@ -116,7 +116,7 @@ services:
       LITELLM_RUN_BOOTSTRAP_MIGRATION: "true"
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
-    command: ["tail", "-f", "/dev/null"]
+    # command: ["tail", "-f", "/dev/null"]
 
   # litellm-2 is a secondary replica for HA. It waits for litellm-1 to finish
   # bootstrap migration and reach healthy status before starting.
