@@ -25,10 +25,12 @@ WORKDIR /build
 # Dashboard export is optional: the API proxy does not depend on the browser dashboard.
 RUN set -eux \
  && VER_LITELLM="v$(curl -fsSL "https://api.github.com/repos/BerriAI/litellm/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9.\-]*//g')" \
+ && VER_LITELLM=$( test -n "${LITELLM_REF}" && echo "${LITELLM_REF}" || echo "${VER_LITELLM}" ) \
+ && echo "Specified LITELLM_REF=${LITELLM_REF}, using version: ${VER_LITELLM}" \
  && URL_LITELLM="https://github.com/BerriAI/litellm.git" \
  && echo "Checking out litellm ${VER_LITELLM} from: ${URL_LITELLM}" \
  && git init . && git remote add origin ${URL_LITELLM} \
- && git fetch --depth 1 origin "${LITELLM_REF:-${VER_LITELLM}}" \
+ && git fetch --depth 1 origin  \
  && git checkout --detach FETCH_HEAD \
  ## test "$(git rev-parse HEAD)" = "${LITELLM_REF}" \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
