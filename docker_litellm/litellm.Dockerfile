@@ -5,7 +5,7 @@ ARG BASE_IMG_BUILD="node"
 # prisma-python invokes Node again for migration operations, so node is required in runtime.
 ARG BASE_IMG="node"
 
-ARG LITELLM_REF="litellm_internal_staging"
+ARG LITELLM_REF=""
 ARG BUILD_DASHBOARD="true"
 
 # --- Building Stage ---
@@ -23,9 +23,11 @@ WORKDIR /build
 # Clone the fixed source and build its Python wheel.
 # Dashboard export is optional: the API proxy does not depend on the browser dashboard.
 RUN set -eux \
- && git init . \
- && git remote add origin https://github.com/BerriAI/litellm.git \
- && git fetch --depth 1 origin "${LITELLM_REF}" \
+ && VER_LITELLM="$(curl -fsSL "https://api.github.com/repos/BerriAI/litellm/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9.\-]*//g')" \
+ && URL_LITELLM="https://github.com/BerriAI/litellm.git" \
+ && echo "Checking out litellm ${VER_LITELLM} from: ${URL_LITELLM}" \
+ && git init . && git remote add origin ${URL_LITELLM} \
+ && git fetch --depth 1 origin "${LITELLM_REF:-${VER_LITELLM}}" \
  && git checkout --detach FETCH_HEAD \
  ## test "$(git rev-parse HEAD)" = "${LITELLM_REF}" \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
