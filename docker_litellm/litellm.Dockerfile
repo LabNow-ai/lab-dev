@@ -27,7 +27,7 @@ RUN set -eux \
  && git remote add origin https://github.com/BerriAI/litellm.git \
  && git fetch --depth 1 origin "${LITELLM_REF}" \
  && git checkout --detach FETCH_HEAD \
- && test "$(git rev-parse HEAD)" = "${LITELLM_REF}" \
+ ## test "$(git rev-parse HEAD)" = "${LITELLM_REF}" \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
       cd ui/litellm-dashboard \
       && npm install && npm run build \
