@@ -20,10 +20,10 @@ export HOME="$HOME_LITELLM"
 export PRISMA_HOME_DIR="${PRISMA_HOME_DIR:-$HOME_LITELLM}"
 cd "$HOME_LITELLM"
 
-# Compose mounts credentials as Docker secrets. Read them only in this process
-# tree, immediately before the final exec: Docker metadata and argv therefore
-# contain neither secret values nor a password-bearing DATABASE_URL. LiteLLM
-# itself requires the management key and DATABASE_URL in its final environment;
+# Compose mounts credentials as Docker secrets.
+# Read them only in this process tree, immediately before the final exec:
+# Docker metadata and argv therefore contain neither secret values nor a password-bearing DATABASE_URL.
+# LiteLLM itself requires the management key and DATABASE_URL in its final environment;
 # that process-environment visibility is the explicitly accepted residual risk.
 read_secret_file() {
     local variable_name="$1" secret_file="$2"
@@ -50,9 +50,8 @@ fi
 # Keep metering enabled in config.yaml, but never persist prompt content.
 export STORE_PROMPTS_IN_SPEND_LOGS="${STORE_PROMPTS_IN_SPEND_LOGS:-false}"
 
-# Default config if not exists. The Compose baseline always mounts an
-# explicit config with PostgreSQL and Redis; this fallback remains only for
-# backwards-compatible standalone use.
+# If default config not exists. The Compose baseline always mounts an explicit config with PostgreSQL and Redis;
+# this fallback remains only for backwards-compatible standalone use.
 if [ ! -f "config.yaml" ]; then
     echo "Creating default config.yaml..."
     umask 077
