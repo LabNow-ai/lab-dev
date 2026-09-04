@@ -5,7 +5,8 @@ ARG BASE_IMG_BUILD="node"
 # prisma-python invokes Node again for migration operations, so node is required in runtime.
 ARG BASE_IMG="node"
 
-ARG LITELLM_REF=""
+# Leave the version tag empty to use the latest available release version of litellm.
+ARG LITELLM_REF="v1.98.0"
 ARG BUILD_DASHBOARD="true"
 
 # --- Building Stage ---
