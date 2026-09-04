@@ -1,11 +1,11 @@
 # Keep the project, explicit container names, and external network names in the same instance namespace.
 # This follows the repository PROFILE_ENV convention and allows multiple local LiteLLM stacks to coexist.
-name: ${PROFILE_ENV:-litellm-baseline}-svc-litellm
+name: ${PROFILE_ENV:-X}-svc-litellm
 
 
 networks:
   net-litellm:
-    name: ${PROFILE_ENV:-litellm-baseline}-svc-net-litellm
+    name: ${PROFILE_ENV:-X}-svc-net-litellm
 
 secrets:
   litellm_master_key:
@@ -16,25 +16,31 @@ secrets:
     environment: REDIS_PASSWORD
 
 
+x-litellm-env: &litellm-env
+  TZ: ${TZ:-Asia/Shanghai}
+  LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  POSTGRES_HOST: db-postgres-litellm
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-litellm}
+  POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+  REDIS_HOST: db-redis-litellm
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
+  REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}
+  STORE_PROMPTS_IN_SPEND_LOGS: "false"
+  STORE_MODEL_IN_DB: "True"
+  LITELLM_LOG: ${LITELLM_LOG:-INFO}
+  LITELLM_RUN_BOOTSTRAP_MIGRATION: ${LITELLM_RUN_BOOTSTRAP_MIGRATION:-false}
+
+
 x-litellm-common: &litellm-common
   image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
   pull_policy: always
   restart: "no"
+  entrypoint: ["/opt/utils/start-litellm.sh"]
   environment:
-    TZ: ${TZ:-Asia/Hong_Kong}
-    LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key
-    POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    POSTGRES_HOST: db-postgres-litellm
-    POSTGRES_PORT: "5432"
-    POSTGRES_DB: ${POSTGRES_DB:-litellm}
-    POSTGRES_USER: ${POSTGRES_USER:?set in .env}
-    REDIS_HOST: db-redis-litellm
-    REDIS_PORT: "6379"
-    REDIS_PASSWORD_FILE: /run/secrets/redis_password
-    REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}
-    STORE_PROMPTS_IN_SPEND_LOGS: "false"
-    STORE_MODEL_IN_DB: "True"
-    LITELLM_LOG: ${LITELLM_LOG:-INFO}
+    <<: *litellm-env
   volumes:
     - ./config.yaml:/opt/litellm/config.yaml:ro
     - ./config.migrate.yaml:/opt/litellm/config.migrate.yaml:ro
@@ -57,24 +63,8 @@ x-litellm-common: &litellm-common
     retries: 18
     start_period: 30s
 
-services:
-  # Run LiteLLM's own migration-only mode explicitly before proxy replicas.
-  # Replicas intentionally do not depend on this profile service: the deploy
-  # workflow calls scripts/run-migration.sh after postgres/redis are healthy.
-  # Prisma's migration table makes repeated one-shot jobs idempotent.
-  litellm-migrate:
-    <<: *litellm-common
-    container_name: ${LITELLM_MIGRATE_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-migrate}
-    profiles: ["migrate"]
-    command: ["/opt/utils/start-litellm.sh", "python3", "/opt/utils/start-litellm-migration-locked.py", "--config", "config.migrate.yaml", "--skip_server_startup", "--enforce_prisma_migration_check"]
-    healthcheck:
-      disable: true
-    depends_on:
-      db-postgres-litellm:
-        condition: service_healthy
-      db-redis-litellm:
-        condition: service_healthy
 
+services:
   db-postgres-litellm:
     image: quay.io/labnow/postgres-18
     pull_policy: always
@@ -88,7 +78,7 @@ services:
     volumes:
       # sudo chown 999:999 /data/storage/database/postgres-18 && sudo chmod 700 /data/storage/database/postgres-18
       - /data/storage/database/postgres-18:/var/lib/postgresql:rw
-      - ./sql:/docker-entrypoint-initdb.d:rw
+      # - ./sql:/docker-entrypoint-initdb.d:rw
     # su postgres && psql -d ${POSTGRES_DB:-litellm} -U postgres
     networks: ["net-litellm"]
     healthcheck:
@@ -122,16 +112,30 @@ services:
       timeout: 5s
       retries: 20
 
+  # litellm-1 is the primary proxy replica. During its bootstrap startup phase,
+  # it automatically applies Prisma migrations under an advisory lock before listening.
   litellm-1:
     <<: *litellm-common
-    container_name: ${LITELLM_1_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-1}
+    container_name: ${LITELLM_1_CONTAINER_NAME:-${PROFILE_ENV:-X}-svc-litellm-1}
     profiles: ["single", "ha"]
+    environment:
+      <<: *litellm-env
+      LITELLM_RUN_BOOTSTRAP_MIGRATION: "true"
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
 
+  # litellm-2 is a secondary replica for HA. It waits for litellm-1 to finish
+  # bootstrap migration and reach healthy status before starting.
   litellm-2:
     <<: *litellm-common
-    container_name: ${LITELLM_2_CONTAINER_NAME:-${PROFILE_ENV:-litellm-baseline}-svc-litellm-2}
+    container_name: ${LITELLM_2_CONTAINER_NAME:-${PROFILE_ENV:-X}-svc-litellm-2}
     profiles: ["ha"]
+    depends_on:
+      db-postgres-litellm:
+        condition: service_healthy
+      db-redis-litellm:
+        condition: service_healthy
+      litellm-1:
+        condition: service_healthy
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"

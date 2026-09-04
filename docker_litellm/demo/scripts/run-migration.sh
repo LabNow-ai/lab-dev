@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Apply LiteLLM Prisma migrations explicitly, once per deployment operation.
-# Proxy replicas deliberately do not depend on this one-shot Compose service.
+# Apply LiteLLM Prisma migrations explicitly using litellm-1 bootstrap runner.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,7 +50,7 @@ image_ref="$(verification_env LITELLM_IMAGE)"
 phase="waiting_dependencies"
 "${compose[@]}" up -d --wait db-postgres-litellm db-redis-litellm
 phase="migration_job"
-"${compose[@]}" --profile migrate run --rm --no-deps litellm-migrate
+"${compose[@]}" run --rm --no-deps -e LITELLM_RUN_BOOTSTRAP_MIGRATION=true litellm-1 true
 phase="completed"
 result="passed"
-echo "PASS migration: dependencies healthy; migration-only job completed; proxy replicas were not started."
+echo "PASS migration: dependencies healthy; migration-only bootstrap completed via litellm-1; proxy replicas were not started."

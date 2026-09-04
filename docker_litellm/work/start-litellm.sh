@@ -68,6 +68,59 @@ EOF
     config_tmp=""
 fi
 
+# Bootstrap migration step (runs on the primary litellm instance or when explicitly enabled)
+if [[ "${LITELLM_RUN_BOOTSTRAP_MIGRATION:-false}" =~ ^(true|1|yes)$ ]] && [ -z "${LITELLM_BOOTSTRAP_IN_PROGRESS:-}" ]; then
+    # Prevent triggering bootstrap if invoked directly as a migration command
+    if [[ ! "$*" =~ (start-litellm-migration-locked|--skip_server_startup) ]]; then
+        if [ -n "${DATABASE_URL:-}" ]; then
+            echo "[bootstrap] LiteLLM bootstrap migration starting..."
+
+            migration_script=""
+            for candidate in \
+                "${LITELLM_MIGRATION_LOCKED_SCRIPT:-}" \
+                "/opt/utils/start-litellm-migration-locked.py" \
+                "${HOME_LITELLM}/start-litellm-migration-locked.py" \
+                "$(dirname "${BASH_SOURCE[0]}")/start-litellm-migration-locked.py"; do
+                if [[ -n "$candidate" && -f "$candidate" ]]; then
+                    migration_script="$candidate"
+                    break
+                fi
+            done
+
+            migration_config=""
+            for candidate in \
+                "${LITELLM_MIGRATION_CONFIG_FILE:-}" \
+                "${HOME_LITELLM}/config.migrate.yaml" \
+                "./config.migrate.yaml" \
+                "/opt/litellm/config.migrate.yaml"; do
+                if [[ -n "$candidate" && -f "$candidate" ]]; then
+                    migration_config="$candidate"
+                    break
+                fi
+            done
+
+            export LITELLM_BOOTSTRAP_IN_PROGRESS=1
+            migration_args=()
+            if [ -n "$migration_config" ]; then
+                migration_args+=(--config "$migration_config")
+            fi
+            migration_args+=(--skip_server_startup --enforce_prisma_migration_check)
+
+            if [ -n "$migration_script" ]; then
+                echo "[bootstrap] Executing locked migration using ${migration_script}..."
+                python3 "$migration_script" "${migration_args[@]}"
+            else
+                echo "[bootstrap] Locked migration script not found, running litellm directly..."
+                litellm "${migration_args[@]}"
+            fi
+            unset LITELLM_BOOTSTRAP_IN_PROGRESS
+            echo "[bootstrap] LiteLLM bootstrap migration completed successfully."
+        else
+            echo "[bootstrap] DATABASE_URL not configured; skipping bootstrap migration."
+        fi
+    fi
+fi
+
 # If no arguments are passed, start litellm proxy with defaults
 if [ $# -eq 0 ]; then
     set -- --config config.yaml --port "${LITELLM_PORT:-4000}" --host "${LITELLM_HOST:-0.0.0.0}"

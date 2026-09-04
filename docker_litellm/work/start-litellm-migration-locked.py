@@ -9,6 +9,7 @@ migration concurrently. No connection string or secret is printed.
 import asyncio
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -27,10 +28,9 @@ async def main() -> int:
     db = Prisma()
     await db.connect()
     try:
-        print("P1_MIGRATION_LOCK_WAITING", flush=True)
-        # Prisma cannot deserialize PostgreSQL's `void` return from
-        # pg_advisory_lock(). Poll the boolean try-lock instead; this keeps
-        # the same session-scoped singleton guarantee and records real wait.
+        print("LITELLM_MIGRATION_LOCK_WAITING", flush=True)
+        # Prisma cannot deserialize PostgreSQL's `void` return from pg_advisory_lock().
+        # Poll the boolean try-lock instead; this keeps the same session-scoped singleton guarantee and records real wait.
         while True:
             lock_result = await db.query_raw(
                 f"SELECT pg_try_advisory_lock({LOCK_ID}) AS acquired"
@@ -38,14 +38,34 @@ async def main() -> int:
             if lock_result[0]["acquired"]:
                 break
             await asyncio.sleep(0.1)
-        print("P1_MIGRATION_LOCK_ACQUIRED", flush=True)
+        print("LITELLM_MIGRATION_LOCK_ACQUIRED", flush=True)
         hold_seconds = int(os.environ.get("LITELLM_MIGRATION_LOCK_HOLD_SECONDS", "0"))
         if hold_seconds > 0:
-            print("P1_MIGRATION_LOCK_TEST_HOLD", flush=True)
+            print("LITELLM_MIGRATION_LOCK_TEST_HOLD", flush=True)
             await asyncio.sleep(hold_seconds)
-        print("P1_MIGRATION_EXECUTION_START", flush=True)
+        print("LITELLM_MIGRATION_EXECUTION_START", flush=True)
+
+        cmd = None
+        if sys.argv[1:] and not sys.argv[1].startswith("-") and shutil.which(sys.argv[1]):
+            cmd = sys.argv[1:]
+        else:
+            runner = None
+            for candidate in [
+                os.environ.get("LITELLM_ENTRYPOINT_SCRIPT"),
+                "/opt/litellm/start-litellm.sh",
+                shutil.which("start-litellm.sh"),
+            ]:
+                if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                    runner = candidate
+                    break
+
+            if runner:
+                cmd = ["/bin/bash", runner, *sys.argv[1:]]
+            else:
+                cmd = ["litellm", *sys.argv[1:]]
+
         completed = subprocess.run(
-            ["/bin/bash", "/opt/utils/start-litellm.sh", *sys.argv[1:]],
+            cmd,
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -54,12 +74,12 @@ async def main() -> int:
         )
         if completed.stdout:
             print(redact_migration_output(completed.stdout), end="", flush=True)
-        print("P1_MIGRATION_EXECUTION_DONE", flush=True)
+        print("LITELLM_MIGRATION_EXECUTION_DONE", flush=True)
         return completed.returncode
     finally:
         try:
             await db.query_raw(f"SELECT pg_advisory_unlock({LOCK_ID})")
-            print("P1_MIGRATION_LOCK_RELEASED", flush=True)
+            print("LITELLM_MIGRATION_LOCK_RELEASED", flush=True)
         finally:
             await db.disconnect()
 
