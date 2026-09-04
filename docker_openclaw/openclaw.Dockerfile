@@ -24,7 +24,7 @@ RUN set -eux \
  && mkdir -pv ${OPENCLAW_STATE_DIR} \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
- && . /opt/utils/script-setup-core.sh && setup_node_pnpm 10 \
+ && . /opt/utils/script-setup-core.sh && setup_node_pnpm 11 \
  && pnpm config set enable-pre-post-scripts     true        \
  && pnpm config set package-import-method       hardlink    \
  && pnpm config set node-linker                 isolated    \
