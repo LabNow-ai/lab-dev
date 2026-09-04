@@ -5,7 +5,7 @@ ARG BASE_IMG_BUILD="node"
 # prisma-python invokes Node again for migration operations, so node is required in runtime.
 ARG BASE_IMG="node"
 
-ARG LITELLM_REF="ead62528e607b9d8e61273def638799c9c3a69ba"
+ARG LITELLM_REF="main"
 ARG BUILD_DASHBOARD="true"
 
 # --- Building Stage ---
