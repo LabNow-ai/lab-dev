@@ -39,11 +39,8 @@ RUN set -eux \
 
 RUN set -eux && cd /opt/openclaw \
  && . /opt/utils/script-utils.sh && . /opt/openclaw/script-setup-openclaw.sh \
- && cat > pnpm-workspace.yaml <<'EOF'
-enable-pre-post-scripts: true
-packages:
-  - "plugins/*"
-EOF \
+ && printf 'enable-pre-post-scripts=true\n' > .npmrc \
+ && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
  && printf '{"name":"openclaw-root","version":"1.0.0","private":true}\n' > package.json \
  && PNPM_VER="$(pnpm --version)" \
  && jq --arg ver "$PNPM_VER" \
