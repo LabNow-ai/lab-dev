@@ -48,15 +48,12 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
 LABEL maintainer="postmaster@labnow.ai"
 
-# Production environment
 ENV HOME_LITELLM=/opt/litellm
 
 WORKDIR ${HOME_LITELLM}
 
-# Copy utilities, tools and build artifacts
 COPY --from=builder /build/dist/* /tmp/
 
-# Install Runtime dependencies and configure tools
 RUN set -eux && mkdir -pv /opt/litellm \
  && mv /tmp/start-litellm* /opt/litellm && chmod +x /opt/litellm/*.sh \
  && ln -sf /opt/litellm/start-litellm.sh /usr/local/bin/start-litellm.sh \
@@ -66,17 +63,20 @@ RUN set -eux && mkdir -pv /opt/litellm \
  && python3 -c 'from fastapi.dependencies.utils import get_flat_dependant; import prisma' \
  && PRISMA_SCHEMA=$(python3 -c 'import pathlib, litellm; print(pathlib.Path(litellm.__file__).parent / "proxy" / "schema.prisma")') \
  && test -f "${PRISMA_SCHEMA}" \
- # Keep the generated query engine outside /root: install__clean removes
- # root-owned caches, while the runtime starts with HOME=/opt/litellm.
+ ## Keep the generated query engine outside /root: install__clean removes
+ ## root-owned caches, while the runtime starts with HOME=/opt/litellm.
  && PRISMA_HOME_DIR="${HOME_LITELLM}" prisma generate --schema "${PRISMA_SCHEMA}" \
  && test -d "${HOME_LITELLM}/.cache/prisma-python" \
  ## Install supervisord (Go version) if needed or use simple entrypoint
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  && source /opt/utils/script-utils.sh && install__clean
 
-# Data persistence
 VOLUME /root/workspace
-
 EXPOSE 4000
 
-CMD ["start-litellm.sh"]
+ENTRYPOINT ["tini", "-g", "--"]
+SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
+CMD ["/bin/bash", "--login", "start-litellm.sh"]
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["curl", "--head", "-fsSk", "http://127.0.0.1:4000/health/readiness"]

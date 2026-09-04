@@ -116,6 +116,8 @@ if [ $# -eq 0 ]; then
     set -- --config config.yaml --port "${LITELLM_PORT:-4000}" --host "${LITELLM_HOST:-0.0.0.0}"
 fi
 
+echo "PATH:${PATH}"
+
 # Route execution: run command directly if it exists, otherwise wrap with litellm
 if command -v "$1" >/dev/null 2>&1; then
     exec "$@"

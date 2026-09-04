@@ -55,12 +55,6 @@ x-litellm-common: &litellm-common
     db-redis-litellm:
       condition: service_healthy
   networks: ["net-litellm"]
-  healthcheck:
-    test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness', timeout=3)\""]
-    interval: 10s
-    timeout: 5s
-    retries: 18
-    start_period: 30s
 
 
 services:

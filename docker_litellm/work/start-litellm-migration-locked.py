@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Run LiteLLM's migration mode under one PostgreSQL advisory lock.
 
-The lock connection is intentionally held while the child migration process
-runs. Concurrent jobs therefore overlap as containers but cannot execute a
-migration concurrently. No connection string or secret is printed.
+The lock connection is intentionally held while the child migration process runs.
+Concurrent jobs therefore overlap as containers but cannot execute a migration concurrently. No connection string or secret is printed.
 """
 
 import asyncio
