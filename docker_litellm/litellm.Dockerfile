@@ -17,8 +17,6 @@ ARG BUILD_DASHBOARD
 
 LABEL maintainer="postmaster@labnow.ai"
 
-# Build-time environment
-ENV NODE_ENV=development
 WORKDIR /build
 
 # Clone the fixed source and build its Python wheel.
@@ -36,8 +34,8 @@ RUN set -eux \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
       cd ui/litellm-dashboard \
       && npm install && NODE_ENV=production npm run build \
-      && mkdir -pv   ../../litellm/proxy/_experimental/out \
-      && mv -r out/* ../../litellm/proxy/_experimental/out; \
+      && mkdir -pv ../../litellm/proxy/_experimental \
+      && mv out    ../../litellm/proxy/_experimental/; \
     fi \
  && cd /build \
  && python3 -m pip install --upgrade pip build \
