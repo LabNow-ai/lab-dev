@@ -6,7 +6,7 @@ ARG BASE_IMG_BUILD="node"
 ARG BASE_IMG="node"
 
 # Leave the version tag empty to use the latest available release version of litellm.
-ARG LITELLM_REF="v1.98.0"
+ARG LITELLM_REF=""
 ARG BUILD_DASHBOARD="true"
 
 # --- Building Stage ---
@@ -35,7 +35,7 @@ RUN set -eux \
  ## test "$(git rev-parse HEAD)" = "${LITELLM_REF}" \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
       cd ui/litellm-dashboard \
-      && npm install && npm run build \
+      && npm install && NODE_ENV=production npm run build \
       && mkdir -pv   ../../litellm/proxy/_experimental/out \
       && mv -r out/* ../../litellm/proxy/_experimental/out; \
     fi \
