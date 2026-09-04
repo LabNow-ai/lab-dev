@@ -26,7 +26,6 @@ RUN set -eux \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
  && . /opt/utils/script-setup-core.sh && setup_node_pnpm 11 \
  && pnpm config set package-import-method       hardlink    \
- && pnpm config set node-linker                 isolated    \
  && pnpm config set store-dir                   $PNPM_STORE \
  && GLOBAL_DIR=$(pnpm root -g | sed 's|/node_modules$||')   \
  && mkdir -pv "$GLOBAL_DIR" \
@@ -39,8 +38,7 @@ RUN set -eux \
 
 RUN set -eux && cd /opt/openclaw \
  && . /opt/utils/script-utils.sh && . /opt/openclaw/script-setup-openclaw.sh \
- && printf 'enable-pre-post-scripts=true\n' > .npmrc \
- && printf 'packages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
+ && printf 'enable-pre-post-scripts: true\nnode-linker: isolated\npackages:\n  - "plugins/*"\n' > pnpm-workspace.yaml \
  && printf '{"name":"openclaw-root","version":"1.0.0","private":true}\n' > package.json \
  && PNPM_VER="$(pnpm --version)" \
  && jq --arg ver "$PNPM_VER" \
