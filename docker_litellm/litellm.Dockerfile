@@ -64,7 +64,7 @@ RUN set -eux && mkdir -pv /opt/litellm \
  && test -n "${WHEEL}" \
  && pip install --no-cache-dir "${WHEEL}[proxy]" "fastapi==0.136.3" "prisma==0.15.0" \
  && python3 -c 'from fastapi.dependencies.utils import get_flat_dependant; import prisma' \
- && PRISMA_SCHEMA="$(python3 -c 'import pathlib, litellm; print(pathlib.Path(litellm.__file__).parent / "proxy" / "schema.prisma"))')" \
+ && PRISMA_SCHEMA=$(python3 -c 'import pathlib, litellm; print(pathlib.Path(litellm.__file__).parent / "proxy" / "schema.prisma")') \
  && test -f "${PRISMA_SCHEMA}" \
  # Keep the generated query engine outside /root: install__clean removes
  # root-owned caches, while the runtime starts with HOME=/opt/litellm.
