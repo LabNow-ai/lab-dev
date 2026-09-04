@@ -23,7 +23,7 @@ WORKDIR /build
 # Clone the fixed source and build its Python wheel.
 # Dashboard export is optional: the API proxy does not depend on the browser dashboard.
 RUN set -eux \
- && VER_LITELLM="$(curl -fsSL "https://api.github.com/repos/BerriAI/litellm/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9.\-]*//g')" \
+ && VER_LITELLM="v$(curl -fsSL "https://api.github.com/repos/BerriAI/litellm/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9.\-]*//g')" \
  && URL_LITELLM="https://github.com/BerriAI/litellm.git" \
  && echo "Checking out litellm ${VER_LITELLM} from: ${URL_LITELLM}" \
  && git init . && git remote add origin ${URL_LITELLM} \
