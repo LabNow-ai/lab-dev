@@ -30,7 +30,7 @@ RUN set -eux \
  && URL_LITELLM="https://github.com/BerriAI/litellm.git" \
  && echo "Checking out litellm ${VER_LITELLM} from: ${URL_LITELLM}" \
  && git init . && git remote add origin ${URL_LITELLM} \
- && git fetch --depth 1 origin  \
+ && git fetch --depth 1 origin ${VER_LITELLM} \
  && git checkout --detach FETCH_HEAD \
  ## test "$(git rev-parse HEAD)" = "${LITELLM_REF}" \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
