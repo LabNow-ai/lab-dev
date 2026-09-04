@@ -68,9 +68,11 @@ EOF
     config_tmp=""
 fi
 
-# Bootstrap migration step (runs on the primary litellm instance or when explicitly enabled)
+# Bootstrap migration step (runs on the primary litellm instance or when explicitly enabled).
+# LITELLM_DISABLE_PRISMA_SCHEMA_UPDATE is toggled around the migration child process so that
+# the single config.yaml serves both roles: migration mode (false) and proxy mode (true).
 if [[ "${LITELLM_RUN_BOOTSTRAP_MIGRATION:-false}" =~ ^(true|1|yes)$ ]] && [ -z "${LITELLM_BOOTSTRAP_IN_PROGRESS:-}" ]; then
-    # Prevent triggering bootstrap if invoked directly as a migration command
+    # Prevent triggering bootstrap if invoked directly as a migration command.
     if [[ ! "$*" =~ (start-litellm-migration-locked|--skip_server_startup) ]]; then
         if [ -n "${DATABASE_URL:-}" ]; then
             echo "[bootstrap] LiteLLM bootstrap migration starting..."
@@ -87,31 +89,16 @@ if [[ "${LITELLM_RUN_BOOTSTRAP_MIGRATION:-false}" =~ ^(true|1|yes)$ ]] && [ -z "
                 fi
             done
 
-            migration_config=""
-            for candidate in \
-                "${LITELLM_MIGRATION_CONFIG_FILE:-}" \
-                "${HOME_LITELLM}/config.migrate.yaml" \
-                "./config.migrate.yaml" \
-                "/opt/litellm/config.migrate.yaml"; do
-                if [[ -n "$candidate" && -f "$candidate" ]]; then
-                    migration_config="$candidate"
-                    break
-                fi
-            done
-
             export LITELLM_BOOTSTRAP_IN_PROGRESS=1
-            migration_args=()
-            if [ -n "$migration_config" ]; then
-                migration_args+=(--config "$migration_config")
-            fi
-            migration_args+=(--skip_server_startup --enforce_prisma_migration_check)
+            # Allow Prisma to apply schema migrations during bootstrap only.
+            export LITELLM_DISABLE_PRISMA_SCHEMA_UPDATE="false"
 
             if [ -n "$migration_script" ]; then
                 echo "[bootstrap] Executing locked migration using ${migration_script}..."
-                python3 "$migration_script" "${migration_args[@]}"
+                python3 "$migration_script" --skip_server_startup --enforce_prisma_migration_check
             else
                 echo "[bootstrap] Locked migration script not found, running litellm directly..."
-                litellm "${migration_args[@]}"
+                litellm --skip_server_startup --enforce_prisma_migration_check
             fi
             unset LITELLM_BOOTSTRAP_IN_PROGRESS
             echo "[bootstrap] LiteLLM bootstrap migration completed successfully."
@@ -120,6 +107,9 @@ if [[ "${LITELLM_RUN_BOOTSTRAP_MIGRATION:-false}" =~ ^(true|1|yes)$ ]] && [ -z "
         fi
     fi
 fi
+
+# Lock schema updates for the proxy process (no-op if bootstrap was skipped).
+export LITELLM_DISABLE_PRISMA_SCHEMA_UPDATE="true"
 
 # If no arguments are passed, start litellm proxy with defaults
 if [ $# -eq 0 ]; then

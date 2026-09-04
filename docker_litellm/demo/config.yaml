@@ -14,9 +14,10 @@ general_settings:
   # Preserve request metadata needed for metering, but do not configure prompt
   # or completion-content logging in this local baseline.
   disable_spend_logs: false
-  # Proxy replicas only check the schema. The dedicated migration job uses
-  # config.migrate.yaml and is the sole process allowed to apply migrations.
-  disable_prisma_schema_update: true
+  # Bootstrap phase (LITELLM_DISABLE_PRISMA_SCHEMA_UPDATE=false) applies Prisma
+  # migrations under an advisory lock; proxy phase locks it back to true so that
+  # replica processes never modify the schema independently.
+  disable_prisma_schema_update: os.environ/LITELLM_DISABLE_PRISMA_SCHEMA_UPDATE
 
 litellm_settings:
   # LiteLLM 1.97.0 reads this from litellm_settings and redacts request and

@@ -43,7 +43,6 @@ x-litellm-common: &litellm-common
     <<: *litellm-env
   volumes:
     - ./config.yaml:/opt/litellm/config.yaml:ro
-    - ./config.migrate.yaml:/opt/litellm/config.migrate.yaml:ro
     - ../work/start-litellm.sh:/opt/utils/start-litellm.sh:ro
     - ../work/start-litellm-migration-locked.py:/opt/utils/start-litellm-migration-locked.py:ro
   secrets:
