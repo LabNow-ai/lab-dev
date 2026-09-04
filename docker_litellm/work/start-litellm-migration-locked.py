@@ -28,7 +28,7 @@ async def main() -> int:
     db = Prisma()
     await db.connect()
     try:
-        print("LITELLM_MIGRATION_LOCK_WAITING", flush=True)
+        print("[litellm] MIGRATION_LOCK_WAITING", flush=True)
         # Prisma cannot deserialize PostgreSQL's `void` return from pg_advisory_lock().
         # Poll the boolean try-lock instead; this keeps the same session-scoped singleton guarantee and records real wait.
         while True:
@@ -38,12 +38,12 @@ async def main() -> int:
             if lock_result[0]["acquired"]:
                 break
             await asyncio.sleep(0.1)
-        print("LITELLM_MIGRATION_LOCK_ACQUIRED", flush=True)
-        hold_seconds = int(os.environ.get("LITELLM_MIGRATION_LOCK_HOLD_SECONDS", "0"))
+        print("[litellm] MIGRATION_LOCK_ACQUIRED", flush=True)
+        hold_seconds = int(os.environ.get("[litellm] MIGRATION_LOCK_HOLD_SECONDS", "0"))
         if hold_seconds > 0:
-            print("LITELLM_MIGRATION_LOCK_TEST_HOLD", flush=True)
+            print("[litellm] MIGRATION_LOCK_TEST_HOLD", flush=True)
             await asyncio.sleep(hold_seconds)
-        print("LITELLM_MIGRATION_EXECUTION_START", flush=True)
+        print("[litellm] MIGRATION_EXECUTION_START", flush=True)
 
         cmd = None
         if sys.argv[1:] and not sys.argv[1].startswith("-") and shutil.which(sys.argv[1]):
@@ -51,7 +51,7 @@ async def main() -> int:
         else:
             runner = None
             for candidate in [
-                os.environ.get("LITELLM_ENTRYPOINT_SCRIPT"),
+                os.environ.get("[litellm] ENTRYPOINT_SCRIPT"),
                 "/opt/litellm/start-litellm.sh",
                 shutil.which("start-litellm.sh"),
             ]:
@@ -74,12 +74,12 @@ async def main() -> int:
         )
         if completed.stdout:
             print(redact_migration_output(completed.stdout), end="", flush=True)
-        print("LITELLM_MIGRATION_EXECUTION_DONE", flush=True)
+        print("[litellm] MIGRATION_EXECUTION_DONE", flush=True)
         return completed.returncode
     finally:
         try:
             await db.query_raw(f"SELECT pg_advisory_unlock({LOCK_ID})")
-            print("LITELLM_MIGRATION_LOCK_RELEASED", flush=True)
+            print("[litellm] MIGRATION_LOCK_RELEASED", flush=True)
         finally:
             await db.disconnect()
 

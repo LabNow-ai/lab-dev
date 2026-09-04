@@ -36,9 +36,9 @@ x-litellm-env: &litellm-env
 
 x-litellm-common: &litellm-common
   image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
+  hostname: "svc-litellm"
   pull_policy: always
-  restart: "no"
-  entrypoint: ["/opt/utils/start-litellm.sh"]
+  restart: always
   environment:
     <<: *litellm-env
   volumes:
@@ -67,7 +67,7 @@ services:
   db-postgres-litellm:
     image: quay.io/labnow/postgres-18
     pull_policy: always
-    restart: "no"
+    restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-litellm}
       POSTGRES_USER: ${POSTGRES_USER:?set in .env}
@@ -89,7 +89,7 @@ services:
   db-redis-litellm:
     image: quay.io/labnow/valkey:9
     pull_policy: always
-    restart: "no"
+    restart: always
     secrets:
       - redis_password
     tmpfs:
@@ -122,6 +122,7 @@ services:
       LITELLM_RUN_BOOTSTRAP_MIGRATION: "true"
     ports:
       - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
+    command: ["tail", "-f", "/dev/null"]
 
   # litellm-2 is a secondary replica for HA. It waits for litellm-1 to finish
   # bootstrap migration and reach healthy status before starting.

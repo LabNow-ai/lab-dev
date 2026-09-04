@@ -12,6 +12,8 @@ cp .env.example .env
 # 在 .env 中生成并填写 LITELLM_MASTER_KEY、POSTGRES_PASSWORD、REDIS_PASSWORD。
 # 真实上游调用另行填写 UPSTREAM_PROVIDER、UPSTREAM_API_KEY、UPSTREAM_BASE_URL、UPSTREAM_MODEL。
 docker compose --env-file .env -f docker-compose.litellm.yml --profile single up -d
+
+docker compose -f docker-compose.litellm.yml --profile single down
 ```
 
 Compose 的项目、显式容器和外部网络均以仓库既有的 `PROFILE_ENV` 推导，默认实例为
