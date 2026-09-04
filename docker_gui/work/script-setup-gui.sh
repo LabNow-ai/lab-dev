@@ -126,6 +126,11 @@ setup_selkies_from_source() {
   && rm -rf /opt/selkies "${src_dir}" \
   && mkdir -pv /opt/selkies/share \
   && checkout_selkies_source "${ref}" "${src_dir}" \
+  && echo "Using the latest published pixelflux/pcmflux 2.0 wheels until 2.1 is available on PyPI" \
+  && sed -i \
+       -e 's/pixelflux~=2\.1\.0/pixelflux~=2.0.0/' \
+       -e 's/pcmflux~=2\.1\.0/pcmflux~=2.0.0/' \
+       "${src_dir}/pyproject.toml" \
   && setup_selkies_web_from_source "${src_dir}" /opt/selkies/share/selkies-web \
   && setup_selkies_python_from_source "${src_dir}" \
   && setup_selkies_addons_from_source "${src_dir}" \

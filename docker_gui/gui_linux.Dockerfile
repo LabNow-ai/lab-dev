@@ -28,9 +28,10 @@ RUN set -eux && chmod +x /opt/utils/*.sh \
  && mv /opt/utils/docker-entrypoint.sh /opt/selkies/docker-entrypoint.sh \
  && mv /opt/utils/install_list_selkies.apt /opt/selkies/ \
  && chmod +x /opt/selkies/docker-entrypoint.sh \
- ## Build pixelflux wheel into /opt/selkies
- && apt install -y build-essential cmake pkg-config libx11-dev libxext-dev libxfixes-dev libjpeg-dev libx264-dev libyuv-dev libavcodec-dev libavutil-dev libva-dev \
- && cd / && pip wheel --no-cache-dir --no-binary :all: pixelflux -w /opt/selkies
+ ## Cache the published capture-stack wheels for the patched Selkies dependency range.
+ && cd / \
+ && pip wheel --no-cache-dir --only-binary=:all: \
+      'pixelflux~=2.0.0' 'pcmflux~=2.0.0' -w /opt/selkies
 
 
 # Stage 2: runtime image
