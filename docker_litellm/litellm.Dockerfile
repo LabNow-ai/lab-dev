@@ -34,8 +34,8 @@ RUN set -eux \
  && if [ "${BUILD_DASHBOARD}" = "true" ]; then \
       cd ui/litellm-dashboard \
       && npm install && NODE_ENV=production npm run build \
-      && mkdir -pv ../../litellm/proxy/_experimental \
-      && mv out    ../../litellm/proxy/_experimental/; \
+      && mkdir -pv  ../../litellm/proxy/_experimental \
+      && cp -rf out ../../litellm/proxy/_experimental/; \
     fi \
  && cd /build \
  && python3 -m pip install --upgrade pip build \
