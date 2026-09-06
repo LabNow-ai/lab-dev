@@ -78,5 +78,5 @@ ENTRYPOINT ["tini", "-g", "--"]
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 CMD ["/bin/bash", "--login", "start-litellm.sh"]
 
-HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["curl", "--head", "-fsSk", "http://127.0.0.1:4000/health/readiness"]
+HEALTHCHECK --interval=25s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["curl", "-fsSk", "http://127.0.0.1:4000/health/readiness"]
