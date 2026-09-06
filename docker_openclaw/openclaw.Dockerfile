@@ -24,7 +24,7 @@ RUN set -eux \
  && mkdir -pv ${OPENCLAW_STATE_DIR} \
  ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
  && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
- && . /opt/utils/script-setup-core.sh && setup_node_pnpm 11 \
+ && . /opt/utils/script-setup-core.sh && setup_node_pnpm 12 \
  && pnpm config set package-import-method       hardlink    \
  && pnpm config set store-dir                   $PNPM_STORE \
  && GLOBAL_DIR=$(pnpm root -g | sed 's|/node_modules$||')   \
