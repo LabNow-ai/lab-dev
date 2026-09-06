@@ -57,6 +57,8 @@ rule-providers:
 # ------------------------- system config -------------------------
 mode: rule
 mixed-port: 7890
+redir-port: 7892
+tproxy-port: 7893
 allow-lan: true
 secret: ''
 ipv6: false
@@ -69,6 +71,19 @@ unified-delay: true
 find-process-mode: off # always, strict, off
 keep-alive-interval: 1800
 global-client-fingerprint: random
+
+# Sniffer configuration to extract domain names from TLS SNI and HTTP Host headers
+# This ensures domain-based routing works even if client resolves real IPs (e.g. via Docker's 127.0.0.11)
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  sniff:
+    TLS:
+      ports: [443, 8443]
+    HTTP:
+      ports: [80, 8080-8880]
+
 profile:
   store-selected: true
   store-fake-ip: true
@@ -88,7 +103,6 @@ dns:
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter:
-  - '*'
   - '+.lan'
   - '+.local'
   - dns.msftncsi.com
@@ -100,8 +114,12 @@ dns:
   - 114.114.114.114
   - 8.8.8.8
   nameserver:
-  - https://doh.pub/dns-query
-  - https://dns.alidns.com/dns-query
+  - https://dns.cloudflare.com/dns-query
+  - https://dns.google/dns-query
+  nameserver-policy:
+    "geosite:cn":
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
   fallback:
   - https://doh.dns.sb/dns-query
   - https://dns.cloudflare.com/dns-query
@@ -115,11 +133,12 @@ dns:
 
 tun:
   enable: false
-  stack: gvisor
-  device: Mihomo
-  auto-route: true
+  stack: system
+  device: tun
+  auto-route: false
+  auto-redir: false
   strict-route: false
-  auto-detect-interface: true
+  auto-detect-interface: false
   dns-hijack:
   - any:53
   - "tcp://any:53"

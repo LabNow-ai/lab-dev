@@ -17,7 +17,7 @@ RUN set -eux \
  # ----------------------------- Install acme.sh
  && source /opt/utils/script-setup-acme.sh      && setup_acme \
  # ----------------------------- Install lua and lua-rocks
- && source /opt/utils/script-setup.sh && setup_lua_base && setup_lua_rocks \
+ && source /opt/utils/script-setup-core.sh && setup_lua_base && setup_lua_rocks \
  # ----------------------------- Install openresty
  && useradd nginx -G www-data \
  && mkdir -pv /var/cache/nginx /var/log/nginx \

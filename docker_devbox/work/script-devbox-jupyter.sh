@@ -6,7 +6,7 @@ setup_jupyter_base() {
   
   type jupyter || return -1 ;
 
-  # commnad `jupyterhub-singleuser` is provided by jupterhub and will be used by dockerspawner
+  # command `jupyterhub-singleuser` is provided by jupterhub and will be used by dockerspawner
   type jupyterhub-singleuser || return -1;
 
   echo "@ Version of Jupyter Server: $(jupyter server --version)"
@@ -53,7 +53,7 @@ setup_jupyter_kernels() {
   && mv ~/.local/share/jupyter/kernels/gonb /opt/conda/share/jupyter/kernels/
 
   ## checked @ 2024-0614
-  # alternative approaches to install evxcr_jupyter:
+  # alternative approaches to install evcxr_jupyter:
   # && cargo install --locked evcxr_jupyter \
      which rustc \
   && echo "@ Install Jupyter Kernel for Rust: https://github.com/evcxr/evcxr/blob/main/evcxr_jupyter/README.md" \
@@ -103,8 +103,6 @@ setup_jupyter_hub() {
    # ref1: https://github.com/jupyterhub/jupyterhub
    # ref2: https://github.com/jupyterhub/jupyterhub/blob/main/Dockerfile
    # ref3: https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/hub/unfrozen/requirements.txt
-   which npm && ( npm install -g npm configurable-http-proxy ) || ( echo "NPM not found!" && return 255 ) ;
-
    pip install -Uq --pre jupyterhub jupyter_client \
       dockerspawner jupyterhub-kubespawner jupyterhub-systemdspawner wrapspawner \
       jupyterhub-ldapauthenticator jupyterhub-kerberosauthenticator \
@@ -114,11 +112,6 @@ setup_jupyter_hub() {
       psycopg pymysql sqlalchemy-cockroachdb \
       psutil pycurl py-spy \
       jupyterhub-traefik-proxy ;
-
-   # Notes: there is also an python version of configurable-http-proxy available but has limited compatibility.
-   ln -sf $(which configurable-http-proxy) /usr/local/bin/configurable-http-proxy ;
-
-   type configurable-http-proxy && echo "@ Configurable HTTP Proxy version: $(configurable-http-proxy --version)" || return -1 ;
 
    type jupyterhub && echo "@ JupyterHub version: $(jupyterhub --version)" || return -1 ;
 }

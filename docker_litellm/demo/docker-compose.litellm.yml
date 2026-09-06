@@ -1,0 +1,135 @@
+# Keep the project, explicit container names, and external network names in the same instance namespace.
+# This follows the repository PROFILE_ENV convention and allows multiple local LiteLLM stacks to coexist.
+name: ${PROFILE_ENV:-X}-svc-litellm
+
+
+networks:
+  net-litellm:
+    name: ${PROFILE_ENV:-X}-svc-net-litellm
+
+secrets:
+  litellm_master_key:
+    environment: LITELLM_MASTER_KEY
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  redis_password:
+    environment: REDIS_PASSWORD
+
+
+x-litellm-env: &litellm-env
+  TZ: ${TZ:-Asia/Shanghai}
+  LITELLM_MASTER_KEY_FILE: /run/secrets/litellm_master_key
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  POSTGRES_HOST: db-postgres-litellm
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-litellm}
+  POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+  REDIS_HOST: db-redis-litellm
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
+  REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${REDIS_CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-5}
+  STORE_PROMPTS_IN_SPEND_LOGS: "false"
+  STORE_MODEL_IN_DB: "True"
+  LITELLM_LOG: ${LITELLM_LOG:-INFO}
+  LITELLM_RUN_BOOTSTRAP_MIGRATION: ${LITELLM_RUN_BOOTSTRAP_MIGRATION:-false}
+
+
+x-litellm-common: &litellm-common
+  image: ${LITELLM_IMAGE:?set LITELLM_IMAGE to the locally built quay.io/labnow/litellm image}
+  hostname: "svc-litellm"
+  pull_policy: always
+  restart: always
+  environment:
+    <<: *litellm-env
+  volumes:
+    - ./config.yaml:/opt/litellm/config.yaml:ro
+    - ../work/start-litellm.sh:/opt/utils/start-litellm.sh:ro
+    - ../work/start-litellm-migration-locked.py:/opt/utils/start-litellm-migration-locked.py:ro
+  secrets:
+    - litellm_master_key
+    - postgres_password
+    - redis_password
+  depends_on:
+    db-postgres-litellm:
+      condition: service_healthy
+    db-redis-litellm:
+      condition: service_healthy
+  networks: ["net-litellm"]
+
+
+services:
+  db-postgres-litellm:
+    image: quay.io/labnow/postgres-18
+    pull_policy: always
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      # sudo chown 999:999 /data/storage/database/postgres-18 && sudo chmod 700 /data/storage/database/postgres-18
+      - /data/storage/database/postgres-18:/var/lib/postgresql:rw
+      # - ./sql:/docker-entrypoint-initdb.d:rw
+    # su postgres && psql -d ${POSTGRES_DB:-litellm} -U postgres
+    networks: ["net-litellm"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d ${POSTGRES_DB:-litellm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  db-redis-litellm:
+    image: quay.io/labnow/valkey:9
+    pull_policy: always
+    restart: always
+    secrets:
+      - redis_password
+    tmpfs:
+      - /run/redis:mode=0700
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        umask 077;
+        { printf 'appendonly yes\nrequirepass '; cat /run/secrets/redis_password; printf '\n'; } > /run/redis/redis.conf;
+        exec redis-server /run/redis/redis.conf
+    volumes:
+      # sudo chown 999:999 /data/storage/database/valkey && sudo chmod 700 /data/storage/database/valkey
+      - /data/storage/database/valkey:/data:rw
+    networks: ["net-litellm"]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli --no-auth-warning ping | grep -qx PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # litellm-1 is the primary proxy replica. During its bootstrap startup phase,
+  # it automatically applies Prisma migrations under an advisory lock before listening.
+  litellm-1:
+    <<: *litellm-common
+    container_name: ${LITELLM_1_CONTAINER_NAME:-${PROFILE_ENV:-X}-svc-litellm-1}
+    profiles: ["single", "ha"]
+    environment:
+      <<: *litellm-env
+      LITELLM_RUN_BOOTSTRAP_MIGRATION: "true"
+    ports:
+      - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_1_PORT:-4000}:4000"
+    # command: ["tail", "-f", "/dev/null"]
+
+  # litellm-2 is a secondary replica for HA. It waits for litellm-1 to finish
+  # bootstrap migration and reach healthy status before starting.
+  litellm-2:
+    <<: *litellm-common
+    container_name: ${LITELLM_2_CONTAINER_NAME:-${PROFILE_ENV:-X}-svc-litellm-2}
+    profiles: ["ha"]
+    depends_on:
+      db-postgres-litellm:
+        condition: service_healthy
+      db-redis-litellm:
+        condition: service_healthy
+      litellm-1:
+        condition: service_healthy
+    ports:
+      - "${LITELLM_PUBLISH_HOST:-127.0.0.1}:${LITELLM_2_PORT:-4001}:4000"

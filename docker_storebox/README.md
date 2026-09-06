@@ -1,14 +1,41 @@
 # Storebox
 
-`storebox` is a storage-focused container image built on top of a shared base image, with extra tooling for file serving, proxying, and cloud storage operations.
+`storebox` is a storage-focused container image built on top of a shared base image, bundle-integrating Alist, Rclone, Caddy, and Supervisord.
 
-## Included Components
 
-- `supervisord`: process supervisor for running multiple long-lived services in one container.
-- `caddy`: modern web server and reverse proxy, useful for HTTP routing and TLS automation.
-- `alist`: web-based file listing and management service, installed from the latest GitHub release during build.
-- `rclone`: cloud storage sync/mount/copy CLI, also installed from the latest GitHub release during build.
 
+---
+
+## 1. Port Configuration
+
+- **`5244` (HTTP Alist)**: Access Alist Web Management Console and WebDAV server endpoints.
+- **`5572` (HTTP Rclone RC)**: Optional remote control port if running `rclone rcd` daemon mode.
+
+---
+
+## 2. Data Persistence & Configurations
+
+To persist network drive configuration mappings, credentials, and cache folders, mount these locations:
+
+- **`/opt/alist/data`**: Houses Alist database and configuration (`config.json`) files.
+- **`/root/.config/rclone`**: Houses the rclone config profile (`rclone.conf`).
+- **`/root/workspace`**: Sourced workspace mapping for local transfers.
+
+---
+
+## 3. Use Case Example: Serving Static Files from Net-Disks
+
+1. Run the container:
+   ```bash
+   docker run -d \
+       --name svc-storebox \
+       -p 5244:5244 \
+       -v storebox_alist:/opt/alist/data \
+       -v storebox_rclone:/root/.config/rclone \
+       labnow/storebox:latest
+   ```
+2. Navigate to Alist Dashboard (`http://localhost:5244`) and add your cloud storage backend (e.g. Baidu Netdisk).
+3. Disable `Sign all` and set `Link expiration` to `0` in Alist global settings to expose public assets via HTTP.
 ## Potential Use Cases
 
 - Personal or team file gateway: expose multiple storage backends through `alist` with a browser-friendly UI.

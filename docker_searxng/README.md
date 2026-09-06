@@ -1,33 +1,42 @@
 # SearxNG
 
-## Start standalone version with docker-compose
+`searxng` is a privacy-respecting, hackable metasearch engine. It integrates python uwsgi backend with Caddy gateway and Supervisord control planes.
 
-**Notice**:
+---
 
-- remember to check the `SEARXNG_BASE_URL` and `SEARXNG_HOSTNAME` environment variable in the config file.
-- make sure the `SEARXNG_BASE_URL` variables points to a URL prefix that users use to open webpage in browser.
-- update `proxy-providers` urls in `config.yaml` if you are using proxy.
+## 1. Port Configuration
 
+SearxNG exposes the following TCP service ports:
+- **`8080` (HTTP Proxy Gateway)**: Web interface fronted by Caddy (recommened entrypoint).
+- **`8000` (uWSGI Server Backend)**: Directly exposes the python WSGI process.
+- **`9001` (Supervisord control panel)**: Dashboard to monitor running processes.
+
+---
+
+## 2. Data Persistence & Configurations
+
+To customize search engines and security keys, persist the configuration directory:
+
+- **`/etc/searxng`** (Symlinked to `/opt/searxng/etc`): Houses `settings.yml`.
+
+### Environment variables configuration:
+- `SEARXNG_HOSTNAME`: Public hostname URL (defaults to `http://localhost:8000`).
+- `SEARXNG_SETTINGS_PATH`: Path to settings.yml (defaults to `/etc/searxng/settings.yml`).
+- `UWSGI_WORKERS` / `UWSGI_THREADS`: Concurrency variables for WSGI workers (defaults to `4`).
+
+---
+
+## 3. Quickstart Example
+
+### Run Standalone Container
 ```bash
-cd demo
-
-# export SEARXNG_HOSTNAME="http://localhost:8000"
-# docker-compose -f ./docker-compose.searxng-standalone.yml up -d
-docker-compose -f ./docker-compose.searxng-with-proxy.yml up -d
-```
-
-## Debug with Docker
-
-```bash
-docker run -d --rm \
+docker run -d \
     --name=svc-searxng \
-    --hostname=svc-searxng \
-    -p 8000:8000 \
-    -e SEARXNG_HOSTNAME=":8000" \
-    -e SEARXNG_BASE_URL=https://${localhost:8000}/ \
+    -p 8080:8080 \
+    -p 9001:9001 \
+    -e SEARXNG_HOSTNAME="http://localhost:8080" \
+    -v searxng_etc:/etc/searxng \
     -e UWSGI_WORKERS=${SEARXNG_UWSGI_WORKERS:-4} \
     -e UWSGI_THREADS=${SEARXNG_UWSGI_THREADS:-4} \
-    labnow/searxng
-
- docker exec -it svc-searxng bash
+    labnow/searxng:latest
 ```
