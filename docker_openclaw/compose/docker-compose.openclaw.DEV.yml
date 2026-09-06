@@ -4,12 +4,12 @@ services:
   openclaw-gateway:
     container_name: svc-openclaw-gateway
     hostname: svc-openclaw-gateway
-    image: "quay.io/labnow/openclaw:latest"
+    # image: "quay.io/labnow/openclaw:latest"
     build:
       context: ../
       dockerfile: openclaw.Dockerfile
       args:
-        - ENABLE_CODE_BUILD=false
+        - BASE_NAMESPACE=${BASE_NAMESPACE:-quay.io/labnow}
         # - PROFILE_LOCALIZE=${PROFILE_LOCALIZE:-default}
       pull: true
     pull_policy: if_not_present
