@@ -2,6 +2,10 @@
 
 `hermes` is a containerized agentic assistant platform based on the [Hermes Agent](https://github.com/nousresearch/hermes-agent) project, built using Node.js and Python runtime stacks.
 
+Dockerfile 以固定的 Hermes repository 与 40 位 commit 作为制品输入，不以移动的
+`main` 构建。默认 standalone Compose 服务于本地开发，只接受本机已存在的明确镜像
+引用，不会静默 pull `latest`。
+
 ---
 
 ## 1. Port Configuration
@@ -48,16 +52,37 @@ source ./tool.sh
 build_image_no_tag hermes local docker_hermes/hermes.Dockerfile
 ```
 
+### 可复现构建（固定源码提交）
+
+需要可复现构建时，使用固定 tag 与明确的 Hermes source identity：
+
+```bash
+build_image_no_tag hermes src-<12hex> docker_hermes/hermes.Dockerfile \
+  --build-arg HERMES_SOURCE_REPOSITORY=<observed-source-remote> \
+  --build-arg HERMES_SOURCE_COMMIT=<40-hex-commit>
+```
+
+镜像会记录 `org.opencontainers.image.source` 与
+`org.opencontainers.image.revision`，并在 `/opt/hermes/.labnow-source-*` 保存
+相同的非敏感 provenance。只在本地命名为 `quay.io/labnow/hermes:src-<12hex>`，不 push。
+
+### Dashboard Chat TUI runtime
+
+Hermes 的 Dashboard 在 `/api/pty` 中执行已经构建的
+`/opt/hermes/ui-tui/dist/entry.js`。运行基础镜像不是 Node 镜像，因此 Dockerfile 会从
+同一目标架构的 builder 复制固定的 `/opt/node` runtime，并将其放入 `PATH`。这避免用户
+第一次打开 Chat 时触发 Node 下载/解压；不改变 Hermes source、TUI build 或模型配置。
+
 ### Start with Docker Compose
 
 1. Copy the sample environment file:
    ```bash
-   cp docker_hermes/.env.example docker_hermes/demo/.env
+   cp docker_hermes/demo/.env.example docker_hermes/demo/.env
    ```
 
 2. Specify the built image in `docker_hermes/demo/.env`:
    ```env
-   HERMES_IMAGE=quay.io/labnow/hermes:local
+   HERMES_IMAGE=quay.io/labnow/hermes
    ```
 
 3. Launch the container:

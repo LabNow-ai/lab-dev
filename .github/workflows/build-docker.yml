@@ -158,6 +158,26 @@ jobs:
           source ./tool.sh
           build_image hermes latest docker_hermes/hermes.Dockerfile && push_image hermes
 
+  ## Ignis - Self-hosted Obsidian sync server
+  job-ignis:
+    name: "ignis"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          source ./tool.sh
+          build_image ignis latest docker_ignis/ignis.Dockerfile && push_image ignis
+
+  ## LiteLLM
+  job-litellm:
+    name: "litellm"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          source ./tool.sh
+          build_image litellm latest docker_litellm/litellm.Dockerfile && push_image litellm
+
   ## DevBox - base
   job-base-dev:
     name: "developer,base-dev"
@@ -227,6 +247,8 @@ jobs:
         "job-nocobase",
         "job-openclaw",
         "job-hermes",
+        "job-ignis",
+        "job-litellm",
         "job-logent",
         "job-storebox",
         "job-searxng",

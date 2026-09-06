@@ -4,18 +4,18 @@ services:
   db-postgres-common:
     container_name: db-postgres-common
     hostname: db-postgres-common
-    image: quay.io/labnow/postgres-17:latest
+    image: quay.io/labnow/postgres-18:latest
     pull_policy: always
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
-      POSTGRES_DB: nocobase
+      POSTGRES_DB: nocobase_v1
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports: ["35432:5432"]
     volumes:
-      - /data/storage/pg-common:/var/lib/postgresql/data
-    # su postgres && psql -d nocobase
+      - /data/storage/pg-18:/var/lib/postgresql
+    # su postgres && psql -d nocobase_v1
 
   svc-nocobase:
       container_name: svc-nocobase
@@ -32,16 +32,10 @@ services:
         DB_PORT: 5432
         DB_USER: postgres
         DB_PASSWORD: postgres
-        DB_DATABASE: nocobase
+        DB_DATABASE: nocobase_v1
         # INIT_ROOT_USERNAME: nocobase
         # INIT_ROOT_EMAIL: admin@nocobase.com
         # INIT_ROOT_PASSWORD: admin123
       ports: ["13000:13000"]
       volumes:
         - /data/storage/nocobase/storage:/opt/nocobase/storage
-      healthcheck:
-        test:  ["CMD-SHELL", "curl --head -fsSk http://localhost:13000/" ]
-        interval: 30s
-        timeout: 10s
-        start_period: 15s
-        retries: 3

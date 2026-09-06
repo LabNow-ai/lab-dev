@@ -40,22 +40,6 @@ Below is the directory map of all specialized modules maintained in this reposit
 
 ## 🛠️ Development Quickstart
 
-To run the unified **`developer`** container workspace with mounted directories:
+To run the unified **`developer`** container workspace with mounted directories, refer to the `demo` folders in each module.
 
-```bash
-IMG="labnow/developer:latest"
-
-docker run -d --restart=always \
-    --name=labnow-dev \
-    --hostname=LabNow \
-    -p 18888:8888 \
-    -p 19999:9999 \
-    -p 18787:8787 \
-    -v $(pwd):/root/workspace \
-    -w /root/workspace \
-    $IMG
-```
-
-1. **JupyterLab**: Access at `http://localhost:18888` (check `docker logs labnow-dev` for the token).
-2. **VS Code (code-server)**: Access at `http://localhost:19999` (started by running `/usr/local/bin/start-code-server.sh` inside the container).
-3. **RStudio Server**: Access at `http://localhost:18787` (started by running `/usr/local/bin/start-rserver.sh` inside the container).
+To pull submodule doc, use command `git submodule update --init --recursive`.

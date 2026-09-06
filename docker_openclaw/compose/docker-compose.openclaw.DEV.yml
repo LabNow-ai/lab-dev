@@ -1,0 +1,26 @@
+name: "svc-openclaw"
+
+services:
+  openclaw-gateway:
+    container_name: svc-openclaw-gateway
+    hostname: svc-openclaw-gateway
+    # image: "quay.io/labnow/openclaw:latest"
+    build:
+      context: ../
+      dockerfile: openclaw.Dockerfile
+      args:
+        - BASE_NAMESPACE=${BASE_NAMESPACE:-quay.io/labnow}
+        # - PROFILE_LOCALIZE=${PROFILE_LOCALIZE:-default}
+      pull: true
+    pull_policy: if_not_present
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - PROFILE_LOCALIZE=aliyun-pub
+      - OPENCLAW_GATEWAY_TOKEN=openclaw
+    volumes:
+      - ${HOME}/openclaw:/root/.openclaw/data
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+    command: ["tail", "-f", "/dev/null"]
