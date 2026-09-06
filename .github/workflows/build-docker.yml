@@ -138,6 +138,16 @@ jobs:
           source ./tool.sh
           build_image nocobase latest docker_nocobase/nocobase.Dockerfile && push_image nocobase
 
+  ## coder for remote development
+  job-coder:
+    name: 'coder'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          source ./tool.sh
+          build_image coder latest docker_coder/coder.Dockerfile && push_image coder
+
   ## OpenClaw
   job-openclaw:
     name: "openclaw"
@@ -244,6 +254,7 @@ jobs:
         "job-data-science-dev",
         "job-full-stack-dev",
         "job-base-dev",
+        "job-dev-hub",
         "job-nocobase",
         "job-openclaw",
         "job-hermes",
@@ -253,11 +264,11 @@ jobs:
         "job-storebox",
         "job-searxng",
         "job-openresty",
-        "job-dev-hub",
         "job-keycloak",
         "job-casdoor",
         "job-clash",
-        "job-gui-linux"
+        "job-gui-linux",
+        "job-coder"
       ]
     runs-on: ubuntu-latest
     steps:
