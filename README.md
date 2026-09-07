@@ -28,6 +28,7 @@ Below is the directory map of all specialized modules maintained in this reposit
 | **`docker_gui`** | `labnow/gui-linux` | Selkies-GStreamer WebRTC GUI sessions | `8080` | `/tmp/runtime-root` |
 | **`docker_hermes`** | `labnow/hermes` | Hermes Autonomous Agent Workspace | `9119` | `/root/workspace` |
 | **`docker_keycloak`** | `labnow/keycloak` | Quarkus-based IAM / OAuth2 | `8080` | `/opt/keycloak/data` |
+| **`docker_harbor`** | `goharbor/*` | Harbor Container Registry | `8080` | `docker_harbor/work/data` |
 | **`docker_litellm`** | `labnow/litellm` | LiteLLM OpenAI-compatible API Proxy | `4000` | `/opt/litellm` |
 | **`docker_logent`** | `labnow/logent` | Supervisord + logrotate + Vector pipeline | — | — |
 | **`docker_nocobase`** | `labnow/nocobase` | Extensible Low-code Platform | `13000` | `/opt/nocobase/storage` |
