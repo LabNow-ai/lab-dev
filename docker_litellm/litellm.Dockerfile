@@ -49,6 +49,7 @@ FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 LABEL maintainer="postmaster@labnow.ai"
 
 ENV HOME_LITELLM=/opt/litellm
+ENV STORE_MODEL_IN_DB=true
 
 WORKDIR ${HOME_LITELLM}
 
@@ -67,8 +68,6 @@ RUN set -eux && mkdir -pv /opt/litellm \
  ## root-owned caches, while the runtime starts with HOME=/opt/litellm.
  && PRISMA_HOME_DIR="${HOME_LITELLM}" prisma generate --schema "${PRISMA_SCHEMA}" \
  && test -d "${HOME_LITELLM}/.cache/prisma-python" \
- ## Install supervisord (Go version) if needed or use simple entrypoint
- && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  && source /opt/utils/script-utils.sh && install__clean
 
 VOLUME /root/workspace
