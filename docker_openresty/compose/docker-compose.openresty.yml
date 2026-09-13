@@ -1,0 +1,52 @@
+# Namespace the project with PROFILE_ENV so multiple instances can coexist,
+# consistent with the rest of this repo. Example:
+#   PROFILE_ENV=X docker compose -f docker-compose.openresty.yml up -d
+name: ${PROFILE_ENV:-X}-svc-openresty
+
+networks:
+  net-ailab-proxy:
+    external: true
+
+services:
+  svc-openresty:
+    container_name: ${PROFILE_ENV:-X}-svc-openresty
+    hostname: svc-openresty
+    image: quay.io/labnow/openresty:latest
+    pull_policy: always
+    restart: unless-stopped
+    networks: ["net-ailab-proxy"]
+    ports: ["80:80", "443:443"]
+
+    # Template variables come from env_file. PROFILE_NGINX is optional: when it is unset or empty,
+    # 20-prepare-template-files.sh skips template preparation and nginx starts without any rendered templates.
+    # SERVER_DOMAIN_NAME / SERVER_HOME_REDIRECT are only used by the selected profile's templates.
+    env_file: ["../credentials/${PROFILE_ENV:-@}-openresty.env"]
+
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      PROFILE_LOCALIZE: aliyun-pub
+      # Enable 15-local-resolvers.envsh to export NGINX_LOCAL_RESOLVERS for 16-set-resolvers.sh to write the resolver config.
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+
+    volumes:
+      # - /var/cache/nginx:/var/cache/nginx:rw
+      - /data/storage/nginx/ssl:/etc/nginx/ssl:rw
+      - /data/storage/nginx/web:/var/nginx/web:ro
+      - /data/storage/log/nginx:/var/log/nginx:rw
+
+      # Internal staging directory of the template pipeline. Mounted as tmpfs so it
+      # is always empty at container start and never leaks stale templates across restarts.
+      - type: tmpfs
+        target: /etc/nginx/templates
+
+      # Optional custom config (e.g. http_top.conf, http.conf, stream.conf).
+      # An empty directory is ignored and nginx falls back to its defaults.
+      - ./nginx-conf.d:/etc/nginx/custom:ro
+
+      # Template pipeline (nginx still starts when these directories are empty):
+      #   ./profiles/              -> /etc/nginx/profiles/        profile lists (*.list)
+      #   ./nginx-conf.d-template/ -> /etc/nginx/templates.repo/  template sources (*.conf.template / *.conf.stream-template)
+      # The in-container defaults already match these mount points, so
+      # PROFILE_DIR_NGINX / DIR_TEMPLATE_SOURCE do not need to be set.
+      - ./profiles/:/etc/nginx/profiles/:ro
+      - ./nginx-conf.d-template/:/etc/nginx/templates.repo/:ro

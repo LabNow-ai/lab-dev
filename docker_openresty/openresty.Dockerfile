@@ -29,7 +29,7 @@ RUN set -eux \
  && nginx -t \
  && install__clean
 
-VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/templates/", "/etc/nginx/ssl", "/root/.acme.sh"]
+VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/ssl", "/root/.acme.sh"]
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx"]
