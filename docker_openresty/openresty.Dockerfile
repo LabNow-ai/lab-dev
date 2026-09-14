@@ -14,11 +14,11 @@ COPY work /opt/utils/
 
 RUN set -eux \
  && chmod +x  /opt/utils/*.sh \
- # ----------------------------- Install acme.sh
- && source /opt/utils/script-setup-acme.sh      && setup_acme \
- # ----------------------------- Install lua and lua-rocks
+ ## ----------------------------- Install acme.sh
+ && source /opt/utils/script-setup-acme.sh && setup_acme \
+ ## ----------------------------- Install lua and lua-rocks
  && source /opt/utils/script-setup-core.sh && setup_lua_base && setup_lua_rocks \
- # ----------------------------- Install openresty
+ ## ----------------------------- Install openresty
  && useradd nginx -G www-data \
  && mkdir -pv /var/cache/nginx /var/log/nginx \
  && chown -R nginx:www-data /var/cache/nginx /var/log/nginx \
@@ -29,7 +29,7 @@ RUN set -eux \
  && nginx -t \
  && install__clean
 
-VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/templates/", "/etc/nginx/ssl", "/root/.acme.sh"]
+VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/ssl", "/root/.acme.sh"]
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx"]
