@@ -7,6 +7,7 @@ networks:
   net-ailab-proxy:
     external: true
 
+
 services:
   svc-openresty:
     container_name: ${PROFILE_ENV:-X}-svc-openresty
@@ -34,19 +35,21 @@ services:
       - /data/storage/nginx/web:/var/nginx/web:ro
       - /data/storage/log/nginx:/var/log/nginx:rw
 
-      # Internal staging directory of the template pipeline. Mounted as tmpfs so it
-      # is always empty at container start and never leaks stale templates across restarts.
+      # Internal staging directory of the template pipeline.
+      # Mounted as tmpfs so it is always empty at container start and never leaks stale templates across restarts.
       - type: tmpfs
         target: /etc/nginx/templates
 
       # Optional custom config (e.g. http_top.conf, http.conf, stream.conf).
       # An empty directory is ignored and nginx falls back to its defaults.
-      - ./nginx-conf.d:/etc/nginx/custom:ro
+      - ./nginx-custom.d:/etc/nginx/custom:ro
 
       # Template pipeline (nginx still starts when these directories are empty):
       #   ./profiles/              -> /etc/nginx/profiles/        profile lists (*.list)
       #   ./nginx-conf.d-template/ -> /etc/nginx/templates.repo/  template sources (*.conf.template / *.conf.stream-template)
-      # The in-container defaults already match these mount points, so
-      # PROFILE_DIR_NGINX / DIR_TEMPLATE_SOURCE do not need to be set.
+      # The in-container defaults already match these mount points, so PROFILE_DIR_NGINX / DIR_TEMPLATE_SOURCE do not need to be set.
+      # Each non-comment line names a flat template filename from `/etc/nginx/templates.repo/`:
+      # - `*.conf.template` → HTTP output (`/etc/nginx/conf.d/`)
+      # - `*.conf.stream-template` → stream output (`/etc/nginx/stream-conf.d/`)
       - ./profiles/:/etc/nginx/profiles/:ro
-      - ./nginx-conf.d-template/:/etc/nginx/templates.repo/:ro
+      - ./nginx-templates.repo.d:/etc/nginx/templates.repo:ro
