@@ -6,6 +6,8 @@ The image builds OpenBao from a fixed upstream commit and follows the repository
 
 - `go-stack` is used for the source build stage.
 - `atom` is used as the runtime stage.
+- Node.js 20 and pnpm 10.34.4 are installed in the build stage for the Ember UI.
+- `make dev-ui` embeds the compiled Web UI into the OpenBao binary.
 - The binary is installed at `/usr/local/bin/bao`.
 - `/usr/local/bin/vault` is provided as a compatibility symlink.
 
@@ -29,6 +31,10 @@ export CI_PROJECT_NAME=LabNow/lab-dev
 source ./tool.sh
 build_image_no_tag openbao local docker_openbao/openbao.Dockerfile
 ```
+
+The builder installs Node.js 20 and pnpm 10.34.4, installs the locked UI dependencies,
+and runs `make dev-ui`, so the resulting binary includes the OpenBao Web UI. The UI
+still needs to be enabled in the server configuration with `ui = true`.
 
 The default build uses OpenBao `v2.7.0` at commit `ca305a02daa68b203325daa1b25c18d7a252d4b3`. To build another reviewed upstream commit, override all source identity arguments together:
 

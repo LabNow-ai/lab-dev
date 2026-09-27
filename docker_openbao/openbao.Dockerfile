@@ -16,15 +16,22 @@ ARG OPENBAO_SOURCE_COMMIT
 
 WORKDIR /build
 RUN set -eux \
+ && source /opt/utils/script-setup-core.sh && setup_node_base 20 \
+ && npm install --global pnpm@10.34.4 \
+ && node --version \
+ && pnpm --version \
  && git init openbao \
  && cd openbao \
  && git remote add origin "${OPENBAO_SOURCE_REPOSITORY}" \
  && git fetch --depth 1 origin "${OPENBAO_SOURCE_COMMIT}" \
  && git checkout --detach FETCH_HEAD \
  && test "$(git rev-parse HEAD)" = "${OPENBAO_SOURCE_COMMIT}" \
- && make dev \
+ && pnpm --dir ui install --frozen-lockfile \
+ && make static-dist \
+ && make dev-ui \
  && install -D -m 0755 bin/bao /opt/openbao/bao \
- && printf '%s\n' "${OPENBAO_VERSION}" > /opt/openbao/version
+ && printf '%s\n' "${OPENBAO_VERSION}" > /opt/openbao/version \
+ && rm -rf /root/.npm /root/.cache /root/.local/share/pnpm/store
 
 
 # Stage 2: runtime image.
