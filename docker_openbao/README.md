@@ -16,7 +16,7 @@ The image builds OpenBao from a fixed upstream commit and follows the repository
 - **`8200/tcp`**: OpenBao API and UI.
 - **`/openbao/config`**: HCL or JSON configuration files.
 - **`/openbao/logs`**: Optional audit log output.
-- **`/openbao/file`**: Optional file storage backend data.
+- **`/openbao/data`**: Raft storage data for a persistent single-node or cluster deployment.
 
 The default command starts an in-memory development server. Do not use the default development command in production.
 
@@ -44,6 +44,52 @@ build_image_no_tag openbao local docker_openbao/openbao.Dockerfile \
   --build-arg OPENBAO_SOURCE_COMMIT=<40-hex-commit>
 ```
 
+## OIDC login for the Web UI
+
+The server configuration example [`demo/openbao-oidc.hcl`](demo/openbao-oidc.hcl)
+enables the embedded UI at `/ui/`, uses Raft storage, and enables TLS. It is a
+template: replace the hostname and certificate paths before use.
+
+The OIDC auth method and role are runtime configuration, so they cannot be
+declared in the server HCL file. After starting OpenBao and authenticating with
+an initial administrator token, configure them through the CLI/API:
+
+```bash
+export BAO_ADDR=https://openbao.example.com:8200
+export BAO_TOKEN=<initial-admin-token>
+
+bao auth enable -path=oidc jwt
+
+bao write auth/oidc/config \
+  oidc_discovery_url="https://idp.example.com/realms/example" \
+  oidc_client_id="openbao" \
+  oidc_client_secret="<oidc-client-secret>"
+
+bao policy write openbao-admin docker_openbao/demo/openbao-admin-policy.hcl
+
+bao write auth/oidc/role/admin -<<'EOF'
+{
+  "role_type": "oidc",
+  "user_claim": "sub",
+  "groups_claim": "groups",
+  "oidc_scopes": ["openid", "profile", "email", "groups"],
+  "bound_audiences": ["openbao"],
+  "allowed_redirect_uris": [
+    "https://openbao.example.com:8200/ui/vault/auth/oidc/oidc/callback"
+  ],
+  "policies": ["openbao-admin"],
+  "ttl": "1h",
+  "max_ttl": "8h"
+}
+EOF
+```
+
+Register the exact same redirect URI in the OIDC provider. Then open
+`https://openbao.example.com:8200/ui/`, select **OIDC**, and enter the role name
+`admin` if the UI asks for it. Restrict the role with `bound_claims` or a group
+claim in production; the example administrator policy is intentionally broad
+and is only a starting point.
+
 ## Run in development mode
 
 ```bash
@@ -61,7 +107,7 @@ docker run -d \
   --name openbao \
   --publish 8200:8200 \
   --volume openbao-config:/openbao/config \
-  --volume openbao-file:/openbao/file \
+  --volume openbao-data:/openbao/data \
   --volume openbao-logs:/openbao/logs \
   quay.io/labnow/openbao:local \
   server

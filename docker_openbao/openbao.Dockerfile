@@ -52,7 +52,7 @@ COPY --from=builder /opt/openbao/version /opt/openbao/version
 COPY work/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN set -eux \
- && mkdir -pv /openbao/config /openbao/logs /openbao/file \
+ && mkdir -pv /openbao/config /openbao/logs /openbao/data \
  && chmod +x /usr/local/bin/docker-entrypoint.sh \
  && ln -sf /usr/local/bin/bao /usr/local/bin/vault \
  && bao version
@@ -63,7 +63,7 @@ ENV BAO_ADDR=http://127.0.0.1:8200
 # 8200/tcp is the primary OpenBao API and UI interface.
 EXPOSE 8200
 
-VOLUME ["/openbao/config", "/openbao/logs", "/openbao/file"]
+VOLUME ["/openbao/config", "/openbao/logs", "/openbao/data"]
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-dev", "-dev-no-store-token"]
