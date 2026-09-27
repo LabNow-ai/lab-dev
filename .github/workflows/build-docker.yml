@@ -146,7 +146,19 @@ jobs:
       - uses: actions/checkout@v7
       - run: |
           source ./tool.sh
-          build_image openclaw latest docker_openclaw/openclaw.Dockerfile && push_image openclaw
+          build_image openclaw latest docker_openclaw/openclaw.Dockerfile
+          push_image openclaw
+
+  ## OpenBao
+  job-openbao:
+    name: "openbao"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          source ./tool.sh
+          build_image openbao latest docker_openbao/openbao.Dockerfile
+          push_image openbao
 
   ## Hermes Agent
   job-hermes:
@@ -246,6 +258,7 @@ jobs:
         "job-base-dev",
         "job-nocobase",
         "job-openclaw",
+        "job-openbao",
         "job-hermes",
         "job-ignis",
         "job-litellm",

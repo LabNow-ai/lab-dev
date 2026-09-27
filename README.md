@@ -32,6 +32,7 @@ Below is the directory map of all specialized modules maintained in this reposit
 | **`docker_logent`** | `labnow/logent` | Supervisord + logrotate + Vector pipeline | — | — |
 | **`docker_nocobase`** | `labnow/nocobase` | Extensible Low-code Platform | `13000` | `/opt/nocobase/storage` |
 | **`docker_openclaw`** | `labnow/openclaw` | AI Agent Automation Gateway | `18789`, `18790` | `/root/.openclaw/data` |
+| **`docker_openbao`** | `labnow/openbao` | Secrets and Encryption Management | `8200` | `/openbao/config`, `/openbao/file`, `/openbao/logs` |
 | **`docker_openresty`** | `labnow/openresty` | Nginx + Lua + acme.sh SSL certificate | `80`, `443` | `/etc/nginx/ssl`, `/root/.acme.sh` |
 | **`docker_searxng`** | `labnow/searxng` | Privacy Metasearch Engine | `8080`, `9001` | `/etc/searxng` |
 | **`docker_storebox`** | `labnow/storebox` | Alist WebDAV + Rclone Cloud Storage | `5244`, `5572` | `/opt/alist/data`, `/root/.config/rclone` |
