@@ -58,10 +58,7 @@ if [ ! -f "config.yaml" ]; then
     config_tmp="$(mktemp "${HOME_LITELLM}/config.yaml.tmp.XXXXXX")"
     chmod 600 "$config_tmp"
     cat <<'EOF' > "$config_tmp"
-model_list:
-  - model_name: gpt-3.5-turbo
-    litellm_params:
-      model: gpt-3.5-turbo
+model_list: []
 EOF
     chmod 600 "$config_tmp"
     mv -f -- "$config_tmp" config.yaml
@@ -115,8 +112,6 @@ export LITELLM_DISABLE_PRISMA_SCHEMA_UPDATE="true"
 if [ $# -eq 0 ]; then
     set -- --config config.yaml --port "${LITELLM_PORT:-4000}" --host "${LITELLM_HOST:-0.0.0.0}"
 fi
-
-echo "PATH:${PATH}"
 
 # Route execution: run command directly if it exists, otherwise wrap with litellm
 if command -v "$1" >/dev/null 2>&1; then

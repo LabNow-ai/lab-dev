@@ -254,6 +254,7 @@ jobs:
         "job-searxng",
         "job-openresty",
         "job-dev-hub",
+        "job-dev-hub-traefik",
         "job-keycloak",
         "job-casdoor",
         "job-clash",
