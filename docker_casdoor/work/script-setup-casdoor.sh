@@ -1,7 +1,7 @@
 source /opt/utils/script-utils.sh
 
 setup_casdoor() {
-     export ARCH=$(uname -m | sed \ -e 's/x86_64/amd64/' \ -e 's/aarch64/arm64/' \ -e 's/armv7l/arm-7/') ;
+     export ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/' -e 's/armv7l/arm-7/') ;
 
   # ref: https://github.com/casdoor/casdoor/blob/master/Dockerfile
   # Download the latest release of casdoor
