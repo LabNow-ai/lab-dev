@@ -11,7 +11,7 @@ COPY work /opt/utils
 
 RUN set -eux \
  # ----------------------------- Install logrotate
- && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends logrotate \
+ && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends jq logrotate \
  # ----------------------------- Install supervisord
  && source /opt/utils/script-setup-sys.sh && setup_supervisord \
  # ----------------------------- Install vector

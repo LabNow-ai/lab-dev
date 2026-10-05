@@ -4,10 +4,12 @@ setup_vector() {
     echo "Unsupported architecture for Vector: $(uname -m)" && return 1 ;
   }
 
-  VER_VECTOR=$(curl -fsSL https://github.com/vectordotdev/vector/releases.atom \
-    | grep -oE 'https://github.com/vectordotdev/vector/releases/tag/[^"]+' \
-    | grep -vE '/(vdev-v|nightly)' | head -n1 | sed 's#.*/tag/v##') \
-  && PKG_VECTOR="vector-${VER_VECTOR}-${ARCH}-unknown-linux-gnu.tar.gz" \
+  VECTOR_TARGET="${ARCH}-unknown-linux-gnu"
+  [ "$ARCH" != armv7 ] || VECTOR_TARGET="armv7-unknown-linux-gnueabihf"
+
+  VER_VECTOR="$(curl -fsSL "https://api.github.com/repos/vectordotdev/vector/releases?per_page=100" \
+    | jq -er '[.[] | select(.prerelease == false and (.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))][0].tag_name | sub("^v"; "")')" \
+  && PKG_VECTOR="vector-${VER_VECTOR}-${VECTOR_TARGET}.tar.gz" \
   && URL_VECTOR="https://github.com/vectordotdev/vector/releases/download/v${VER_VECTOR}/${PKG_VECTOR}" \
   && echo "Installing Vector v${VER_VECTOR} for arch ${ARCH} from: ${URL_VECTOR}" \
   && curl -fSL "${URL_VECTOR}" -o /tmp/vector.tar.gz \

@@ -46,6 +46,7 @@ RUN set -eux && cd /opt/openclaw \
       '  "@google/genai": true' \
       '  "@matrix-org/matrix-sdk-crypto-nodejs": true' \
       '  koffi: true' \
+      '  esbuild: true' \
       '  openclaw: true' \
       '  protobufjs: true' \
       '  sharp: true' \

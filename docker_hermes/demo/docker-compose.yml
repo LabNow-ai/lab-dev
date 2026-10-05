@@ -5,15 +5,15 @@ services:
     container_name: ${HERMES_CONTAINER_NAME:-svc-hermes}
     hostname: svc-hermes
     image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
-    pull_policy: always
     restart: unless-stopped
-    env_file: [".env.example"]
+    env_file: [".env"]
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       HERMES_HOME: /root/.hermes
       HERMES_DASHBOARD: ${HERMES_DASHBOARD:-true}
       HERMES_DASHBOARD_HOST: ${HERMES_DASHBOARD_HOST:-0.0.0.0}
       HERMES_DASHBOARD_PORT: ${HERMES_DASHBOARD_PORT:-9119}
+      HERMES_DASHBOARD_USE_TRUSTED_PROXY_AUTH: ${HERMES_DASHBOARD_USE_TRUSTED_PROXY_AUTH:-false}
       HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-hermes}
       HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-hermes}
       HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH:-}
@@ -26,7 +26,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     ports:
-      - "${HERMES_DASHBOARD_PUBLISH_HOST:-127.0.0.1}:${HERMES_DASHBOARD_PORT:-9119}:${HERMES_DASHBOARD_PORT:-9119}"
+      - "${HERMES_DASHBOARD_PORT:-9119}:${HERMES_DASHBOARD_PORT:-9119}"
     volumes:
       - ${HERMES_DATA_DIR:-/data/storage/workspace/hermes}:/root/.hermes
     logging:
