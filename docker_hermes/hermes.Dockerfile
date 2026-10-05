@@ -50,7 +50,7 @@ RUN set -eux \
 ### ---------- Frontend build (web + ui-tui) ----------
 RUN set -eux \
  ## ---------- Node dependencies + Playwright (cached on manifests) ----------
- && npm install --prefer-offline --no-audit --fetch-retries=5 \
+ && npm install --include=dev --prefer-offline --no-audit --fetch-retries=5 \
  && npm install -g playwright && playwright install --with-deps chromium --only-shell \
  && npm cache clean --force \
  && (cd web    && npm run build) \
