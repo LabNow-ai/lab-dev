@@ -75,7 +75,7 @@ The sample Compose service uses `pull_policy: never`; it runs a local image and 
 
 ## Dashboard authentication and model providers
 
-Open `http://localhost:9119` to access the Dashboard. The sample environment uses username `hermes` and password `hermes-local`. Generate a replacement password hash inside the container with:
+Open `http://localhost:9119` to access the Dashboard. The sample environment uses username `hermes` and password `hermes`. Generate a replacement password hash inside the container with:
 
 ```bash
 python -c "from plugins.dashboard_auth.basic import hash_password; print(hash_password('your-password'))"
