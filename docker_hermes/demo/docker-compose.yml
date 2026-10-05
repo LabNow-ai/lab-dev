@@ -4,8 +4,7 @@ services:
   hermes:
     container_name: ${HERMES_CONTAINER_NAME:-svc-hermes}
     hostname: svc-hermes
-    image: "${HERMES_IMAGE:-quay.io/labnow/hermes:local}"
-    pull_policy: never
+    image: "${HERMES_IMAGE:-quay.io/labnow/hermes:latest}"
     restart: unless-stopped
     env_file: [".env"]
     environment:

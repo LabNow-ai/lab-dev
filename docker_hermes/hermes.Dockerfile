@@ -84,6 +84,7 @@ COPY --from=builder /opt/hermes /opt/hermes
 RUN set -eux && cd /opt/hermes \
  && . /opt/utils/script-utils.sh && install_apt /opt/hermes/install_list_hermes.apt \
  && uv pip install ./vendor/*.whl && rm -rf ./vendor \
+ && uv pip install dotenv \
  && uv pip install -e ".[all,messaging,anthropic,bedrock,azure-identity,hindsight,matrix]" \
  && rm -rf /opt/hermes/bin \
  && ln -sf /opt/hermes/start-hermes.sh /opt/conda/bin/hermes /usr/local/bin/ \
