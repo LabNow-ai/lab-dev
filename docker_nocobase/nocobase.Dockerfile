@@ -22,8 +22,14 @@ RUN set -eux \
  && chmod +x /opt/nocobase/*.sh \
  && ls -alh \
  ## Clean up and display components version information...
- && find ./node_modules -type f \( -name "README.md" -o -name "License" \) -delete 2>/dev/null \
- && find ./node_modules -type d \( -name "test" -o -name "tests" -o -name "__tests__" -o -name "docs" -o -name "doc" \) -exec rm -rf {} + 2>/dev/null \
+ && find node_modules -type f -name "*.md" ! -path "node_modules/@nocobase/*" -delete \
+ && find node_modules -type d -name docs   ! -path "node_modules/@nocobase/*" -prune -exec rm -rf '{}' + \
+ && find node_modules -type d \( -name "docs"      -o -name "doc"     \) -exec rm -rf {} + \
+ && find node_modules -type f \( -name "README.md" -o -name "License" \) -delete \
+ && find node_modules -type f -name "*.map"         -delete \
+ && find node_modules -type f -name "yarn.lock"     -delete \
+ && find node_modules -type f -name "bower.json"    -delete \
+ && find node_modules -type f -name "composer.json" -delete \
  && list_installed_packages && install__clean
 
 LABEL maintainer="postmaster@labnow.ai"
