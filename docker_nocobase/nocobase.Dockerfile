@@ -30,6 +30,7 @@ RUN set -eux \
  && find node_modules -type f -name "yarn.lock"     -delete \
  && find node_modules -type f -name "bower.json"    -delete \
  && find node_modules -type f -name "composer.json" -delete \
+ && nb --version \
  && list_installed_packages && install__clean
 
 LABEL maintainer="postmaster@labnow.ai"
@@ -49,4 +50,5 @@ VOLUME [ "/opt/nocobase/storage" ]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
+ENTRYPOINT ["tini", "-g", "--"]
 CMD [ "/opt/nocobase/docker-entrypoint.sh" ]

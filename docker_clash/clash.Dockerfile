@@ -30,7 +30,8 @@ RUN set -eux \
  && ln -sf /opt/clash/start-clash.sh /usr/local/bin/
 
 WORKDIR /opt/clash
-ENTRYPOINT ["/opt/clash/start-clash.sh"]
+ENTRYPOINT ["tini", "-g", "--"]
+CMD ["/opt/clash/start-clash.sh"]
 
 # Healthcheck to verify if Clash REST API is healthy
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

@@ -105,7 +105,7 @@ echo "Clash transparent proxy network rules setup complete."
 
 # 7. Start Clash in the background and wait for it
 # We do not use exec so that this script remains active to trap signals and perform cleanup.
-/opt/clash/clash -d /opt/clash/config "$@" &
+exec /opt/clash/clash -d /opt/clash/config "$@" &
 CLASH_PID=$!
 
 # Perform post-startup initialization in the background (wait for REST API and set default GLOBAL proxy)

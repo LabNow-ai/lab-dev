@@ -30,7 +30,7 @@ LABEL maintainer="postmaster@labnow.ai"
 ENV RUNNING_IN_DOCKER=true
 # 8000=web, 389=ldap, 1812=radius
 EXPOSE 8000 389 1812
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["tini", "-g", "--"]
 CMD ["/opt/casdoor/docker-entrypoint.sh"]
 WORKDIR /opt/casdoor
 # https://casdoor.org/zh/docs/provider/storage/localFileSystem/
