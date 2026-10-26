@@ -31,7 +31,6 @@ RUN set -eux \
 
 VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/ssl", "/root/.acme.sh"]
 
-ENTRYPOINT ["tini", "-g", "--"]
 CMD ["/docker-entrypoint.sh", "nginx"]
 EXPOSE 80
 

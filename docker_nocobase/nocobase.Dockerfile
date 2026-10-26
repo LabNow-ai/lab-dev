@@ -22,14 +22,11 @@ RUN set -eux \
  && chmod +x /opt/nocobase/*.sh \
  && ls -alh \
  ## Clean up and display components version information...
- && find node_modules -type f -name "*.md" ! -path "node_modules/@nocobase/*" -delete \
- && find node_modules -type d -name docs   ! -path "node_modules/@nocobase/*" -prune -exec rm -rf '{}' + \
- && find node_modules -type d \( -name "docs"      -o -name "doc"     \) -exec rm -rf {} + \
- && find node_modules -type f \( -name "README.md" -o -name "License" \) -delete \
- && find node_modules -type f -name "*.map"         -delete \
- && find node_modules -type f -name "yarn.lock"     -delete \
- && find node_modules -type f -name "bower.json"    -delete \
- && find node_modules -type f -name "composer.json" -delete \
+ && find node_modules -type d \( -name "docs"       -o -name "doc"           \) -exec rm -rf {} + \
+ && find node_modules -type f \( -name "README.md"  -o -name "License"       \) -delete \
+ && find node_modules -type f \( -name "*.map"      -o -name "yarn.lock"     \) -delete \
+ && find node_modules -type f \( -name "bower.json" -o -name "composer.json" \) -delete \
+ && find node_modules -type f -name "*.md" ! -path "node_modules/@nocobase/*"   -delete \
  && nb --version \
  && list_installed_packages && install__clean
 
@@ -50,5 +47,4 @@ VOLUME [ "/opt/nocobase/storage" ]
 # '--login': make bash first reads and executes commands from  the file /etc/profile, if that file exists.
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
-ENTRYPOINT ["tini", "-g", "--"]
 CMD [ "/opt/nocobase/docker-entrypoint.sh" ]
