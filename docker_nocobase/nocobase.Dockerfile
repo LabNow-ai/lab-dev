@@ -5,7 +5,11 @@ ARG BASE_IMG="atom"
 
 FROM ${BASE_NAMESPACE:+$BASE_NAMESPACE/}${BASE_IMG}
 
+LABEL maintainer="postmaster@labnow.ai"
+
 COPY work /opt/utils
+
+ENV APPEND_PRESET_BUILT_IN_PLUGINS="@nocobase-plugin/casdoor,@nocobase-plugin/datasource-postgres"
 
 RUN set -eux \
  && apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
@@ -21,11 +25,11 @@ RUN set -eux \
  && mv /opt/utils/docker-entrypoint.sh /opt/nocobase/ \
  && chmod +x /opt/nocobase/*.sh \
  && ls -alh \
- ## add plugins
- && export DB_DIALECT=postgres \
- && list_plugins="@nocobase-plugin/casdoor @nocobase-plugin/datasource-postgres" \
- && yarn add -W $list_plugins \
- && yarn nocobase pm enable $list_plugins \
+ ## install plugins (plugins shall be enabled only in runtime) \
+ && IFS=',' read -r -a list_plugins <<< "${APPEND_PRESET_BUILT_IN_PLUGINS}" \
+    && if [ "${#list_plugins[@]}" -gt 0 ]; then \
+         yarn add -W "${list_plugins[@]}"; \
+       fi \
  ## Clean up and display components version information...
  && find node_modules -type d \( -name "docs"       -o -name "doc"           \) -exec rm -rf {} + \
  && find node_modules -type f \( -name "README.md"  -o -name "License"       \) -delete \
@@ -35,13 +39,9 @@ RUN set -eux \
  && nb --version \
  && list_installed_packages && install__clean
 
-LABEL maintainer="postmaster@labnow.ai"
+ENV APPEND_PRESET_BUILT_IN_PLUGINS="${APPEND_PRESET_BUILT_IN_PLUGINS},@nocobase/plugin-departments"
+
 EXPOSE 13000
-
-# Healthcheck: nocobase listens on 13000, startup may take longer due to DB install/migration
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD ["curl", "--head", "-fsS", "http://localhost:13000/"]
-
 WORKDIR /opt/nocobase
 VOLUME [ "/opt/nocobase/storage" ]
 
@@ -53,3 +53,7 @@ VOLUME [ "/opt/nocobase/storage" ]
 #   After that, it looks for ~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and executes commands from the first one that exists and is readable.
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 CMD [ "/opt/nocobase/docker-entrypoint.sh" ]
+
+# Healthcheck: nocobase listens on 13000, startup may take longer due to DB install/migration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD ["curl", "--head", "-fsS", "http://localhost:13000/"]
