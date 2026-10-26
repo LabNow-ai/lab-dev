@@ -23,10 +23,9 @@ RUN set -eux \
  && ls -alh \
  ## add plugins
  && export DB_DIALECT=postgres \
- && list_plugins=("@nocobase-plugin/casdoor" "@nocobase-plugin/datasource-postgres") \
- && for plugin in "${list_plugins[@]}"; do \
-      yarn add "$plugin" -W && (yarn nocobase pm enable "$plugin" || exit 1;) \
- done \
+ && list_plugins="@nocobase-plugin/casdoor @nocobase-plugin/datasource-postgres" \
+ && yarn add -W $list_plugins \
+ && yarn nocobase pm enable $list_plugins \
  ## Clean up and display components version information...
  && find node_modules -type d \( -name "docs"       -o -name "doc"           \) -exec rm -rf {} + \
  && find node_modules -type f \( -name "README.md"  -o -name "License"       \) -delete \
