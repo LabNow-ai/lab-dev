@@ -11,4 +11,4 @@ fi
 
 source /etc/profile.d/path-*.sh
 
-cd /opt/nocobase && yarn nocobase install --lang=${LOCALE:-"zh-CN"} && yarn start --quickstart
+cd /opt/nocobase && yarn nocobase install --lang=${LOCALE:-"zh-CN"} && exec yarn start --quickstart

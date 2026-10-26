@@ -39,4 +39,5 @@ VOLUME ["/vaults", "/app/obsidian-app", "/app/data"]
 
 EXPOSE 8080
 
-ENTRYPOINT ["/app/apps/ignis-server/scripts/entrypoint.sh"]
+ENTRYPOINT ["tini", "-g", "--"]
+CMD ["/app/apps/ignis-server/scripts/entrypoint.sh"]

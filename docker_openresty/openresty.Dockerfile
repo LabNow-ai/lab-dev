@@ -31,8 +31,7 @@ RUN set -eux \
 
 VOLUME ["/var/log/nginx", "/var/cache/nginx", "/etc/nginx/ssl", "/root/.acme.sh"]
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["nginx"]
+CMD ["/docker-entrypoint.sh", "nginx"]
 EXPOSE 80
 
 # Use SIGQUIT instead of default SIGTERM to cleanly drain requests

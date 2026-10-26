@@ -31,7 +31,7 @@ RUN set -eux && chmod +x /opt/utils/*.sh \
  ## Cache the published capture-stack wheels for the patched Selkies dependency range.
  && cd / \
  && pip wheel --no-cache-dir --only-binary=:all: \
-      'pixelflux~=2.0.0' 'pcmflux~=2.0.0' -w /opt/selkies
+      'pixelflux' 'pcmflux' -w /opt/selkies
 
 
 # Stage 2: runtime image
