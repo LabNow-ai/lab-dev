@@ -30,7 +30,8 @@ RUN set -eux && chmod +x /opt/utils/*.sh \
  && chmod +x /opt/selkies/docker-entrypoint.sh \
  ## Cache the published capture-stack wheels for the patched Selkies dependency range.
  && cd / \
- && pip wheel --no-cache-dir --only-binary=:all: -w /opt/selkies
+ && pip wheel --no-cache-dir --only-binary=:all: \
+      'pixelflux' 'pcmflux' -w /opt/selkies
 
 
 # Stage 2: runtime image

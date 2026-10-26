@@ -22,6 +22,7 @@ RUN set -eux \
  && chmod +x /opt/nocobase/*.sh \
  && ls -alh \
  ## add plugins
+ && export DB_DIALECT=postgres \
  && list_plugins=("@nocobase-plugin/casdoor" "@nocobase-plugin/datasource-postgres") \
  && for plugin in "${list_plugins[@]}"; do \
       yarn add "$plugin" -W && (yarn nocobase pm enable "$plugin" || exit 1;) \
