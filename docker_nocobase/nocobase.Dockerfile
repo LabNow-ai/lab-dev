@@ -21,6 +21,11 @@ RUN set -eux \
  && mv /opt/utils/docker-entrypoint.sh /opt/nocobase/ \
  && chmod +x /opt/nocobase/*.sh \
  && ls -alh \
+ ## add plugins
+ && list_plugins=("@nocobase-plugin/casdoor" "@nocobase-plugin/datasource-postgres") \
+ && for plugin in "${list_plugins[@]}"; do \
+      yarn add "$plugin" && (yarn nocobase pm enable "$plugin" || exit 1;) \
+ done \
  ## Clean up and display components version information...
  && find node_modules -type d \( -name "docs"       -o -name "doc"           \) -exec rm -rf {} + \
  && find node_modules -type f \( -name "README.md"  -o -name "License"       \) -delete \
