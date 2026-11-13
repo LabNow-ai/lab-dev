@@ -22,7 +22,8 @@ RUN set -eux \
  && if [ ${ARG_KEEP_NODEJS} = "false" ] ; then \
        # Using Traefik to server as proxy, which is a modern HTTP reverse proxy and load balancer that makes deploying microservices easy.
        echo "Removing Node/NPM..." && rm -rf /usr/bin/node /usr/bin/npm /usr/bin/npx /opt/node ; \
-       echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup-net.sh && setup_traefik ; \
+       # TODO: fix setup_traefik to ver 3.7.19 for temporary workaround, ignore rc vers
+       echo "Installing Traefik to server as proxy:" && source /opt/utils/script-setup-net.sh && setup_traefik "3.7.19" ; \
     else \
        # Using NodeJS to install configurable-http-proxy, which is a dependency of JupyterHub, and also used as the default proxy for JupyterHub.
        echo "Keep NodeJS as ARG_KEEP_NODEJS defined as: ${ARG_KEEP_NODEJS}" ; \
