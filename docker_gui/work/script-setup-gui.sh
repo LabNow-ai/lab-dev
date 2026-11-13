@@ -95,6 +95,7 @@ checkout_selkies_source() {
 setup_selkies_from_source() {
   local src_dir="${1:-/tmp/selkies-src}"
   local pkg_dir="/tmp/selkies-package"
+  local codec_dir="/opt/selkies-codecs"
   local cargo_bin cargo_home rustup_home
   cargo_bin="$(command -v cargo)" || {
     echo "Rust/Cargo is required in the Selkies build image" >&2
@@ -104,17 +105,18 @@ setup_selkies_from_source() {
   rustup_home="${RUSTUP_HOME:-$(rustup show home 2>/dev/null || printf /opt/rust/rustup)}"
 
      echo "Building Selkies server from ${src_dir}" \
-  && rm -rf /opt/selkies "${pkg_dir}" \
+  && rm -rf /opt/selkies "${pkg_dir}" "${codec_dir}" \
   && mkdir -pv /opt/selkies \
   && cd "${src_dir}" \
-  && CARGO_HOME="${cargo_home}" RUSTUP_HOME="${rustup_home}" \
+  && sh infra/packaging/codecs.sh "${codec_dir}" "${src_dir}/crates/pixelflux" \
+  && SELKIES_CODECS="${codec_dir}" CARGO_HOME="${cargo_home}" RUSTUP_HOME="${rustup_home}" \
        SELKIES_VERSION="${SELKIES_VERSION:-0.0.0}" \
        sh infra/packaging/server.sh "${pkg_dir}" \
   && install -m 755 "${pkg_dir}/usr/bin/selkies" /opt/selkies/selkies \
   && setup_selkies_addons_from_source "${src_dir}" \
   && setup_selkies_runtime_wrapper \
   && git -C "${src_dir}" rev-parse HEAD > /opt/selkies/version_info.txt \
-  && rm -rf "${pkg_dir}" /root/.cache /root/.npm /var/tmp/* ;
+  && rm -rf "${pkg_dir}" "${codec_dir}" /root/.cache /root/.npm /var/tmp/* ;
 
   [ -x /opt/selkies/selkies-gstreamer-run ] && echo "@ Selkies version $(cat /opt/selkies/version_info.txt)" || return 1 ;
 }

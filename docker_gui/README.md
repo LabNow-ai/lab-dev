@@ -15,7 +15,7 @@ docker build -f docker_gui/gui_linux.Dockerfile -t labnow/gui:selkies docker_gui
 - `BASE_IMG_BUILD=rust`：基于 Ubuntu，包含可用的 Rust/Cargo 工具链。
 - `BASE_IMG=base`：运行镜像，包含 `script-utils.sh` 等项目基础工具。
 
-默认克隆 Selkies `main`：Node 阶段按上游 `scripts/ci/build-web.sh` 构建前端，Rust 阶段构建原生服务端并将前端嵌入二进制；随后构建输入 interposer 和 fake-udev addon。构建依赖留在中间阶段，不进入运行镜像。
+默认克隆 Selkies `main`：Node 阶段按上游 `scripts/ci/build-web.sh` 构建前端，Rust 阶段先构建上游锁定的静态codec依赖，再构建原生服务端并将前端嵌入二进制；随后构建输入 interposer 和 fake-udev addon。构建依赖留在中间阶段，不进入运行镜像。
 
 如需固定源码 branch、tag 或 commit，可以使用：
 
