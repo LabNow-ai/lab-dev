@@ -3,16 +3,17 @@
 
 source /opt/utils/script-utils.sh
 
-setup_selkies_build_dependencies() {
+setup_selkies_web_build_dependencies() {
   apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
-    build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev python3-venv ;
+    ca-certificates git ;
 }
 
-cleanup_selkies_build_dependencies() {
-     apt-get purge -y --auto-remove \
-      build-essential cmake g++ gcc git libxkbcommon-dev make pkg-config python3-dev \
-      python3-venv \
-  && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
+setup_selkies_build_dependencies() {
+  apt-get -qq update -yq --fix-missing && apt-get -qq install -yq --no-install-recommends \
+    bison build-essential ca-certificates clang cmake curl git libclang-dev libdav1d-dev \
+    libde265-dev libdrm-dev libegl-dev libgbm-dev libgles-dev libinput-dev libopus-dev \
+    libpixman-1-dev libpulse-dev libudev-dev libva-dev libwayland-dev libxcb-shm0-dev libxcb-xfixes0-dev \
+    libxcb1-dev libxkbcommon-dev meson nasm ninja-build pkg-config xz-utils ;
 }
 
 setup_selkies_from_release() {
@@ -37,38 +38,14 @@ setup_selkies_from_release() {
 
 setup_selkies_web_from_source() {
   local src_dir="${1:-/tmp/selkies-src}"
-  local web_dir="${2:-/opt/selkies/share/selkies-web}"
 
-     echo "--> Building Selkies web dashboard..." \
-  && cd "${src_dir}/addons/selkies-web-core" \
-  && npm install \
-  && npm run build \
-  && cd "${src_dir}/addons/selkies-dashboard" \
-  && cp ../selkies-web-core/dist/selkies-core.js src/ \
-  && npm install \
-  && npm run build \
-  && mkdir -pv "${web_dir}/src" "${web_dir}/nginx" \
-  && cp -arf dist/* "${web_dir}/" \
-  && cp -f ../selkies-web-core/dist/selkies-core.js "${web_dir}/src/" \
-  && cp -f ../universal-touch-gamepad/universalTouchGamepad.js "${web_dir}/src/" \
-  && cp -arf ../selkies-web-core/dist/jsdb "${web_dir}/" \
-  && cp -arf ../selkies-web-core/nginx/* "${web_dir}/nginx/" \
-  && rm -rf "${src_dir}"/addons/*/node_modules /root/.npm /tmp/npm-* ;
-}
-
-setup_selkies_python_from_source() {
-  local src_dir="${1:-/tmp/selkies-src}"
-  local dist_dir="/tmp/selkies-dist"
-
-     echo "--> Building Selkies Python package..." \
-  && mkdir -p "${dist_dir}" \
+     echo "--> Building Selkies web client..." \
   && cd "${src_dir}" \
-  && pip install --no-cache-dir --upgrade pip setuptools wheel build \
-  && python3 -m build --outdir "${dist_dir}" \
-  && cp -r "${dist_dir}"/*.whl /opt/selkies/ \
-  && echo "--> Installing Selkies Python package..." \
-  && pip install --no-cache-dir "${dist_dir}"/*.whl \
-  && rm -rf "${dist_dir}" ;
+  && test -f scripts/ci/build-web.sh \
+  && sh scripts/ci/build-web.sh \
+  && test -f dist/web/index.html \
+  && rm -rf web/selkies-web-core/node_modules web/selkies-dashboard/node_modules \
+       web/universal-touch-gamepad/node_modules /root/.npm /tmp/npm-* ;
 }
 
 setup_selkies_addons_from_source() {
@@ -77,16 +54,17 @@ setup_selkies_addons_from_source() {
 
   mkdir -p "${lib_dir}"
 
-  if [ -f "${src_dir}/addons/js-interposer/joystick_interposer.c" ]; then
-       echo "--> Building Selkies joystick interposer..." \
-    && gcc -shared -fPIC -ldl -o "${lib_dir}/selkies_joystick_interposer.so" \
-         "${src_dir}/addons/js-interposer/joystick_interposer.c" ;
+  if [ -f "${src_dir}/addons/input-interposer/input_interposer.c" ]; then
+       echo "--> Building Selkies input interposer..." \
+    && gcc -shared -fPIC -o "${lib_dir}/selkies_input_interposer.so" \
+         "${src_dir}/addons/input-interposer/input_interposer.c" -ldl -pthread \
+    && ln -sf selkies_input_interposer.so "${lib_dir}/selkies_joystick_interposer.so" ;
   fi
 
   if [ -f "${src_dir}/addons/fake-udev/Makefile" ]; then
        echo "--> Building Selkies fake udev..." \
     && make -C "${src_dir}/addons/fake-udev" \
-    && mv "${src_dir}/addons/fake-udev/libudev.so.1.0.0-fake" "${lib_dir}/" ;
+    && cp "${src_dir}/addons/fake-udev/libudev.so.1.0.0-fake" "${lib_dir}/" ;
   fi
 }
 
@@ -94,10 +72,7 @@ setup_selkies_runtime_wrapper() {
   cat > /opt/selkies/selkies-gstreamer-run <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-if command -v selkies-gstreamer &>/dev/null; then
-  exec selkies-gstreamer "$@"
-fi
-exec selkies "$@"
+exec /opt/selkies/selkies "$@"
 EOF
   chmod +x /opt/selkies/selkies-gstreamer-run \
     && ln -sf /opt/selkies/selkies-gstreamer-run /usr/local/bin/selkies-gstreamer-run ;
@@ -118,20 +93,28 @@ checkout_selkies_source() {
 }
 
 setup_selkies_from_source() {
-  # ref: https://github.com/linuxserver/docker-baseimage-selkies/blob/master/Dockerfile
-  local ref="${VER_SELKIES_REF:-${VER_SELKIES:-main}}"
-  local src_dir="/tmp/selkies-src"
+  local src_dir="${1:-/tmp/selkies-src}"
+  local pkg_dir="/tmp/selkies-package"
+  local cargo_bin cargo_home rustup_home
+  cargo_bin="$(command -v cargo)" || {
+    echo "Rust/Cargo is required in the Selkies build image" >&2
+    return 1
+  }
+  cargo_home="${CARGO_HOME:-$(dirname "$(dirname "${cargo_bin}")")}"
+  rustup_home="${RUSTUP_HOME:-$(rustup show home 2>/dev/null || printf /opt/rust/rustup)}"
 
-     echo "Cloning Selkies source at ${ref}" \
-  && rm -rf /opt/selkies "${src_dir}" \
-  && mkdir -pv /opt/selkies/share \
-  && checkout_selkies_source "${ref}" "${src_dir}" \
-  && setup_selkies_web_from_source "${src_dir}" /opt/selkies/share/selkies-web \
-  && setup_selkies_python_from_source "${src_dir}" \
+     echo "Building Selkies server from ${src_dir}" \
+  && rm -rf /opt/selkies "${pkg_dir}" \
+  && mkdir -pv /opt/selkies \
+  && cd "${src_dir}" \
+  && CARGO_HOME="${cargo_home}" RUSTUP_HOME="${rustup_home}" \
+       SELKIES_VERSION="${SELKIES_VERSION:-0.0.0}" \
+       sh infra/packaging/server.sh "${pkg_dir}" \
+  && install -m 755 "${pkg_dir}/usr/bin/selkies" /opt/selkies/selkies \
   && setup_selkies_addons_from_source "${src_dir}" \
   && setup_selkies_runtime_wrapper \
   && git -C "${src_dir}" rev-parse HEAD > /opt/selkies/version_info.txt \
-  && rm -rf /tmp/selkies-src /root/.cache /root/.npm /var/tmp/* ;
+  && rm -rf "${pkg_dir}" /root/.cache /root/.npm /var/tmp/* ;
 
-  [ -x /opt/selkies/selkies-gstreamer-run ] && echo "@ Version of Selkies-GStreamer $(cat /opt/selkies/version_info.txt)" || return 1 ;
+  [ -x /opt/selkies/selkies-gstreamer-run ] && echo "@ Selkies version $(cat /opt/selkies/version_info.txt)" || return 1 ;
 }

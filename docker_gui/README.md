@@ -9,20 +9,28 @@
 docker build -f docker_gui/gui_linux.Dockerfile -t labnow/gui:selkies docker_gui
 ```
 
-基础镜像假设满足以下条件：
+构建使用两个基础镜像：
 
-- 基于 Ubuntu。
-- 已包含 Node.js 最新 LTS。
-- 已包含 Python >= 3.13。
+- `BASE_IMG_BUILD_WEB=node`：基于 Ubuntu，包含 Node.js 和 npm。
+- `BASE_IMG_BUILD=rust`：基于 Ubuntu，包含可用的 Rust/Cargo 工具链。
+- `BASE_IMG=base`：运行镜像，包含 `script-utils.sh` 等项目基础工具。
 
-构建过程会安装 Selkies 运行期系统依赖，默认克隆 Selkies `main` 分支最新源码，并安装到 `/opt/selkies`。
-默认使用源码构建方式，只保留运行期需要的 Python venv、web dashboard 产物和少量 addon 产物，构建依赖会在同一层内清理。
+默认克隆 Selkies `main`：Node 阶段按上游 `scripts/ci/build-web.sh` 构建前端，Rust 阶段构建原生服务端并将前端嵌入二进制；随后构建输入 interposer 和 fake-udev addon。构建依赖留在中间阶段，不进入运行镜像。
 
-如需固定某个 branch、tag 或 commit，可以使用：
+如需固定源码 branch、tag 或 commit，可以使用：
 
 ```bash
 docker build -f docker_gui/gui_linux.Dockerfile \
   --build-arg ARG_SELKIES_REF=main \
+  -t labnow/gui:selkies docker_gui
+```
+
+如需使用其他构建基础镜像，可分别覆盖前端和后端镜像：
+
+```bash
+docker build -f docker_gui/gui_linux.Dockerfile \
+  --build-arg BASE_IMG_BUILD_WEB=node \
+  --build-arg BASE_IMG_BUILD=rust \
   -t labnow/gui:selkies docker_gui
 ```
 
@@ -65,7 +73,7 @@ docker run --rm -p 8080:8080 \
 | `SELKIES_ENABLE_BASIC_AUTH` | `false` | 是否启用 Selkies 内置 Basic Auth。 |
 | `SELKIES_BASIC_AUTH_USER` | 空 | Basic Auth 用户名。 |
 | `SELKIES_BASIC_AUTH_PASSWORD` | 空 | Basic Auth 密码。 |
-| `SELKIES_ENCODER` | `x264enc` | 视频编码器。 |
+| `SELKIES_ENCODER` | `h264enc` | 视频编码器。 |
 | `SELKIES_ENABLE_RESIZE` | `false` | 是否允许 Selkies 按浏览器窗口调整分辨率。 |
 | `SELKIES_STUN_HOST` | `stun.l.google.com` | STUN 服务器地址。 |
 | `SELKIES_STUN_PORT` | `19302` | STUN 服务器端口。 |
@@ -80,7 +88,7 @@ docker run --rm -p 8080:8080 \
 也可以直接传递 `selkies-gstreamer-run` 参数：
 
 ```bash
-docker run --rm -p 8080:8080 labnow/gui:selkies --encoder=vp8enc --enable_resize=true
+docker run --rm -p 8080:8080 labnow/gui:selkies --encoder=vp8enc --enable-resize=true
 ```
 
 ## 关于 Connection failed

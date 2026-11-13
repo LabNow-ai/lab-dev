@@ -14,7 +14,7 @@ ENV OPENCLAW_STATE_DIR=${OPENCLAW_HOME}/data
 ENV OPENCLAW_PLUGINS_ROOT=/opt/openclaw/plugins
 ENV OPENCLAW_CONFIG_PATH=${OPENCLAW_STATE_DIR}/openclaw.json
 
-ENV PATH="${PNPM_HOME}/bin:${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
+ENV PATH="/opt/openclaw/node_modules/.bin:${PNPM_HOME}/bin:${PNPM_HOME}:${OPENCLAW_HOME}:${PATH}"
 ENV HOME=/root
 
 COPY work /opt/openclaw/
@@ -22,22 +22,13 @@ COPY work /opt/openclaw/
 RUN set -eux \
  && chmod +x  /opt/openclaw/*.sh && ln -sf /opt/openclaw/start-openclaw.sh /usr/local/bin/ \
  && mkdir -pv ${OPENCLAW_STATE_DIR} \
- ## curl -fsSL https://openclaw.ai/install.sh | NO_PROMPT=1 bash -s -- --no-onboard --install-method npm \
- && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
- && . /opt/utils/script-setup-core.sh && setup_node_pnpm 12 \
- && pnpm config set package-import-method       hardlink    \
- && pnpm config set store-dir                   $PNPM_STORE \
- && GLOBAL_DIR=$(pnpm root -g | sed 's|/node_modules$||')   \
- && mkdir -pv "$GLOBAL_DIR" \
- && echo '{"dependencies":{},"pnpm":{"onlyBuiltDependencies":["@matrix-org/matrix-sdk-crypto-nodejs","koffi","openclaw","protobufjs","sharp"]}}' \
-       | tee "$GLOBAL_DIR/package.json" \
- && pnpm config list \
- && pnpm add -g --config.unsafe-perm=true --store-dir "$PNPM_STORE" openclaw@latest \
- && pnpm store prune --store-dir "$PNPM_STORE" && rm -rf "$PNPM_STORE" && install__clean \
- && openclaw --version
+ && . /opt/utils/script-setup-core.sh && setup_node_pnpm 12
 
 RUN set -eux && cd /opt/openclaw \
  && . /opt/utils/script-utils.sh && . /opt/openclaw/script-setup-openclaw.sh \
+ && export SHARP_IGNORE_GLOBAL_LIBVIPS=1 \
+ && pnpm config set package-import-method hardlink \
+ && pnpm config set store-dir "$PNPM_STORE" \
  && PNPM_VER="$(pnpm --version)" \
  && printf '%s\n' \
       'enablePrePostScripts: true' \
@@ -70,7 +61,8 @@ RUN set -eux && cd /opt/openclaw \
  ## clean up
  && pnpm store prune --store-dir "$PNPM_STORE" \
  && rm -rf ~/.npm ~/.cache ~/.local ~/.pnpm-state "$PNPM_STORE" \
- && install__clean && ls -alh ~/
+ && install__clean && ls -alh ~/ \
+ && openclaw --version
 
 ENV XDG_CONFIG_HOME=/root/.openclaw/data
 WORKDIR /opt/openclaw

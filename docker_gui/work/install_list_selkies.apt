@@ -18,7 +18,7 @@ libxtst6                                     % X Test extension for injecting re
 libxkbcommon0 libxkbcommon-dev               % Keyboard layout processing and keycode translation for remote input.
 
 % 5. Wayland Compatibility Layer
-wayland-protocols libwayland-egl1            % Wayland display protocols and EGL hardware-accelerated rendering contexts.
+libwayland-client0 libwayland-server0 libwayland-egl1 % Wayland client/server protocols and EGL contexts.
 
 % 6. Audio Server Infrastructure
 pulseaudio libpulse0                         % Virtual audio daemon and client library to intercept container audio streams.
@@ -36,5 +36,9 @@ libyuv0                                      % Essential YUV video scaling and c
 % 10. Control Plane & Language Bindings
 python3-gi python3-gst-1.0                   % Python bindings for GObject and GStreamer to orchestrate media pipelines.
 
-% 11. System Level Essentials
+% 11. Rust Selkies capture and rendering libraries
+libdrm2 libgbm1 libinput10 libudev1 libva2 libva-drm2 % Runtime libraries used by pixelflux and the compositor.
+libxcb1 libxcb-shm0 libxcb-xfixes0            % XCB shared-memory and cursor capture.
+
+% 12. System Level Essentials
 libatomic1                                   % Atomic operations for thread-safe C/C++ audio/video processing.
