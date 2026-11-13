@@ -32,7 +32,15 @@ case "$PROFILE" in
         ;;
 esac
 
+FILE_ENV="/etc/nginx/profiles/${PROFILE}.env"
 FILE_PROFILE="${DIR_PROFILE}/${PROFILE}.list"
+
+if [ -f "$FILE_ENV" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$FILE_ENV"
+  set +a
+fi
 
 if [ ! -f "$FILE_PROFILE" ]; then
     entrypoint_log "$ME: profile file not found: $FILE_PROFILE, skipping"
