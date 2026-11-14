@@ -50,7 +50,8 @@ RUN set -eux \
 ### ---------- Frontend build (web + ui-tui) ----------
 RUN set -eux \
  ## ---------- Node dependencies + Playwright (cached on manifests) ----------
- && npm install --include=dev --prefer-offline --no-audit --fetch-retries=5 \
+ && PNPM_VERSION="$(node -p "require('./pm/lock.json').packages.pnpm.version")" \
+ && npx --yes "pnpm@${PNPM_VERSION}" install --frozen-lockfile --prod=false --prefer-offline \
  && npm install -g playwright && playwright install --with-deps chromium --only-shell \
  && npm cache clean --force \
  && (cd web    && npm run build) \

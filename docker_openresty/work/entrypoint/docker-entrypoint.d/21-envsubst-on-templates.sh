@@ -4,6 +4,14 @@ set -e
 
 ME=$(basename "$0")
 
+FILE_ENV="${DIR_PROFILE:-/etc/nginx/profiles}/${PROFILE_NGINX}.env"
+if [ -f "$FILE_ENV" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$FILE_ENV"
+  set +a
+fi
+
 entrypoint_log() {
     if [ -z "${NGINX_ENTRYPOINT_QUIET_LOGS:-}" ]; then
         echo "$@"

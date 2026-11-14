@@ -107,12 +107,16 @@ fi
 #
 # Selkies args
 #
+if command -v selkies-gstreamer >/dev/null 2>&1; then
+  default_encoder="x264enc"
+else
+  default_encoder="h264enc"
+fi
+
 args=(
   "--addr=${SELKIES_ADDR:-0.0.0.0}"
   "--port=${SELKIES_PORT:-8080}"
-  "--web-root=${SELKIES_WEB_ROOT:-/opt/selkies/share/selkies-web}"
-
-  "--encoder=${SELKIES_ENCODER:-x264enc}"
+  "--encoder=${SELKIES_ENCODER:-$default_encoder}"
 
   "--stun-host=${SELKIES_STUN_HOST:-stun.l.google.com}"
   "--stun-port=${SELKIES_STUN_PORT:-19302}"
@@ -121,6 +125,10 @@ args=(
   "--enable-basic-auth=${SELKIES_ENABLE_BASIC_AUTH}"
   "--enable-resize=${SELKIES_ENABLE_RESIZE}"
 )
+
+if [ -n "${SELKIES_WEB_ROOT:-}" ]; then
+  args+=("--web-root=${SELKIES_WEB_ROOT}")
+fi
 
 #
 # HTTPS
